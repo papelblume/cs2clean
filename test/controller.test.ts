@@ -2,32 +2,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Controller, type ControllerDeps, type Settings } from "../src/main/controller";
 import { ReplaySource } from "../src/main/game/replay";
 import { GameSource, type RecordedLine } from "../src/main/game/source";
-import type { EvidenceClass, MatchState } from "../src/shared/types";
+import type { LeetifyProfile } from "../src/main/leetify";
+import type { MatchState } from "../src/shared/types";
+import { AVERAGE, ELEVATED, HIGH, VERY_HIGH } from "./profiles";
 
-/** A fake Cheatscanner server with the companion endpoints. */
-function fakeServer() {
-  const s = { confirmed: false, tokens: new Set<string>(), lookups: [] as string[][], authEnabled: true,
-              classes: {} as Record<string, EvidenceClass> };
+/** A fake Leetify public API: profiles by SteamID64 (default: an average player), and the one key it accepts. */
+function fakeLeetify() {
+  const s = { lookups: [] as string[], keys: [] as (string | null)[], goodKey: "good-key" as string | null, requireKey: false,
+              profiles: {} as Record<string, LeetifyProfile>, down: false };
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
   const fetchImpl = (async (url: string, init?: RequestInit) => {
-    const path = new URL(url).pathname;
-    const auth = new Headers(init?.headers).get("Authorization")?.replace("Bearer ", "");
-    const body = init?.body ? JSON.parse(String(init.body)) : null;
-    if (path === "/site-info") return json(200, { name: "Cheatscanner", domain: "cheatscanner.eu", publicUrl: "https://cheatscanner.eu", authEnabled: s.authEnabled });
-    if (path === "/companion/pair")
-      return json(201, { deviceCode: "device-secret-000000000000", userCode: "K7QF-M2XP", verifyUrl: "https://cheatscanner.eu/#/link?code=K7QF-M2XP", expiresAt: new Date(Date.now() + 900_000).toISOString(), interval: 1 });
-    if (path === "/companion/pair/token") {
-      if (!s.confirmed) return json(202, { status: "PENDING" });
-      s.tokens.add("tok");
-      return json(200, { status: "LINKED", token: "tok", user: { steamId: "76561198000000001", personaName: "Nova", avatarUrl: null } });
-    }
-    if (path === "/me") return auth && s.tokens.has(auth) ? json(200, { id: 1, steamId: "76561198000000001", personaName: "Nova", avatarUrl: null }) : json(401, { detail: "sign in" });
-    if (path === "/lobby/risk") {
-      if (s.authEnabled && !(auth && s.tokens.has(auth))) return json(401, { detail: "sign in" });
-      s.lookups.push(body.players.map((p: { steamId: string }) => p.steamId));
-      return json(200, { players: body.players.map((p: { steamId: string }) => ({ steamId: p.steamId, classification: s.classes[p.steamId] ?? "ELEVATED", matchesAnalyzed: 4 })) });
-    }
-    return json(404, { detail: "not found" });
+    if (s.down) throw new TypeError("fetch failed");
+    const u = new URL(url);
+    const key = new Headers(init?.headers).get("_leetify_key");
+    if (u.pathname === "/api-key/validate") return key && key === s.goodKey ? json(200, {}) : json(401, { error: "bad key" });
+    if (s.requireKey && key !== s.goodKey) return json(401, { error: "bad key" });
+    const id = u.searchParams.get("steam64_id") ?? "";
+    s.lookups.push(id);
+    s.keys.push(key);
+    return json(200, s.profiles[id] ?? AVERAGE());
   }) as typeof fetch;
   return { s, fetchImpl };
 }
@@ -55,88 +48,119 @@ class FakeSource extends GameSource {
 const P = (n: number, name = `p${n}`) => ({ slot: n, name, steamId: String(76561198000000000n + BigInt(n)), side: null, isLocal: n === 0 });
 
 function setup(settings: Settings = {}, source: GameSource = new ReplaySource(LINES), extra: Partial<ControllerDeps> = {}) {
-  const server = fakeServer();
+  const server = fakeLeetify();
   let saved: Settings = settings;
-  const opened: string[] = [];
   const c = new Controller({
     version: "test",
     source,
     store: { load: () => saved, save: (x) => (saved = x) },
-    serverUrl: "http://localhost:8000",
-    deviceName: "GAMING-PC",
-    openExternal: (u) => opened.push(u),
     overlay: { hotkey: "Shift+F2", detailHotkey: "F7", mode: "window", visible: false, view: "lobby", siren: true },
     fetchImpl: server.fetchImpl,
     lobby: { debounceMs: 5 },
     ...extra,
   });
-  return { c, server, opened, saved: () => saved };
+  return { c, server, saved: () => saved };
 }
 
 describe("Controller", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it("links by code, then looks up the lobby", async () => {
-    const { c, server, opened, saved } = setup();
-    c.start();
-    await vi.advanceTimersByTimeAsync(50);
-    expect(c.state.server).toMatchObject({ reachable: true, domain: "cheatscanner.eu", authEnabled: true });
-    expect(c.state.lobby.rows).toHaveLength(2);
-    expect(c.state.lobby.error).toMatch(/Link the app/);
-    expect(server.s.lookups).toHaveLength(0);
-
-    await c.startLink();
-    expect(c.state.pairing?.userCode).toBe("K7QF-M2XP");
-    expect(opened).toEqual(["https://cheatscanner.eu/#/link?code=K7QF-M2XP"]);
-    await vi.advanceTimersByTimeAsync(1100);
-    expect(c.state.account).toBeNull(); // not confirmed yet
-
-    server.s.confirmed = true;
-    await vi.advanceTimersByTimeAsync(1100);
-    expect(c.state.pairing).toBeNull();
-    expect(c.state.account?.personaName).toBe("Nova");
-    expect(saved().token).toBe("tok");
-
-    await vi.advanceTimersByTimeAsync(50);
-    expect(server.s.lookups).toEqual([["76561198000000001", "76561198000000002"]]);
-    expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["ELEVATED", "ELEVATED"]);
-    c.stop();
-  });
-
-  it("drops a token the website revoked", async () => {
-    const { c, saved } = setup({ token: "revoked", account: { steamId: "76561198000000001", personaName: "M", avatarUrl: null } });
-    c.start();
-    await vi.advanceTimersByTimeAsync(50);
-    expect(c.state.account).toBeNull();
-    expect(c.state.notice).toMatch(/removed on the website/);
-    expect(saved().token).toBeNull();
-    c.stop();
-  });
-
-  it("works without linking against a local server without accounts", async () => {
+  it("looks up every player of the match on Leetify and classifies them", async () => {
     const { c, server } = setup();
-    server.s.authEnabled = false;
+    server.s.profiles["76561198000000002"] = VERY_HIGH();
     c.start();
     await vi.advanceTimersByTimeAsync(50);
-    expect(server.s.lookups).toHaveLength(1);
-    expect(c.state.lobby.rows[0].classification).toBe("ELEVATED");
+    expect(c.state.lobby.rows).toHaveLength(2);
+    expect(server.s.lookups.sort()).toEqual(["76561198000000001", "76561198000000002"]);
+    expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["NORMAL", "VERY_HIGH"]);
+    expect(c.state.lobby.rows[1].detail?.score).toBeGreaterThan(80);
+    expect(c.state.leetify.reachable).toBe(true);
     c.stop();
   });
 
-  it("builds website links only for Steam IDs", async () => {
-    const { c } = setup();
+  it("works without an API key, and uses the one from the environment when none is saved", async () => {
+    const a = setup();
+    expect(a.c.state.leetify.hasKey).toBe(false);
+    a.c.start();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(a.server.s.keys.every((k) => k === null)).toBe(true);
+    expect(a.c.state.lobby.rows[0].classification).toBe("NORMAL");
+    a.c.stop();
+
+    const b = setup({}, undefined, { envKey: "env-key" });
+    expect(b.c.state.leetify.hasKey).toBe(true);
+    b.c.start();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(new Set(b.server.s.keys)).toEqual(new Set(["env-key"]));
+    b.c.stop();
+
+    // A saved key wins over the environment.
+    const d = setup({ leetifyKey: "saved-key" }, undefined, { envKey: "env-key" });
+    d.c.start();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(new Set(d.server.s.keys)).toEqual(new Set(["saved-key"]));
+    d.c.stop();
+  });
+
+  it("checks an API key with Leetify before saving it, then asks again with it", async () => {
+    const { c, server, saved } = setup();
+    server.s.requireKey = true;
     c.start();
-    await vi.advanceTimersByTimeAsync(20);
-    expect(c.playerUrl("76561198000000002")).toBe("https://cheatscanner.eu/#/players/76561198000000002");
-    expect(c.playerUrl("../evil")).toBeNull();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.lobby.error).toMatch(/wants an API key/);
+    expect(c.state.lobby.rows.every((r) => r.classification === null)).toBe(true);
+
+    expect(await c.setApiKey("wrong")).toBe(false);
+    expect(c.state.notice).toMatch(/rejected that API key/);
+    expect(saved().leetifyKey).toBeUndefined();
+    expect(c.state.leetify.hasKey).toBe(false);
+
+    expect(await c.setApiKey("  good-key ")).toBe(true);
+    expect(saved().leetifyKey).toBe("good-key");
+    expect(c.state.leetify.hasKey).toBe(true);
+    expect(c.state.notice).toBeNull();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.lobby.error).toBeNull();
+    expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["NORMAL", "NORMAL"]);
+
+    c.clearApiKey();
+    expect(saved().leetifyKey).toBeNull();
+    expect(c.state.leetify.hasKey).toBe(false);
     c.stop();
+  });
+
+  it("doesn't save a key when Leetify can't be reached to check it", async () => {
+    const { c, server, saved } = setup();
+    server.s.down = true;
+    expect(await c.setApiKey("good-key")).toBe(false);
+    expect(c.state.notice).toMatch(/Couldn't check the key/);
+    expect(saved().leetifyKey).toBeUndefined();
+  });
+
+  it("shows when Leetify can't be reached, and recovers", async () => {
+    const { c, server } = setup({}, undefined, { lobby: { debounceMs: 5, retryMs: 1000 } });
+    server.s.down = true;
+    c.start();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.leetify.reachable).toBe(false);
+    expect(c.state.lobby.rows[0].status).toBe("error");
+    server.s.down = false;
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(c.state.leetify.reachable).toBe(true);
+    expect(c.state.lobby.rows[0].classification).toBe("NORMAL");
+    c.stop();
+  });
+
+  it("builds Leetify profile links only for Steam IDs", async () => {
+    const { c } = setup();
+    expect(c.playerUrl("76561198000000002")).toBe("https://leetify.com/app/profile/76561198000000002");
+    expect(c.playerUrl("../evil")).toBeNull();
   });
 
   it("shows the overlay in warm-up, hides it when the match goes live, and hotkeys bring it back", async () => {
     const src = new FakeSource();
-    const { c, server } = setup({}, src);
-    server.s.authEnabled = false;
+    const { c } = setup({}, src);
     c.start();
     await vi.advanceTimersByTimeAsync(20);
     expect(c.state.overlay.visible).toBe(false);
@@ -159,11 +183,10 @@ describe("Controller", () => {
     c.stop();
   });
 
-  it("raises the siren once per HIGH player per match, unless turned off", async () => {
+  it("raises the siren once per HIGH or VERY_HIGH player per match, unless turned off", async () => {
     const src = new FakeSource();
     const { c, server, saved } = setup({}, src);
-    server.s.authEnabled = false;
-    server.s.classes[P(2).steamId] = "HIGH";
+    server.s.profiles[P(2).steamId] = HIGH();
     c.start();
     await vi.advanceTimersByTimeAsync(20);
 
@@ -230,15 +253,6 @@ describe("Controller", () => {
     expect(c.state.overlay.hotkey).toBe("Shift+F2");
     expect(c.state.notice).toMatch(/F8 is already used/);
     c.stop();
-  });
-
-  it("doesn't send a token saved for another server", () => {
-    const account = { steamId: "76561198000000001", personaName: "M", avatarUrl: null };
-    expect(setup({ serverUrl: "http://localhost:8000", token: "tok", account }).c.state.account).toEqual(account);
-    const { c, saved } = setup({ serverUrl: "https://other.example", token: "tok", account });
-    expect(c.state.account).toBeNull();
-    expect(c.backend.token).toBeNull();
-    expect(saved().token).toBe("tok"); // untouched until something is saved
   });
 
   it("turns starting with Windows on and off where it's offered", () => {

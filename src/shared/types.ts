@@ -1,7 +1,10 @@
 // State shared by the main process and the windows (desktop window and in-game overlay).
 
-/** Evidence classes, never "cheater" or a probability (analyzer spec section 22). */
-export type EvidenceClass = "NORMAL" | "ELEVATED" | "HIGH" | "INSUFFICIENT_DATA";
+/**
+ * Performance classes from a player's Leetify ratings (see main/assess.ts). They say how far above average
+ * someone plays, never "cheater" and never a probability.
+ */
+export type EvidenceClass = "NORMAL" | "ELEVATED" | "HIGH" | "VERY_HIGH" | "INSUFFICIENT_DATA";
 
 export type Side = "T" | "CT";
 
@@ -31,50 +34,44 @@ export type RowStatus = "loading" | "ok" | "no-steam-id" | "error";
 
 export type AxisLevel = "LOW" | "MEDIUM" | "HIGH";
 
-/** The overlay's extended card (F7), sent by the server for ELEVATED and HIGH players only. */
+/** The overlay's extended card (F7), built for flagged players only (ELEVATED and above). */
 export interface PlayerDetail {
-  /** History evidence score, 0-100. Evidence strength, not a probability. */
-  evidenceScore: number;
-  highEvidenceMatches: number;
-  axes: { wallTracking: AxisLevel; aim: AxisLevel; reaction: AxisLevel };
-  /** Latest flagged matches, newest first. */
-  recent: { map: string | null; evidenceScore: number; playedAt: string | null }[];
+  /** Combined performance score, 0-100. How far above average, not a probability of anything. */
+  score: number;
+  /** Average Leetify rating of the recent matches, in the units Leetify's website shows (+5.0 is a strong match). */
+  avgRating: number;
+  /** Share (0-1) of the recent matches with a strong rating. */
+  strongShare: number;
+  /** Leetify aim rating, 0-100. */
+  aim: number;
+  /** Leetify clutch rating, website units. */
+  clutch: number;
+  levels: { rating: AxisLevel; aim: AxisLevel; clutch: AxisLevel };
+  /** Latest matches, newest first. */
+  recent: { map: string | null; rating: number; playedAt: string | null }[];
 }
 
 export interface LobbyRow extends RosterPlayer {
   classification: EvidenceClass | null;
+  /** Recent Leetify matches the class is based on. */
   matchesAnalyzed: number;
   status: RowStatus;
   detail: PlayerDetail | null;
-}
-
-export interface Account {
-  steamId: string;
-  personaName: string | null;
-  avatarUrl: string | null;
-}
-
-export interface Pairing {
-  userCode: string;
-  verifyUrl: string;
-  expiresAt: string;
+  /** Why there is no class (private profile, not on Leetify, rate limit...), for a tooltip. */
+  note: string | null;
 }
 
 export type GameSourceKind = "steam" | "overwolf" | "replay";
 
 export interface AppState {
   version: string;
-  server: {
-    url: string;
-    /** From the server's /site-info, e.g. "cheatscanner.eu". */
-    domain: string | null;
+  leetify: {
+    /** An API key is saved (or set in LEETIFY_API_KEY). Lookups also work without one, at stricter rate limits. */
+    hasKey: boolean;
+    /** null until the first lookup; false when Leetify couldn't be reached. */
     reachable: boolean | null;
-    /** False on a local server without accounts: the app works without linking. */
-    authEnabled: boolean | null;
   };
-  account: Account | null;
-  pairing: Pairing | null;
-  /** Shown once, e.g. "The link was removed on the website". */
+  /** Shown once, e.g. "Leetify rejected the API key". */
   notice: string | null;
   game: {
     source: GameSourceKind;
@@ -112,10 +109,9 @@ export interface AppState {
 export interface Bridge {
   getState(): Promise<AppState>;
   onState(listener: (state: AppState) => void): () => void;
-  startLink(): Promise<void>;
-  cancelLink(): Promise<void>;
-  openLinkPage(): Promise<void>;
-  unlink(): Promise<void>;
+  /** Checks the key with Leetify and saves it when accepted; false (with a notice) when not. */
+  setApiKey(key: string): Promise<boolean>;
+  clearApiKey(): Promise<void>;
   /** Changes one overlay hotkey (an Electron accelerator such as "Shift+F2"); false if it can't be used. */
   setHotkey(which: "lobby" | "detail", hotkey: string): Promise<boolean>;
   resetHotkeys(): Promise<boolean>;

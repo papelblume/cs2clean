@@ -34,20 +34,22 @@ const LABELS: Record<EvidenceClass, string> = {
   NORMAL: "Normal",
   ELEVATED: "Elevated",
   HIGH: "High",
+  VERY_HIGH: "Very high",
   INSUFFICIENT_DATA: "Not enough data",
 };
 
 const HINTS: Record<EvidenceClass, string> = {
-  NORMAL: "No unusual behavior beyond what legitimate players show.",
-  ELEVATED: "Some unusual moments worth a look. Good players and luck produce these too.",
-  HIGH: "Repeated, strong unusual behavior in analyzed matches. Not a verdict.",
-  INSUFFICIENT_DATA: "Too little play in analyzed matches to say anything.",
+  NORMAL: "Leetify match, aim and clutch ratings are in the usual range.",
+  ELEVATED: "Ratings above average. Good players produce these.",
+  HIGH: "Match, aim and clutch ratings well above average. Top players and smurfs look like this too.",
+  VERY_HIGH: "Exceptional ratings across recent matches. This measures performance, not cheating.",
+  INSUFFICIENT_DATA: "No public Leetify profile, or too few recent matches.",
 };
 
 export function ClassBadge({ value, compact }: { value: EvidenceClass; compact?: boolean }) {
   const label = compact && value === "INSUFFICIENT_DATA" ? "No data" : LABELS[value];
   return (
-    <span className={`badge badge-${value.toLowerCase()}`} title={`Evidence: ${LABELS[value]}. ${HINTS[value]}`}>
+    <span className={`badge badge-${value.toLowerCase()}`} title={`Performance: ${LABELS[value]}. ${HINTS[value]}`}>
       <span className="badge-dot" />
       {label}
     </span>
@@ -81,4 +83,4 @@ export const mapName = (m: string | null | undefined) =>
   m ? (MAPS[m] ?? m.replace(/^de_|^cs_/, "").replace(/(^|_)\w/g, (c) => c.replace("_", " ").toUpperCase())) : null;
 
 export const DISCLAIMER =
-  "Evidence classes describe unusual behavior in analyzed matches. They are not a verdict and not a probability that anyone cheats.";
+  "Classes come from Leetify's public ratings (recent match ratings, aim, clutch) and measure how well someone plays. They are not a verdict and not a probability that anyone cheats. Data: Leetify.";

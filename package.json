@@ -13,6 +13,7 @@
     "start:replay": "npm run build && electron . --replay",
     "start:overwolf": "npm run build && ow-electron . --overwolf",
     "coplay": "tsc -p tsconfig.main.json && node dist/main/steam/coplay-cli.js",
+    "leetify:probe": "tsc -p tsconfig.main.json && node dist/main/leetify-cli.js",
     "dist": "npm run build && electron-builder --win nsis --x64",
     "dist:store": "npm run build && electron-builder --win appx --x64",
     "check:package": "electron-builder --linux dir --x64 && node tools/check-package.mjs release/linux-unpacked/resources/app.asar",
@@ -63,6 +64,7 @@
       "package.json",
       "!**/*.map",
       "!dist/main/steam/coplay-cli.js",
+      "!dist/main/leetify-cli.js",
       "!node_modules/koffi/build/koffi/!(win32_x64|linux_x64)/**",
       "!node_modules/koffi/{src,doc,vendor}/**"
     ],

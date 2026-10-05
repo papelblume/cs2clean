@@ -6,9 +6,9 @@
 //   ow-electron . --overwolf       Overwolf's CS2 game events and overlay (needs Overwolf's approval)
 //   ... --record                   with --overwolf: saves Overwolf's CS2 data to <userData>/recordings
 //   ... --minimized                start minimized to the taskbar (used when starting with Windows)
-//   ... --server=<url>             talk to another server (default: http://localhost:8000 in
-//                                  development, https://cheatscanner.eu when packaged; also
-//                                  CHEATSCANNER_SERVER). Not a user setting.
+//
+// Player data comes from Leetify's Public API (main/leetify.ts). An API key is saved in Settings, or taken
+// from the LEETIFY_API_KEY environment variable.
 //
 // Hard rule: nothing here reads or changes CS2's memory, injects into it or hooks its drawing. The
 // default overlay is an ordinary see-through, click-through window kept on top of the game, which works
@@ -16,7 +16,6 @@
 
 import { app, BrowserWindow, globalShortcut, ipcMain, safeStorage, screen, shell, utilityProcess } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { hostname } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_HOTKEYS, type Hotkeys } from "../shared/hotkeys";
 import type { AppState } from "../shared/types";
@@ -29,8 +28,6 @@ import { SteamSource } from "./game/steam";
 import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
 
-const PUBLIC_SERVER = "https://cheatscanner.eu";
-const DEV_SERVER = "http://localhost:8000";
 // Overwolf's overlay keeps the default hotkeys (neither is bound in CS2 by default); the app's own overlay
 // window uses the ones chosen in Settings.
 const HOTKEY = { label: DEFAULT_HOTKEYS.lobby, code: "F2", accelerator: DEFAULT_HOTKEYS.lobby };
@@ -48,7 +45,7 @@ function arg(name: string): string | true | undefined {
   return undefined;
 }
 
-/** settings.json in the app's data folder; the token is encrypted with Windows' DPAPI when available. */
+/** settings.json in the app's data folder; the API key is encrypted with the OS keychain when available. */
 function settingsStore(): SettingsStore {
   const file = join(app.getPath("userData"), "settings.json");
   return {
@@ -56,18 +53,18 @@ function settingsStore(): SettingsStore {
       if (!existsSync(file)) return {};
       try {
         const raw = JSON.parse(readFileSync(file, "utf8"));
-        let token: string | null = raw.token ?? null;
-        if (raw.tokenEnc && safeStorage.isEncryptionAvailable())
-          token = safeStorage.decryptString(Buffer.from(raw.tokenEnc, "base64"));
-        return { serverUrl: raw.serverUrl, account: raw.account ?? null, token, siren: raw.siren, hotkeys: raw.hotkeys };
+        let leetifyKey: string | null = raw.leetifyKey ?? null;
+        if (raw.leetifyKeyEnc && safeStorage.isEncryptionAvailable())
+          leetifyKey = safeStorage.decryptString(Buffer.from(raw.leetifyKeyEnc, "base64"));
+        return { leetifyKey, siren: raw.siren, hotkeys: raw.hotkeys };
       } catch {
         return {};
       }
     },
     save(s: Settings) {
-      const out: Record<string, unknown> = { serverUrl: s.serverUrl, account: s.account ?? null, siren: s.siren, hotkeys: s.hotkeys };
-      if (s.token && safeStorage.isEncryptionAvailable()) out.tokenEnc = safeStorage.encryptString(s.token).toString("base64");
-      else if (s.token) out.token = s.token;
+      const out: Record<string, unknown> = { siren: s.siren, hotkeys: s.hotkeys };
+      if (s.leetifyKey && safeStorage.isEncryptionAvailable()) out.leetifyKeyEnc = safeStorage.encryptString(s.leetifyKey).toString("base64");
+      else if (s.leetifyKey) out.leetifyKey = s.leetifyKey;
       writeFileSync(file, JSON.stringify(out, null, 2));
     },
   };
@@ -123,7 +120,6 @@ function steamSource(): SteamSource {
       return () => server.close();
     },
     gsiProblem,
-    localSteamId: () => controller?.state.account?.steamId ?? null,
   });
 }
 
@@ -314,8 +310,6 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   const overlay = setupOverlay();
-  const server: string = typeof arg("server") === "string" ? (arg("server") as string)
-    : process.env.CHEATSCANNER_SERVER || (app.isPackaged ? PUBLIC_SERVER : DEV_SERVER);
 
   app.whenReady().then(() => {
     const source = gameSource();
@@ -324,11 +318,7 @@ if (!app.requestSingleInstanceLock()) {
       version: app.getVersion(),
       source,
       store: settingsStore(),
-      serverUrl: server,
-      deviceName: hostname().slice(0, 48) || (process.platform === "linux" ? "Linux PC" : "Windows PC"),
-      openExternal: (url) => {
-        if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
-      },
+      envKey: process.env.LEETIFY_API_KEY?.trim() || null,
       overlay,
       applyHotkeys: overlay.mode === "window" ? applyHotkeys : undefined,
       // Store (MSIX) installs can't add a plain login item, so they don't offer it.
@@ -340,10 +330,8 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     ipcMain.handle("state:get", () => controller.state);
-    ipcMain.handle("link:start", () => controller.startLink());
-    ipcMain.handle("link:cancel", () => controller.cancelLink());
-    ipcMain.handle("link:open", () => controller.openLinkPage());
-    ipcMain.handle("link:remove", () => controller.unlink());
+    ipcMain.handle("leetify:set-key", (_e, key: unknown) => (typeof key === "string" ? controller.setApiKey(key) : false));
+    ipcMain.handle("leetify:clear-key", () => controller.clearApiKey());
     ipcMain.handle("hotkey:set", (_e, which: unknown, hotkey: unknown) =>
       (which === "lobby" || which === "detail") && typeof hotkey === "string" ? controller.setHotkey(which, hotkey) : false);
     ipcMain.handle("hotkey:reset", () => controller.resetHotkeys());

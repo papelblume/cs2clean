@@ -18,6 +18,7 @@
   --normal: #3fb27f;
   --elevated: #e0a93b;
   --high: #e45a50;
+  --very-high: #d6336c;
   --radius: 12px;
   --display: "Barlow Condensed", "Arial Narrow", sans-serif;
   color-scheme: dark;
@@ -105,6 +106,7 @@ input:focus { border-color: var(--accent); outline: none; }
 .badge-normal { --tone: var(--normal); }
 .badge-elevated { --tone: var(--elevated); }
 .badge-high { --tone: var(--high); }
+.badge-very_high { --tone: var(--very-high); }
 .badge-insufficient_data { --tone: var(--muted); }
 .skeleton { width: 74px; height: 18px; border-radius: 999px; background: linear-gradient(90deg, var(--panel-2), var(--line), var(--panel-2)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
@@ -144,6 +146,7 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 .ov-card { border-radius: 9px; padding: 10px 12px 9px; background: rgba(255, 255, 255, 0.035);
   border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent); box-shadow: inset 3px 0 0 var(--tone); }
 .ov-card.tone-high { --tone: var(--high); }
+.ov-card.tone-very_high { --tone: var(--very-high); }
 .ov-card.tone-elevated { --tone: var(--elevated); }
 .ov-card-head { display: flex; align-items: baseline; gap: 8px; }
 .ov-card-head .ov-name { font-weight: 700; font-size: 1rem; }
@@ -166,3 +169,7 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 .hotkey-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .hotkey-button { min-width: 108px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: inherit; font: inherit; cursor: pointer; }
 .hotkey-button.listening { border-color: var(--accent); color: var(--accent); }
+
+/* Leetify API key field */
+.key-input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; }
+.key-input::placeholder { color: var(--muted); }

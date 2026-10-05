@@ -204,12 +204,13 @@ describe("SteamSource", () => {
 });
 
 describe("overlay helpers", () => {
-  it("orders flagged players HIGH first, strongest evidence first", () => {
-    const d = (score: number) => ({ evidenceScore: score, highEvidenceMatches: 0, axes: { wallTracking: "LOW", aim: "LOW", reaction: "LOW" } as const, recent: [] });
-    const row = (name: string, classification: "HIGH" | "ELEVATED" | "NORMAL", score: number | null) =>
-      ({ slot: 0, name, steamId: name, side: null, isLocal: false, classification, matchesAnalyzed: 3, status: "ok" as const, detail: score === null ? null : d(score) });
-    expect(flagged([row("a", "ELEVATED", 40), row("b", "HIGH", 70), row("c", "HIGH", 91), row("d", "NORMAL", null)]).map((r) => r.name))
-      .toEqual(["c", "b", "a"]);
+  it("orders flagged players by class (VERY_HIGH first), then by score", () => {
+    const d = (score: number) => ({ score, avgRating: 0, strongShare: 0, aim: 0, clutch: 0, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" } as const, recent: [] });
+    const row = (name: string, classification: "VERY_HIGH" | "HIGH" | "ELEVATED" | "NORMAL" | "INSUFFICIENT_DATA", score: number | null) =>
+      ({ slot: 0, name, steamId: name, side: null, isLocal: false, classification, matchesAnalyzed: 3, status: "ok" as const, detail: score === null ? null : d(score), note: null });
+    expect(flagged([row("a", "ELEVATED", 50), row("b", "HIGH", 70), row("c", "HIGH", 75), row("d", "NORMAL", null),
+                    row("e", "VERY_HIGH", 85), row("f", "INSUFFICIENT_DATA", null)]).map((r) => r.name))
+      .toEqual(["e", "c", "b", "a"]);
   });
 
   it("writes dates like the mock-up", () => {

@@ -1,8 +1,24 @@
-// Keeps the lobby rows (roster + evidence class) up to date. Looks up only Steam IDs it hasn't
-// seen recently, so a roster update (kills, team switch) doesn't cause a new request.
+// Keeps the lobby rows (roster + class) up to date. Looks up only Steam IDs it hasn't seen recently, so a
+// roster update (kills, team switch) doesn't cause a new request.
 
 import type { EvidenceClass, LobbyRow, MatchState, PlayerDetail } from "../shared/types";
-import type { LobbyAnswer } from "./backend";
+
+/** What a lookup says about one player. */
+export interface LobbyAnswer {
+  steamId: string | null;
+  classification: EvidenceClass | null;
+  matchesAnalyzed: number;
+  /** The player's name on the data source; fills in when Steam doesn't know it. */
+  name?: string | null;
+  /** The F7 card, for flagged players only. */
+  detail?: PlayerDetail | null;
+  /** Why there's no class, or a problem to show. */
+  note?: string | null;
+  /** A temporary failure (rate limit, network): not remembered, asked again later. */
+  transient?: boolean;
+  /** For a transient answer: don't ask again before this long (ms). */
+  retryAfterMs?: number;
+}
 
 export type Lookup = (steamIds: string[]) => Promise<LobbyAnswer[]>;
 
@@ -11,6 +27,7 @@ interface Cached {
   matchesAnalyzed: number;
   name: string | null;
   detail: PlayerDetail | null;
+  note: string | null;
   at: number;
 }
 
@@ -31,7 +48,7 @@ export class LobbyService {
   private match: MatchState | null = null;
   private timer: NodeJS.Timeout | null = null;
   private inFlight = false;
-  private failed = new Set<string>();
+  private failed = new Map<string, string | null>();
   error: string | null = null;
   updatedAt: string | null = null;
 
@@ -59,16 +76,17 @@ export class LobbyService {
 
   rows(): LobbyRow[] {
     return (this.match?.players ?? []).map((p) => {
-      if (!p.steamId) return { ...p, classification: null, matchesAnalyzed: 0, status: "no-steam-id", detail: null };
+      if (!p.steamId) return { ...p, classification: null, matchesAnalyzed: 0, status: "no-steam-id", detail: null, note: null };
       const c = this.cache.get(p.steamId);
       if (c)
         return {
           ...p,
           // Steam sometimes doesn't know a stranger's name yet; the server's last known name fills in.
           name: p.name === UNKNOWN_NAME && c.name ? c.name : p.name,
-          classification: c.classification, matchesAnalyzed: c.matchesAnalyzed, status: "ok", detail: c.detail,
+          classification: c.classification, matchesAnalyzed: c.matchesAnalyzed, status: "ok", detail: c.detail, note: c.note,
         };
-      return { ...p, classification: null, matchesAnalyzed: 0, status: this.failed.has(p.steamId) ? "error" : "loading", detail: null };
+      const failed = this.failed.has(p.steamId);
+      return { ...p, classification: null, matchesAnalyzed: 0, status: failed ? "error" : "loading", detail: null, note: failed ? this.failed.get(p.steamId) ?? null : null };
     });
   }
 
@@ -96,19 +114,28 @@ export class LobbyService {
     const ids = this.missing();
     if (ids.length === 0) return;
     this.inFlight = true;
+    let retryIn: number | null = null;
     try {
       const answers = await this.lookup(ids);
       const at = this.now;
-      for (const a of answers)
-        if (a.steamId) {
-          this.cache.set(a.steamId, { classification: a.classification, matchesAnalyzed: a.matchesAnalyzed,
-                                      name: a.name ?? null, detail: a.detail ?? null, at });
-          this.failed.delete(a.steamId);
+      let problem: string | null = null;
+      for (const a of answers) {
+        if (!a.steamId) continue;
+        if (a.transient) {
+          // Not remembered: the player is asked for again after the pause.
+          this.failed.set(a.steamId, a.note ?? null);
+          problem ??= a.note ?? null;
+          retryIn = Math.max(retryIn ?? 0, a.retryAfterMs ?? this.opts.retryMs ?? 15_000);
+          continue;
         }
-      this.error = null;
+        this.cache.set(a.steamId, { classification: a.classification, matchesAnalyzed: a.matchesAnalyzed,
+                                    name: a.name ?? null, detail: a.detail ?? null, note: a.note ?? null, at });
+        this.failed.delete(a.steamId);
+      }
+      this.error = problem;
       this.updatedAt = new Date(at).toISOString();
     } catch (e) {
-      for (const id of ids) this.failed.add(id);
+      for (const id of ids) this.failed.set(id, null);
       this.error = e instanceof Error ? e.message : String(e);
       this.inFlight = false;
       this.onChange();
@@ -117,7 +144,7 @@ export class LobbyService {
     }
     this.inFlight = false;
     this.onChange();
-    this.schedule();
+    this.schedule(retryIn ?? undefined);
   }
 
   dispose(): void {

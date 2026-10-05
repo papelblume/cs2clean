@@ -1,5 +1,5 @@
 // The only bridge between the windows and the main process. Pages get these calls and nothing else
-// (no Node, no token).
+// (no Node, no API key).
 
 import { contextBridge, ipcRenderer } from "electron";
 import type { AppState, Bridge } from "../shared/types";
@@ -11,10 +11,8 @@ const bridge: Bridge = {
     ipcRenderer.on("state", handler);
     return () => ipcRenderer.removeListener("state", handler);
   },
-  startLink: () => ipcRenderer.invoke("link:start"),
-  cancelLink: () => ipcRenderer.invoke("link:cancel"),
-  openLinkPage: () => ipcRenderer.invoke("link:open"),
-  unlink: () => ipcRenderer.invoke("link:remove"),
+  setApiKey: (key) => ipcRenderer.invoke("leetify:set-key", key),
+  clearApiKey: () => ipcRenderer.invoke("leetify:clear-key"),
   setHotkey: (which, hotkey) => ipcRenderer.invoke("hotkey:set", which, hotkey),
   resetHotkeys: () => ipcRenderer.invoke("hotkey:reset"),
   setStartWithWindows: (on) => ipcRenderer.invoke("startup:set", on),

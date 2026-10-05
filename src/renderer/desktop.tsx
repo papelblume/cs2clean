@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { DEFAULT_HOTKEYS, hotkeyFromEvent, type HotkeyName } from "../shared/hotkeys";
 import type { AppState, LobbyRow } from "../shared/types";
@@ -14,12 +14,12 @@ function App() {
   return (
     <div className="shell">
       <header className="topbar">
-        <div className="brand"><Logo size={26} /><Wordmark domain={s.server.domain} /></div>
-        <ServerDot s={s} />
+        <div className="brand"><Logo size={26} /><Wordmark /></div>
+        <LeetifyDot s={s} />
       </header>
       <main className="content">
         {s.notice && <p className="notice">{s.notice}</p>}
-        <AccountCard s={s} />
+        <KeyCard s={s} />
         <MatchCard s={s} />
       </main>
       <footer className="footer">
@@ -30,83 +30,58 @@ function App() {
   );
 }
 
-function ServerDot({ s }: { s: AppState }) {
-  const [tone, label] = s.server.reachable === null ? ["pending", "Connecting…"]
-    : s.server.reachable ? ["ok", "Online"] : ["bad", "Server unreachable"];
+function LeetifyDot({ s }: { s: AppState }) {
+  const [tone, label] = s.leetify.reachable === null ? ["pending", "Leetify"]
+    : s.leetify.reachable ? ["ok", "Leetify online"] : ["bad", "Leetify unreachable"];
   return (
-    <span className={`server-dot server-${tone}`} title={s.server.url}>
+    <span className={`server-dot server-${tone}`} title="Player data comes from Leetify's public API">
       <span className="dot" />{label}
     </span>
   );
 }
 
-// ------------------------------------------------------------------ account
+// ------------------------------------------------------------------ API key
 
-function AccountCard({ s }: { s: AppState }) {
-  if (s.account)
+function KeyCard({ s }: { s: AppState }) {
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try {
+      if (await bridge.setApiKey(key)) setKey("");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (s.leetify.hasKey)
     return (
       <section className="card account">
-        {s.account.avatarUrl ? <img className="avatar" src={s.account.avatarUrl} alt="" /> : <div className="avatar avatar-empty" />}
         <div className="account-text">
-          <strong>{s.account.personaName ?? s.account.steamId}</strong>
-          <span className="muted small">Linked to your {s.server.domain ?? "Cheatscanner"} account</span>
+          <strong>Leetify API key</strong>
+          <span className="muted small">Saved. Used for every player lookup.</span>
         </div>
-        <button className="button quiet small-button" onClick={() => bridge.unlink()}>Unlink</button>
+        <button className="button quiet small-button" onClick={() => bridge.clearApiKey()}>Remove</button>
       </section>
     );
-  if (s.server.authEnabled === false)
-    return (
-      <section className="card">
-        <h2>Account</h2>
-        <p className="muted small">This server runs without accounts (local use), so the app works without linking.</p>
-      </section>
-    );
-  if (s.pairing) return <LinkingCard s={s} />;
   return (
     <section className="card">
-      <h2>Link your account</h2>
-      <p>
-        Sign in on {s.server.domain ?? "the website"} with Steam, and the app shows the evidence class of every player
-        in your match.
-      </p>
-      <button className="button primary" disabled={!s.server.reachable} onClick={() => bridge.startLink()}>
-        Link account
-      </button>
-    </section>
-  );
-}
-
-function LinkingCard({ s }: { s: AppState }) {
-  const left = useCountdown(s.pairing!.expiresAt);
-  return (
-    <section className="card linking">
-      <h2>Confirm in your browser</h2>
+      <h2>Leetify API key</h2>
       <p className="small">
-        Your browser opened {s.server.domain ?? "the website"}. Sign in with Steam and check that it shows this code:
-      </p>
-      <div className="code" aria-label="Link code">{s.pairing!.userCode}</div>
-      <p className="muted small">
-        <span className="pulse" /> Waiting for you to confirm{left ? ` · expires in ${left}` : ""}
+        Player classes come from Leetify's public API. It works without a key at stricter rate limits; a free key
+        from <b>leetify.com/app/developer</b> makes lookups reliable.
       </p>
       <div className="row">
-        <button className="button" onClick={() => bridge.openLinkPage()}>Open the page again</button>
-        <button className="button quiet" onClick={() => bridge.cancelLink()}>Cancel</button>
+        <input
+          className="key-input" type="password" autoComplete="off" spellCheck={false} placeholder="Paste your API key"
+          value={key} onChange={(e) => setKey(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && key.trim() && !busy && void save()}
+        />
+        <button className="button primary" disabled={!key.trim() || busy} onClick={() => void save()}>
+          {busy ? "Checking…" : "Save key"}
+        </button>
       </div>
     </section>
   );
-}
-
-function useCountdown(iso: string): string | null {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const ms = new Date(iso).getTime() - now;
-  if (!(ms > 0)) return null;
-  const m = Math.floor(ms / 60_000);
-  const sec = Math.floor((ms % 60_000) / 1000);
-  return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
 // ------------------------------------------------------------------ match
@@ -138,7 +113,7 @@ function MatchCard({ s }: { s: AppState }) {
           </p>
           {s.game.source === "steam" && (
             <p className="muted small">
-              Players come from Steam's list of people you recently played with, so teams aren't known until the match is analyzed.
+              Players come from Steam's list of people you recently played with, so teams aren't known.
             </p>
           )}
         </>
@@ -176,7 +151,7 @@ function LobbyLine({ r }: { r: LobbyRow }) {
   return (
     <div className={`player${r.isLocal ? " is-local" : ""}`}>
       <SideEmblem side={r.side} />
-      <button className="player-name" disabled={!r.steamId} title={r.steamId ? "Open on the website" : undefined}
+      <button className="player-name" disabled={!r.steamId} title={r.steamId ? "Open on Leetify" : undefined}
         onClick={() => r.steamId && bridge.openPlayer(r.steamId)}>
         {r.name}{r.isLocal && <span className="you">you</span>}
       </button>
@@ -215,7 +190,7 @@ function SettingsPanel({ s }: { s: AppState }) {
       <div className="row small">
         <label className="check">
           <input type="checkbox" checked={s.overlay.siren} onChange={(e) => bridge.setSiren(e.target.checked)} />
-          Siren when a High player is in my match
+          Siren when a High or Very high player is in my match
         </label>
         <button className="button quiet small-button" onClick={() => bridge.testSiren()}>Test</button>
       </div>

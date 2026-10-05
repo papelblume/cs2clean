@@ -42,4 +42,27 @@ describe("LobbyService", () => {
     expect(lobby.error).toBeNull();
     expect(lobby.rows()[0]).toMatchObject({ status: "ok", classification: "HIGH" });
   });
+
+  it("asks again later for a player Leetify rate-limited, and not for the others", async () => {
+    let limited = true;
+    const lookup = vi.fn(async (ids: string[]) =>
+      ids.map((steamId) => steamId === "76561198000000002" && limited
+        ? { steamId, classification: null, matchesAnalyzed: 0, transient: true, retryAfterMs: 5000, note: "Leetify's request limit was hit" }
+        : { steamId, classification: "NORMAL" as const, matchesAnalyzed: 30 }));
+    const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, retryMs: 1000 });
+    lobby.setMatch(match("76561198000000001", "76561198000000002"));
+    await vi.advanceTimersByTimeAsync(20);
+    expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "error"]);
+    expect(lobby.rows()[1].note).toMatch(/request limit/);
+    expect(lobby.error).toMatch(/request limit/);
+
+    await vi.advanceTimersByTimeAsync(4000); // inside Retry-After: nothing yet
+    expect(lookup).toHaveBeenCalledTimes(1);
+    limited = false;
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(lookup).toHaveBeenCalledTimes(2);
+    expect(lookup.mock.calls[1][0]).toEqual(["76561198000000002"]); // only the one that failed
+    expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "ok"]);
+    expect(lobby.error).toBeNull();
+  });
 });
