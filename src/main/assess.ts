@@ -17,7 +17,7 @@ export const THRESHOLDS = {
   /** Newest matches that count; Leetify's own profile ratings cover about the last 30. */
   window: 30,
   /** Fewer scored matches than this is "not enough data". */
-  minMatches: 10,
+  minMatches: 0,
   /** Leetify rating per match, in the units Leetify's website shows (+5.0 is a very strong match). */
   rating: { mean: [0, 6], strongMatch: 3, strongShare: [0.2, 0.9] },
   /** Aim rating, 0-100. */
@@ -41,6 +41,7 @@ export interface Assessment {
   name: string | null;
   /** Why there's no class, e.g. a private profile. */
   note: string | null;
+  /** The numbers behind the class; null only when there is no usable data. */
   detail: PlayerDetail | null;
   /** The working, for `npm run leetify:probe`; null when there was no usable data. */
   trace: Trace | null;
@@ -119,7 +120,8 @@ export function assessProfile(p: LeetifyProfile): Assessment {
   if (cls >= 1 && atLeast(1) < 2) cls = 0;
   const classification = (["NORMAL", "ELEVATED", "HIGH", "VERY_HIGH"] as const)[cls];
 
-  const detail: PlayerDetail | null = cls === 0 ? null : {
+  // The card (F6 shows any player, F7 the flagged ones), so every player with enough data gets one.
+  const detail: PlayerDetail = {
     score: Math.round(score * 100),
     avgRating: round1(mean),
     strongShare: Math.round(strongShare * 100) / 100,

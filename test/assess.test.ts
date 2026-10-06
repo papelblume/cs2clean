@@ -13,8 +13,11 @@ describe("assessProfile", () => {
     expect(cls(VERY_HIGH())).toBe("VERY_HIGH");
   });
 
-  it("gives the F7 card to flagged players only", () => {
-    expect(assessProfile(AVERAGE()).detail).toBeNull();
+  it("gives every player with enough data a card, flagged or not", () => {
+    const avg = assessProfile(AVERAGE()).detail!;
+    expect(avg).toMatchObject({ aim: 45, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" } });
+    expect(avg.score).toBeLessThan(25);
+    expect(assessProfile(profile(around(8, 1, 5), { aim: 97, clutch: 30 })).detail).toBeNull(); // too few matches
     const d = assessProfile(HIGH()).detail!;
     expect(d.score).toBeGreaterThan(62);
     expect(d.levels).toMatchObject({ rating: "HIGH", aim: "HIGH" });

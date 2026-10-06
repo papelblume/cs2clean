@@ -1,8 +1,11 @@
 // State shared by the main process and the windows (desktop window and in-game overlay).
 
+import type { PlayerReputation } from "./reputation-types";
+
 /**
- * Performance classes from a player's Leetify ratings (see main/assess.ts). They say how far above average
- * someone plays, never "cheater" and never a probability.
+ * Classes from a player's public Leetify data: the more severe of how far above average they perform
+ * (main/assess.ts) and how implausible their stats look (main/reputation.ts, bans included). They are never
+ * "cheater" and never a probability.
  */
 export type EvidenceClass = "NORMAL" | "ELEVATED" | "HIGH" | "VERY_HIGH" | "INSUFFICIENT_DATA";
 
@@ -34,7 +37,7 @@ export type RowStatus = "loading" | "ok" | "no-steam-id" | "error";
 
 export type AxisLevel = "LOW" | "MEDIUM" | "HIGH";
 
-/** The overlay's extended card (F7), built for flagged players only (ELEVATED and above). */
+/** The overlay's extended card (F6 and F7): the performance numbers of any player with enough recent matches. */
 export interface PlayerDetail {
   /** Combined performance score, 0-100. How far above average, not a probability of anything. */
   score: number;
@@ -57,6 +60,8 @@ export interface LobbyRow extends RosterPlayer {
   matchesAnalyzed: number;
   status: RowStatus;
   detail: PlayerDetail | null;
+  /** The 0-100 reputation score, tier and reasons (main/reputation.ts); null when there was no lookup. */
+  reputation: PlayerReputation | null;
   /** Why there is no class (private profile, not on Leetify, rate limit...), for a tooltip. */
   note: string | null;
 }
@@ -89,11 +94,15 @@ export interface AppState {
     hotkey: string;
     /** Shows the extended card of the flagged players. */
     detailHotkey: string;
+    /** Steps through the players one card at a time, flagged or not. */
+    cycleHotkey: string;
     /** "overwolf": drawn in the game by Overwolf; "window": a see-through, click-through window on top of
      *  the game (needs CS2 in "Fullscreen Windowed"). */
     mode: "overwolf" | "window" | "none";
     visible: boolean;
-    view: "lobby" | "detail";
+    view: "lobby" | "detail" | "player";
+    /** The slot of the player the "player" view shows; null when none (yet). */
+    focusSlot: number | null;
     /** Play a siren when a HIGH player is found in the match. */
     siren: boolean;
   };
@@ -113,13 +122,15 @@ export interface Bridge {
   setApiKey(key: string): Promise<boolean>;
   clearApiKey(): Promise<void>;
   /** Changes one overlay hotkey (an Electron accelerator such as "Shift+F2"); false if it can't be used. */
-  setHotkey(which: "lobby" | "detail", hotkey: string): Promise<boolean>;
+  setHotkey(which: "lobby" | "detail" | "cycle", hotkey: string): Promise<boolean>;
   resetHotkeys(): Promise<boolean>;
   setStartWithWindows(on: boolean): Promise<void>;
   /** Turns the hotkeys off while Settings waits for a key press, so the press reaches the page. */
   pauseHotkeys(paused: boolean): Promise<void>;
   toggleOverlay(): Promise<void>;
   toggleDetail(): Promise<void>;
+  /** Shows the next player's card; after the last player, hides the overlay. */
+  cyclePlayer(): Promise<void>;
   setSiren(on: boolean): Promise<void>;
   testSiren(): Promise<void>;
   openPlayer(steamId: string): Promise<void>;

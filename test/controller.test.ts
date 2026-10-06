@@ -54,7 +54,7 @@ function setup(settings: Settings = {}, source: GameSource = new ReplaySource(LI
     version: "test",
     source,
     store: { load: () => saved, save: (x) => (saved = x) },
-    overlay: { hotkey: "Shift+F2", detailHotkey: "F7", mode: "window", visible: false, view: "lobby", siren: true },
+    overlay: { hotkey: "Shift+F2", detailHotkey: "F7", cycleHotkey: "F6", mode: "window", visible: false, view: "lobby", focusSlot: null, siren: true },
     fetchImpl: server.fetchImpl,
     lobby: { debounceMs: 5 },
     ...extra,
@@ -217,18 +217,18 @@ describe("Controller", () => {
   it("changes the overlay hotkeys, and keeps the old ones when a new one can't be used", () => {
     const applied: string[] = [];
     const taken = new Set(["Ctrl+F9"]);
-    const applyHotkeys = (h: { lobby: string; detail: string }) => {
-      applied.push(`${h.lobby} ${h.detail}`);
-      return taken.has(h.lobby) || taken.has(h.detail) ? "Ctrl+F9 is already used by another program." : null;
+    const applyHotkeys = (h: { lobby: string; detail: string; cycle: string }) => {
+      applied.push(`${h.lobby} ${h.detail} ${h.cycle}`);
+      return [h.lobby, h.detail, h.cycle].some((k) => taken.has(k)) ? "Ctrl+F9 is already used by another program." : null;
     };
     const { c, saved } = setup({}, undefined, { applyHotkeys });
     c.start();
-    expect(applied).toEqual(["Shift+F2 F7"]);
+    expect(applied).toEqual(["Shift+F2 F7 F6"]);
     expect(c.state.hotkeysEditable).toBe(true);
 
     expect(c.setHotkey("lobby", "F8")).toBe(true);
     expect(c.state.overlay.hotkey).toBe("F8");
-    expect(saved().hotkeys).toEqual({ lobby: "F8", detail: "F7" });
+    expect(saved().hotkeys).toEqual({ lobby: "F8", detail: "F7", cycle: "F6" });
 
     // A plain letter would stop the user typing it anywhere.
     expect(c.setHotkey("detail", "K")).toBe(false);
@@ -237,12 +237,69 @@ describe("Controller", () => {
     expect(c.state.notice).toMatch(/other overlay hotkey/);
     expect(c.setHotkey("detail", "Ctrl+F9")).toBe(false);
     expect(c.state.notice).toMatch(/another program/);
-    expect(applied.at(-1)).toBe("F8 F7"); // the old pair is registered again
+    expect(applied.at(-1)).toBe("F8 F7 F6"); // the old keys are registered again
     expect(c.state.overlay.detailHotkey).toBe("F7");
 
     expect(c.setHotkey("detail", "Ctrl+Alt+K")).toBe(true);
+
+    // The cycle key follows the same rules as the other two.
+    expect(c.setHotkey("cycle", "F8")).toBe(false);               // the list's key
+    expect(c.state.notice).toMatch(/another overlay hotkey/);
+    expect(c.setHotkey("cycle", "Ctrl+F9")).toBe(false);          // taken by another program
+    expect(c.state.overlay.cycleHotkey).toBe("F6");
+    expect(c.setHotkey("cycle", "Insert")).toBe(true);
+    expect(c.state.overlay.cycleHotkey).toBe("Insert");
+    expect(saved().hotkeys).toEqual({ lobby: "F8", detail: "Ctrl+Alt+K", cycle: "Insert" });
+
     expect(c.resetHotkeys()).toBe(true);
-    expect(c.state.overlay).toMatchObject({ hotkey: "Shift+F2", detailHotkey: "F7" });
+    expect(c.state.overlay).toMatchObject({ hotkey: "Shift+F2", detailHotkey: "F7", cycleHotkey: "F6" });
+    c.stop();
+  });
+
+  it("F6 steps through every player but yourself (CT, then T), and hides after the last", async () => {
+    const src = new FakeSource();
+    const { c, server } = setup({}, src);
+    server.s.profiles[P(3).steamId] = VERY_HIGH(); // one flagged player: F6 doesn't care
+    c.start();
+    await vi.advanceTimersByTimeAsync(20);
+    // Slots 0 (me, CT), 1 (T), 2 (CT), 3 (side unknown), 4 (T): the cycle goes 2, 1, 4, 3.
+    src.send({ phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }, { ...P(2), side: "CT" }, P(3), { ...P(4), side: "T" }] });
+    await vi.advanceTimersByTimeAsync(900);
+    expect(c.state.overlay.visible).toBe(false);
+
+    const shown = () => (c.state.overlay.visible ? `${c.state.overlay.view}:${c.state.overlay.focusSlot}` : "hidden");
+    const seen: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      c.cyclePlayer();
+      seen.push(shown());
+    }
+    expect(seen).toEqual(["player:2", "player:1", "player:4", "player:3", "hidden", "player:2"]);
+
+    // Other keys switch views, and F6 then starts again from the first player.
+    c.toggleOverlay();
+    expect(c.state.overlay).toMatchObject({ visible: true, view: "lobby" });
+    c.cyclePlayer();
+    expect(shown()).toBe("player:2");
+    c.toggleDetail();
+    c.cyclePlayer();
+    expect(shown()).toBe("player:2");
+
+    // A new match forgets who was shown.
+    c.cyclePlayer();
+    expect(shown()).toBe("player:1");
+    src.send({ map: "de_nuke", phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }] });
+    expect(c.state.overlay.focusSlot).toBeNull();
+    c.stop();
+  });
+
+  it("F6 with nobody in the lobby shows the overlay once and hides it on the next press", async () => {
+    const src = new FakeSource();
+    const { c } = setup({}, src);
+    c.start();
+    c.cyclePlayer();
+    expect(c.state.overlay).toMatchObject({ visible: true, view: "player", focusSlot: null });
+    c.cyclePlayer();
+    expect(c.state.overlay.visible).toBe(false);
     c.stop();
   });
 
@@ -251,6 +308,7 @@ describe("Controller", () => {
     const { c } = setup({ hotkeys: { lobby: "F8", detail: "F7" } }, undefined, { applyHotkeys });
     c.start();
     expect(c.state.overlay.hotkey).toBe("Shift+F2");
+    expect(c.state.overlay.cycleHotkey).toBe("F6");
     expect(c.state.notice).toMatch(/F8 is already used/);
     c.stop();
   });

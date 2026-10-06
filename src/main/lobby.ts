@@ -1,6 +1,7 @@
 // Keeps the lobby rows (roster + class) up to date. Looks up only Steam IDs it hasn't seen recently, so a
 // roster update (kills, team switch) doesn't cause a new request.
 
+import type { PlayerReputation } from "../shared/reputation-types";
 import type { EvidenceClass, LobbyRow, MatchState, PlayerDetail } from "../shared/types";
 
 /** What a lookup says about one player. */
@@ -12,6 +13,8 @@ export interface LobbyAnswer {
   name?: string | null;
   /** The F7 card, for flagged players only. */
   detail?: PlayerDetail | null;
+  /** The 0-100 reputation score, tier and reasons. */
+  reputation?: PlayerReputation | null;
   /** Why there's no class, or a problem to show. */
   note?: string | null;
   /** A temporary failure (rate limit, network): not remembered, asked again later. */
@@ -27,6 +30,7 @@ interface Cached {
   matchesAnalyzed: number;
   name: string | null;
   detail: PlayerDetail | null;
+  reputation: PlayerReputation | null;
   note: string | null;
   at: number;
 }
@@ -76,17 +80,17 @@ export class LobbyService {
 
   rows(): LobbyRow[] {
     return (this.match?.players ?? []).map((p) => {
-      if (!p.steamId) return { ...p, classification: null, matchesAnalyzed: 0, status: "no-steam-id", detail: null, note: null };
+      if (!p.steamId) return { ...p, classification: null, matchesAnalyzed: 0, status: "no-steam-id", detail: null, reputation: null, note: null };
       const c = this.cache.get(p.steamId);
       if (c)
         return {
           ...p,
           // Steam sometimes doesn't know a stranger's name yet; the server's last known name fills in.
           name: p.name === UNKNOWN_NAME && c.name ? c.name : p.name,
-          classification: c.classification, matchesAnalyzed: c.matchesAnalyzed, status: "ok", detail: c.detail, note: c.note,
+          classification: c.classification, matchesAnalyzed: c.matchesAnalyzed, status: "ok", detail: c.detail, reputation: c.reputation, note: c.note,
         };
       const failed = this.failed.has(p.steamId);
-      return { ...p, classification: null, matchesAnalyzed: 0, status: failed ? "error" : "loading", detail: null, note: failed ? this.failed.get(p.steamId) ?? null : null };
+      return { ...p, classification: null, matchesAnalyzed: 0, status: failed ? "error" : "loading", detail: null, reputation: null, note: failed ? this.failed.get(p.steamId) ?? null : null };
     });
   }
 
@@ -129,7 +133,7 @@ export class LobbyService {
           continue;
         }
         this.cache.set(a.steamId, { classification: a.classification, matchesAnalyzed: a.matchesAnalyzed,
-                                    name: a.name ?? null, detail: a.detail ?? null, note: a.note ?? null, at });
+                                    name: a.name ?? null, detail: a.detail ?? null, reputation: a.reputation ?? null, note: a.note ?? null, at });
         this.failed.delete(a.steamId);
       }
       this.error = problem;

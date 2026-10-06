@@ -4,8 +4,10 @@
 // One request per player (GET /v3/profile has no batch form), so a lobby lookup is up to 10 requests.
 // Leetify's public API only answers for players with a (public) Leetify profile.
 
+import type { EvidenceClass } from "../shared/types";
 import { assessProfile } from "./assess";
 import type { LobbyAnswer } from "./lobby";
+import { assessReputation, toEvidenceClass, toPlayerReputation, type Reputation } from "./reputation";
 
 export const LEETIFY_BASE = "https://api-public.cs-prod.leetify.com";
 
@@ -18,6 +20,48 @@ export interface LeetifyRecentMatch {
   outcome?: string | null;
   /** The player's Leetify rating in that match. */
   leetify_rating?: number | null;
+  /** Rank at that match and its kind (rank_type tells Premier from other ranks). */
+  rank?: number | null;
+  rank_type?: number | null;
+  /** [own team's rounds, other team's rounds]. */
+  score?: number[] | null;
+  /** Per-match mechanics. Preaim is degrees of crosshair error, reaction time is milliseconds. */
+  preaim?: number | null;
+  reaction_time_ms?: number | null;
+  accuracy_enemy_spotted?: number | null;
+  accuracy_head?: number | null;
+  spray_accuracy?: number | null;
+}
+
+export interface LeetifyBan {
+  platform?: string | null;
+  platform_nickname?: string | null;
+  banned_since?: string | null;
+}
+
+/** Lifetime stats block. Percent-like fields may be fractions or percentages; reputation.ts normalizes. */
+export interface LeetifyStats {
+  accuracy_enemy_spotted?: number | null;
+  accuracy_head?: number | null;
+  counter_strafing_good_shots_ratio?: number | null;
+  ct_opening_aggression_success_rate?: number | null;
+  ct_opening_duel_success_percentage?: number | null;
+  t_opening_aggression_success_rate?: number | null;
+  t_opening_duel_success_percentage?: number | null;
+  flashbang_hit_foe_avg_duration?: number | null;
+  flashbang_hit_foe_per_flashbang?: number | null;
+  flashbang_hit_friend_per_flashbang?: number | null;
+  flashbang_leading_to_kill?: number | null;
+  flashbang_thrown?: number | null;
+  he_foes_damage_avg?: number | null;
+  he_friends_damage_avg?: number | null;
+  preaim?: number | null;
+  reaction_time_ms?: number | null;
+  spray_accuracy?: number | null;
+  traded_deaths_success_percentage?: number | null;
+  trade_kill_opportunities_per_round?: number | null;
+  trade_kills_success_percentage?: number | null;
+  utility_on_death_avg?: number | null;
 }
 
 export interface LeetifyProfile {
@@ -26,7 +70,15 @@ export interface LeetifyProfile {
   /** "public" or "private"; recent_matches is empty for private profiles. */
   privacy_mode?: string | null;
   total_matches?: number | null;
-  rating?: { aim?: number | null; clutch?: number | null } | null;
+  winrate?: number | null;
+  first_match_date?: string | null;
+  bans?: LeetifyBan[] | null;
+  ranks?: { leetify?: number | null; premier?: number | null; faceit?: number | null; faceit_elo?: number | null } | null;
+  rating?: {
+    aim?: number | null; clutch?: number | null;
+    positioning?: number | null; utility?: number | null; opening?: number | null;
+  } | null;
+  stats?: LeetifyStats | null;
   recent_matches?: LeetifyRecentMatch[] | null;
 }
 
@@ -99,6 +151,18 @@ function retryAfterMs(res: Response): number | null {
   return Number.isFinite(s) && s > 0 ? Math.min(s, 300) * 1000 : null;
 }
 
+const SEVERITY: Record<EvidenceClass, number> = { INSUFFICIENT_DATA: -1, NORMAL: 0, ELEVATED: 1, HIGH: 2, VERY_HIGH: 3 };
+
+/**
+ * The class the overlay and the siren act on: the more severe of assess.ts (how far above average) and the
+ * reputation (how implausible, bans included). Neither can lower the other, so a player the performance score
+ * flags stays flagged. To let the reputation alone decide, return toEvidenceClass(rep) here.
+ */
+export function combineClass(performance: EvidenceClass, rep: Reputation): EvidenceClass {
+  const fromRep = toEvidenceClass(rep);
+  return SEVERITY[fromRep] > SEVERITY[performance] ? fromRep : performance;
+}
+
 export interface LookupOptions {
   /** Requests in flight at once. */
   concurrency?: number;
@@ -118,9 +182,17 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
 
   const one = async (steamId: string): Promise<LobbyAnswer> => {
     try {
-      const a = assessProfile(await client.profile(steamId));
+      const profile = await client.profile(steamId);
+      const a = assessProfile(profile);
+      const r = assessReputation(profile);
       o.onReach?.(true);
-      return { steamId, classification: a.classification, matchesAnalyzed: a.matchesAnalyzed, name: a.name, detail: a.detail, note: a.note };
+      return {
+        steamId, classification: combineClass(a.classification, r), matchesAnalyzed: Math.max(a.matchesAnalyzed, r.matchesAnalyzed),
+        name: a.name, detail: a.detail,
+        // A ban is the one finding that can stand without a class from assess.ts (e.g. a private profile), so it is the note.
+        note: r.tier === "BANNED" ? r.reasons[0] ?? a.note : a.note,
+        reputation: toPlayerReputation(r),
+      };
     } catch (e) {
       if (!(e instanceof LeetifyError)) throw e;
       o.onReach?.(e.kind !== "network" && e.kind !== "timeout");

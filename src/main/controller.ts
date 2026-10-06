@@ -2,7 +2,8 @@
 // tested directly. main.ts connects it to windows, IPC and Overwolf.
 
 import { EventEmitter } from "node:events";
-import { cleanHotkeys, DEFAULT_HOTKEYS, hotkeyProblem, type HotkeyName, type Hotkeys } from "../shared/hotkeys";
+import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyProblem, type HotkeyName, type Hotkeys } from "../shared/hotkeys";
+import { cycleOrder } from "../shared/lobby-order";
 import type { AppState, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby } from "./leetify";
@@ -13,7 +14,7 @@ export interface Settings {
   leetifyKey?: string | null;
   /** Siren when a HIGH player is found (default on). */
   siren?: boolean;
-  /** Overlay hotkeys chosen in Settings (default Shift+F2 and F7). */
+  /** Overlay hotkeys chosen in Settings (default Shift+F2, F7 and F6). */
   hotkeys?: Partial<Hotkeys>;
 }
 
@@ -123,16 +124,17 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     if (!this.deps.applyHotkeys) return;
     let err = this.deps.applyHotkeys(saved);
     let h = saved;
-    if (err && (saved.lobby !== DEFAULT_HOTKEYS.lobby || saved.detail !== DEFAULT_HOTKEYS.detail)) {
+    if (err && HOTKEY_NAMES.some((n) => saved[n] !== DEFAULT_HOTKEYS[n])) {
       h = { ...DEFAULT_HOTKEYS };
       err = this.deps.applyHotkeys(h) ? err : `${err} Using the default hotkeys instead.`;
     }
-    this.state.overlay = { ...this.state.overlay, hotkey: h.lobby, detailHotkey: h.detail };
+    this.state.overlay = { ...this.state.overlay, hotkey: h.lobby, detailHotkey: h.detail, cycleHotkey: h.cycle };
     if (err) this.state.notice = err;
   }
 
   private get hotkeys(): Hotkeys {
-    return { lobby: this.state.overlay.hotkey, detail: this.state.overlay.detailHotkey };
+    const o = this.state.overlay;
+    return { lobby: o.hotkey, detail: o.detailHotkey, cycle: o.cycleHotkey };
   }
 
   /** Changes one overlay hotkey; returns false (with a notice) when it can't be used. */
@@ -145,8 +147,9 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   }
 
   private setHotkeys(next: Hotkeys): boolean {
-    const problem = hotkeyProblem(next.lobby) ?? hotkeyProblem(next.detail)
-      ?? (next.lobby === next.detail ? `${next.lobby} is already the other overlay hotkey.` : null)
+    const dup = duplicateHotkey(next);
+    const problem = HOTKEY_NAMES.map((n) => hotkeyProblem(next[n])).find((p) => p !== null)
+      ?? (dup ? `${dup} is already another overlay hotkey.` : null)
       ?? this.deps.applyHotkeys?.(next)
       ?? null;
     if (problem) {
@@ -156,7 +159,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     }
     this.settings = { ...this.settings, hotkeys: next };
     this.deps.store.save(this.settings);
-    this.update({ notice: null, overlay: { ...this.state.overlay, hotkey: next.lobby, detailHotkey: next.detail } });
+    this.update({ notice: null, overlay: { ...this.state.overlay, hotkey: next.lobby, detailHotkey: next.detail, cycleHotkey: next.cycle } });
     return true;
   }
 
@@ -177,6 +180,22 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const o = this.state.overlay;
     const hide = o.visible && o.view === "detail";
     this.update({ overlay: { ...o, visible: !hide, view: "detail" } });
+  }
+
+  /**
+   * Cycle hotkey (F6): the card of the first player (CT, then T, yourself left out), then the next one on each
+   * press, and the overlay hides again after the last. Shows every player, flagged or not.
+   */
+  cyclePlayer(): void {
+    const o = this.state.overlay;
+    const order = cycleOrder(this.state.lobby.rows);
+    const at = o.visible && o.view === "player" && o.focusSlot !== null ? order.findIndex((r) => r.slot === o.focusSlot) : -1;
+    const next = at + 1; // -1 when the cycle isn't running (or its player left): start at the first player
+    if (o.visible && o.view === "player" && (next >= order.length)) {
+      this.update({ overlay: { ...o, visible: false, focusSlot: null } });
+      return;
+    }
+    this.update({ overlay: { ...o, visible: true, view: "player", focusSlot: order[next]?.slot ?? null } });
   }
 
   setStartWithWindows(on: boolean): void {
@@ -205,6 +224,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       // Another match (or none): the siren may go off again for the new lobby.
       this.matchKey = key;
       this.alerted.clear();
+      this.state.overlay = { ...this.state.overlay, focusSlot: null };
     }
     this.state.match = inMatch ? { map: m.map, mode: m.mode, phase: m.phase } : null;
     const o = this.state.overlay;

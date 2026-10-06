@@ -1,10 +1,12 @@
 // Overlay hotkeys, written as Electron accelerators ("Shift+F2", "Ctrl+Alt+K"). Used by the Settings page
 // (to turn a key press into a hotkey) and by the main process (to check one before registering it).
 
-export const DEFAULT_HOTKEYS = { lobby: "Shift+F2", detail: "F7" } as const;
+/** lobby: the player list; detail: the cards of flagged players; cycle: one card at a time for every player. */
+export const DEFAULT_HOTKEYS = { lobby: "Shift+F2", detail: "F7", cycle: "F6" } as const;
 
 export type HotkeyName = keyof typeof DEFAULT_HOTKEYS;
 export type Hotkeys = Record<HotkeyName, string>;
+export const HOTKEY_NAMES = Object.keys(DEFAULT_HOTKEYS) as HotkeyName[];
 
 const MODIFIERS = ["Ctrl", "Alt", "Shift"] as const;
 /** Keys that don't type anything, so they may be used alone or with Shift. */
@@ -43,9 +45,27 @@ export function hotkeyProblem(hotkey: string): string | null {
   return null;
 }
 
-/** Stored hotkeys, falling back to the defaults for anything missing or unusable. */
+/** The first key that two of the hotkeys share, or null when they are all different. */
+export function duplicateHotkey(h: Hotkeys): string | null {
+  const seen = new Set<string>();
+  for (const name of HOTKEY_NAMES) {
+    if (seen.has(h[name])) return h[name];
+    seen.add(h[name]);
+  }
+  return null;
+}
+
+/**
+ * Stored hotkeys, falling back to the defaults for anything missing, unusable or already taken by an earlier
+ * hotkey. If a default then collides with a custom key (say lobby is saved as F6), everything is reset.
+ */
 export function cleanHotkeys(h: Partial<Hotkeys> | undefined): Hotkeys {
-  const lobby = h?.lobby && !hotkeyProblem(h.lobby) ? h.lobby : DEFAULT_HOTKEYS.lobby;
-  const detail = h?.detail && !hotkeyProblem(h.detail) && h.detail !== lobby ? h.detail : DEFAULT_HOTKEYS.detail;
-  return detail === lobby ? { ...DEFAULT_HOTKEYS } : { lobby, detail };
+  const out = { ...DEFAULT_HOTKEYS } as Hotkeys;
+  const used = new Set<string>();
+  for (const name of HOTKEY_NAMES) {
+    const k = h?.[name];
+    out[name] = k && !hotkeyProblem(k) && !used.has(k) ? k : DEFAULT_HOTKEYS[name];
+    used.add(out[name]);
+  }
+  return duplicateHotkey(out) ? { ...DEFAULT_HOTKEYS } : out;
 }

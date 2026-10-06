@@ -204,13 +204,24 @@ describe("SteamSource", () => {
 });
 
 describe("overlay helpers", () => {
-  it("orders flagged players by class (VERY_HIGH first), then by score", () => {
+  it("lists flagged players by class (VERY_HIGH first), then by how flagged they are, whatever raised the class", () => {
     const d = (score: number) => ({ score, avgRating: 0, strongShare: 0, aim: 0, clutch: 0, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" } as const, recent: [] });
-    const row = (name: string, classification: "VERY_HIGH" | "HIGH" | "ELEVATED" | "NORMAL" | "INSUFFICIENT_DATA", score: number | null) =>
-      ({ slot: 0, name, steamId: name, side: null, isLocal: false, classification, matchesAnalyzed: 3, status: "ok" as const, detail: score === null ? null : d(score), note: null });
-    expect(flagged([row("a", "ELEVATED", 50), row("b", "HIGH", 70), row("c", "HIGH", 75), row("d", "NORMAL", null),
-                    row("e", "VERY_HIGH", 85), row("f", "INSUFFICIENT_DATA", null)]).map((r) => r.name))
-      .toEqual(["e", "c", "b", "a"]);
+    const rep = (score: number | null, tier = "WATCH" as const) => ({ score, tier, confidence: 1, reasons: [] });
+    const row = (name: string, classification: "VERY_HIGH" | "HIGH" | "ELEVATED" | "NORMAL" | "INSUFFICIENT_DATA",
+                 detail: ReturnType<typeof d> | null, reputation: ReturnType<typeof rep> | null = null, isLocal = false) =>
+      ({ slot: 0, name, steamId: name, side: null, isLocal, classification, matchesAnalyzed: 3, status: "ok" as const, detail, reputation, note: null });
+    const list = flagged([
+      row("a", "ELEVATED", d(50)),
+      row("b", "HIGH", d(70)),
+      row("c", "HIGH", d(75)),
+      row("d", "NORMAL", d(10)),
+      row("e", "VERY_HIGH", d(85)),
+      row("f", "INSUFFICIENT_DATA", null),
+      row("banned", "VERY_HIGH", null, rep(0, "BANNED" as never)),   // no performance numbers, still flagged
+      row("odd-stats", "HIGH", d(20), rep(15, "SUSPICIOUS" as never)), // raised by reputation: 100 - 15 beats the score of 20
+      row("me", "VERY_HIGH", d(99), null, true),                      // never yourself
+    ]).map((r) => r.name);
+    expect(list).toEqual(["banned", "e", "odd-stats", "c", "b", "a"]);
   });
 
   it("writes dates like the mock-up", () => {

@@ -2,12 +2,17 @@
 
 The desktop companion and in-game overlay. When a CS2 match loads, it looks every player up on
 [Leetify](https://leetify.com) (Leetify's Public API) and shows a class: Normal, Elevated, High, Very high, or
-not enough data, with the number of recent Leetify matches it is based on. For flagged players, **F7** shows an
-extended card (score, average match rating, strong matches, aim and clutch ratings, latest matches), and a
-siren plays when a High or Very high player is in your match.
+not enough data, with the number of recent Leetify matches it is based on. **F7** shows a card for each flagged
+player, **F6** steps through every player's card one at a time (flagged or not), and a siren plays when a High or
+Very high player is in your match. A card has a reputation score (how plausible the stats look), a performance score
+(how far above average the ratings are), the reasons behind a flag, and the player's average match rating, aim and
+clutch ratings and latest matches.
 
-The class is a **performance** class: it says how far above average a player's Leetify ratings are, not whether
-anyone cheats (see [How the classes are computed](#how-the-classes-are-computed)). Data: Leetify.
+The classes are statistics over Leetify's public data, not proof of anything except a ban on record (see
+[How the classes are computed](#how-the-classes-are-computed)). Data: Leetify.
+
+Platforms: Windows (installer or Microsoft Store) and Linux (from source, with native Steam and CS2; see
+[Running it on Linux](#running-it-on-linux)).
 
 It runs as a plain Electron app, **without Overwolf**. Nothing in it reads or changes CS2's memory,
 injects into the game or hooks its drawing:
@@ -20,21 +25,16 @@ injects into the game or hooks its drawing:
   start) and listens on `127.0.0.1:37215`.
 - **Overlay**: a see-through window kept on top of the game; clicks go through to the game. It shows
   itself in warm-up and hides when the match goes live. Needs CS2's display mode **Fullscreen Windowed**
-  (Settings > Video); in plain Fullscreen, Windows draws the game over it.
+  (Settings > Video); in plain Fullscreen the game is drawn over it.
 
 | Key | What it does |
 | --- | --- |
 | **Shift+F2** | Show the lobby list (again to hide) |
-| **F7** | Show the extended card of flagged players (again to hide) |
+| **F7** | Show the cards of flagged players (again to hide) |
+| **F6** | Show the next player's card: the first press shows the first player (CT, then T; you are left out), each further press the next one, and after the last the overlay hides. Shift+F2 or F7 switch to their view, and F6 starts over from the first player |
 
-<<<<<<< ours
-Settings also has "Start automatically with Windows, minimized" (installed app only; it starts with
-`--minimized`). Both keys can be changed under Settings in the app (letters and digits only with Ctrl or Alt). The server
-address is not a setting: the installed app always uses https://cheatscanner.eu (`--server` and
-`CHEATSCANNER_SERVER` are for development).
-=======
 Settings also has "Start automatically with Windows, minimized" (installed Windows app only; it starts with
-`--minimized`). Both keys can be changed under Settings in the app (letters and digits only with Ctrl or Alt).
+`--minimized`). All three keys can be changed under Settings in the app (letters and digits only with Ctrl or Alt).
 
 ## Leetify API key
 
@@ -45,7 +45,6 @@ before it is saved), or set `LEETIFY_API_KEY` in the environment. A saved key wi
 Leetify's API has no batch lookup, so a full lobby is up to 10 requests (3 at a time). Answers are kept for 15
 minutes, and a player Leetify rate-limits is asked for again after the pause Leetify names. Only players with a
 public Leetify profile have data; the others show "Not enough data" (hover for the reason).
->>>>>>> theirs
 
 ## Running it (Windows PowerShell, one command per line)
 
@@ -88,8 +87,6 @@ Other options, passed after `electron .`:
 `http://localhost:5173/index.html?screen=lobby` (or `nokey`, `waiting`, `problem`) and
 `overlay.html?screen=lobby` or `overlay.html?screen=detail`.
 
-<<<<<<< ours
-=======
 ## Running it on Linux
 
 Linux works from source, with native Steam and native CS2. There is no packaged Linux build yet.
@@ -135,7 +132,6 @@ Settings are kept in `~/.config/Cheatscanner`. The Leetify API key is encrypted 
 desktop keyring through Electron's `safeStorage`; with no keyring available it is stored as plain text in
 `settings.json`. "Start automatically with Windows" and the installer and Store packages are Windows only.
 
->>>>>>> theirs
 ## Building the installer (Windows PowerShell, one command per line)
 
 ```powershell
@@ -195,7 +191,7 @@ CS2 game state ─────┼─► GameSource ─► Controller ─┤
  (or Overwolf,      │   game/*.ts        │        └─ overlay window (src/renderer/overlay.tsx)
   or a replay)      │                    ▼
                     │            LobbyService ─► leetify.ts ──HTTPS──► Leetify Public API  GET /v3/profile
-                    │                              └─► assess.ts (ratings ─► class)
+                    │                              └─► assess.ts + reputation.ts (profile ─► class)
 ```
 
 - `src/main/steam/`: `coplay.ts` (reads Steam's players list; runs in `coplay-worker.ts`, a separate
@@ -203,41 +199,48 @@ CS2 game state ─────┼─► GameSource ─► Controller ─┤
   listener), `coplay-cli.ts` (`npm run coplay`).
 - `src/main/game/`: `steam.ts` (default source), `overwolf.ts`, `replay.ts`, `gep.ts`, `recorder.ts`.
 - `src/main/leetify.ts` (Leetify client: key header, error kinds, Retry-After, a few requests at a time),
-  `src/main/assess.ts` (profile ─► class), `src/main/lobby.ts` (cache, retries), `src/main/leetify-cli.ts`
+  `src/main/assess.ts` (profile ─► performance class), `src/main/reputation.ts` (profile ─► reputation score and tier), `src/main/lobby.ts` (cache, retries), `src/main/leetify-cli.ts`
   (`npm run leetify:probe`).
 - `src/main/controller.ts`: API key, lobby lookups, overlay visibility (warm-up / live / hotkeys), siren;
   no Electron code, so it is unit-tested.
 - `src/main/main.ts`: windows, hotkeys, IPC, the helper process.
-<<<<<<< ours
-- `src/main/preload.ts`: the only bridge the pages get. The token stays in the main process, encrypted
-  with Windows DPAPI (`safeStorage`) in `settings.json`.
-=======
 - `src/main/preload.ts`: the only bridge the pages get. The API key stays in the main process, encrypted
   with the OS key store (`safeStorage`: Windows DPAPI, the desktop keyring on Linux) in `settings.json`.
->>>>>>> theirs
 
 ## How the classes are computed
 
-`src/main/assess.ts` combines three numbers from `GET /v3/profile`: the `leetify_rating` of the newest 30
-`recent_matches` (their average, and the share of strong matches), the profile's `rating.aim`, and its
-`rating.clutch`. Each becomes a 0 to 1 signal (match rating 50%, aim 35%, clutch 15%), and the combined score
-picks the class. A class also needs the signals to agree: one strong number alone never flags a player (aim 99 with
-ordinary results stays Normal), and Very high needs both a very high match rating and a high aim. Fewer than 10
-scored matches, a private profile or missing ratings give "Not enough data". All the cut-offs are in `THRESHOLDS`.
+Two scores are computed for every player from `GET /v3/profile`, and the overlay uses the more severe class of the two
+(neither can lower the other).
 
-What this does and does not tell you: Leetify ratings measure how well someone plays. Top-rank players, pros and
-smurfs score high too, and nothing here looks at demos, so there is no wall-hack or aim-lock signal. The cut-offs are
-starting points that have not been checked against known cheaters. Treat High and Very high as "this player is far
-above average", not as an accusation.
+**Performance** (`src/main/assess.ts`): how far above average the player is. It combines the `leetify_rating` of the
+newest 30 `recent_matches` (their average, and the share of strong matches), the profile's `rating.aim`, and its
+`rating.clutch`. Each becomes a 0 to 1 signal (match rating 50%, aim 35%, clutch 15%), and the combined score picks
+the class. A class also needs the signals to agree: one strong number alone never flags a player, and Very high needs
+both a very high match rating and a high aim. Fewer than 10 scored matches, a private profile or missing ratings give
+"Not enough data". The cut-offs are in `THRESHOLDS`.
+
+**Reputation** (`src/main/reputation.ts`): how implausible the numbers look for the player's rank, as a 0 to 100 score
+where 100 means nothing unusual. It looks at preaim, reaction time, accuracy, opening duels and counter-strafing
+(judged against the player's Premier rating), at stats that contradict each other (a very high aim rating with low
+positioning and utility), and at the recent matches over time (a sudden step up, an unnaturally steady reaction time,
+much better results outside FACEIT). The signals are grouped into families and capped, so no single family can condemn
+a player alone and the worst tiers need at least two. A ban on record decides everything. The cut-offs are in
+`REPUTATION`, and they are placeholders, not checked against known cheaters.
+
+What this does and does not tell you: Top-rank players, pros and smurfs score high on performance, and public
+aggregates can't see a careful cheater. Nothing here looks at demos. Treat a flag as "worth a closer look", not as an
+accusation.
 
 Units: Leetify's website shows match ratings and clutch like "+5.32", and the API may send them as fractions
 (0.0532) or in the website's units; the docs don't make this obvious. The code reads the matches' own size to tell
-which (website-sized values mean website units; fractions never exceed 1), and a test covers both. It was written
-without calling the live API, so run the probe once to confirm what you get, which also shows the numbers next to what
-the app computes, for tuning `THRESHOLDS`:
+which (website-sized values mean website units; fractions never exceed 1). Percent-style stats (headshot and spray
+accuracy, counter-strafing, opening duels) are decided one by one, so a mix of styles is read correctly, and reaction
+time is told apart as milliseconds or seconds. Tests cover these. It was written without calling the live API, and the
+field names come from a third-party client of it, so run the probe once to see which fields exist and what you get; it
+also shows the numbers next to what the app computes, for tuning `THRESHOLDS` and `REPUTATION`:
 
 ```bash
-LEETIFY_API_KEY=... npm run leetify:probe -- 76561198000000000 76561198000000001
+LEETIFY_API_KEY=... npm run leetify:probe -- 76561198000000000 76561198000000001 --raw
 ```
 
 ## Checks

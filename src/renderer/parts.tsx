@@ -8,7 +8,7 @@ export function PlayerClass({ r, compact }: { r: LobbyRow; compact?: boolean }) 
   if (r.status === "error" || !r.classification)
     return <span className="muted small" title={r.note ?? "No answer from Leetify yet, trying again"}>–</span>;
   return (
-    <span className="class" title={r.classification === "INSUFFICIENT_DATA" ? r.note ?? undefined : undefined}>
+    <span className="class" title={r.note ?? undefined}>
       <ClassBadge value={r.classification} compact={compact} />
       {r.matchesAnalyzed > 0 && (
         <span className="matches" title={`Based on ${r.matchesAnalyzed} recent Leetify matches`}>{r.matchesAnalyzed}</span>
@@ -19,11 +19,20 @@ export function PlayerClass({ r, compact }: { r: LobbyRow; compact?: boolean }) 
 
 const RANK = { VERY_HIGH: 0, HIGH: 1, ELEVATED: 2 } as Record<string, number>;
 
-/** Players with an extended card, highest class first, then highest score (the F7 view). */
+/** How flagged a player is, 0-100: the higher of the performance score and how low the reputation is. */
+function strength(r: LobbyRow): number {
+  return Math.max(r.detail?.score ?? 0, r.reputation?.score != null ? 100 - r.reputation.score : 0);
+}
+
+/**
+ * Players the F7 view lists: everyone whose class is ELEVATED or above (whatever raised it, ratings or
+ * reputation, a ban included), highest class first, then the most flagged. Their card may lack the
+ * performance numbers (a banned private profile has none), so this doesn't depend on `detail`.
+ */
 export function flagged(rows: LobbyRow[]): LobbyRow[] {
   return rows
-    .filter((r) => r.detail && !r.isLocal && r.classification && r.classification in RANK)
-    .sort((a, b) => (RANK[a.classification!] - RANK[b.classification!]) || b.detail!.score - a.detail!.score);
+    .filter((r) => !r.isLocal && r.classification && r.classification in RANK)
+    .sort((a, b) => (RANK[a.classification!] - RANK[b.classification!]) || strength(b) - strength(a));
 }
 
 /** "3 days ago" for a match date. */

@@ -1,5 +1,6 @@
 // Cheatscanner brand pieces, matching the website (web/src/art.tsx, web/src/ui.tsx).
 
+import type { ReputationTier } from "../shared/reputation-types";
 import type { EvidenceClass, Side } from "../shared/types";
 
 export function Logo({ size = 28 }: { size?: number }) {
@@ -39,17 +40,28 @@ const LABELS: Record<EvidenceClass, string> = {
 };
 
 const HINTS: Record<EvidenceClass, string> = {
-  NORMAL: "Leetify match, aim and clutch ratings are in the usual range.",
-  ELEVATED: "Ratings above average. Good players produce these.",
-  HIGH: "Match, aim and clutch ratings well above average. Top players and smurfs look like this too.",
-  VERY_HIGH: "Exceptional ratings across recent matches. This measures performance, not cheating.",
+  NORMAL: "Nothing unusual in the Leetify ratings or stats.",
+  ELEVATED: "Ratings above average or a few unusual stats. Good players produce these.",
+  HIGH: "Ratings well above average, or stats that look unlikely for the rank. Top players and smurfs look like this too.",
+  VERY_HIGH: "Exceptional ratings, stats that look implausible together, or a ban on record. Statistics, not proof of cheating.",
   INSUFFICIENT_DATA: "No public Leetify profile, or too few recent matches.",
+};
+
+/** Names for the reputation tiers shown on the player cards. */
+export const TIER_LABELS: Record<ReputationTier, string> = {
+  TRUSTED: "Trusted",
+  NORMAL: "Normal",
+  WATCH: "Watch",
+  SUSPICIOUS: "Suspicious",
+  VERY_SUSPICIOUS: "Very suspicious",
+  BANNED: "Banned",
+  UNKNOWN: "Unknown",
 };
 
 export function ClassBadge({ value, compact }: { value: EvidenceClass; compact?: boolean }) {
   const label = compact && value === "INSUFFICIENT_DATA" ? "No data" : LABELS[value];
   return (
-    <span className={`badge badge-${value.toLowerCase()}`} title={`Performance: ${LABELS[value]}. ${HINTS[value]}`}>
+    <span className={`badge badge-${value.toLowerCase()}`} title={`${LABELS[value]}. ${HINTS[value]}`}>
       <span className="badge-dot" />
       {label}
     </span>
@@ -83,4 +95,4 @@ export const mapName = (m: string | null | undefined) =>
   m ? (MAPS[m] ?? m.replace(/^de_|^cs_/, "").replace(/(^|_)\w/g, (c) => c.replace("_", " ").toUpperCase())) : null;
 
 export const DISCLAIMER =
-  "Classes come from Leetify's public ratings (recent match ratings, aim, clutch) and measure how well someone plays. They are not a verdict and not a probability that anyone cheats. Data: Leetify.";
+  "Classes come from Leetify's public data: recent match ratings, aim, clutch, mechanics stats and bans. They show how well someone plays and how plausible the numbers look. Only a ban is hard evidence; the rest is statistics, not a verdict and not a probability that anyone cheats. Data: Leetify.";

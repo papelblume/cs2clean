@@ -28,10 +28,11 @@ import { SteamSource } from "./game/steam";
 import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
 
-// Overwolf's overlay keeps the default hotkeys (neither is bound in CS2 by default); the app's own overlay
+// Overwolf's overlay keeps the default hotkeys (none is bound in CS2 by default); the app's own overlay
 // window uses the ones chosen in Settings.
 const HOTKEY = { label: DEFAULT_HOTKEYS.lobby, code: "F2", accelerator: DEFAULT_HOTKEYS.lobby };
 const DETAIL_HOTKEY = { label: DEFAULT_HOTKEYS.detail, code: "F7", accelerator: DEFAULT_HOTKEYS.detail };
+const CYCLE_HOTKEY = { label: DEFAULT_HOTKEYS.cycle, code: "F6", accelerator: DEFAULT_HOTKEYS.cycle };
 
 const root = join(__dirname, "..", "..");
 const rendererDir = join(root, "dist", "renderer");
@@ -191,7 +192,10 @@ function lockNavigation(win: BrowserWindow) {
 const OVERLAY_SIZE = { width: 380, height: 640 };
 
 function setupOverlay(): AppState["overlay"] {
-  const base = { hotkey: HOTKEY.label, detailHotkey: DETAIL_HOTKEY.label, visible: false, view: "lobby" as const, siren: true };
+  const base = {
+    hotkey: HOTKEY.label, detailHotkey: DETAIL_HOTKEY.label, cycleHotkey: CYCLE_HOTKEY.label,
+    visible: false, view: "lobby" as const, focusSlot: null, siren: true,
+  };
   const packages = overwolfPackages() as any;
   if (useOverwolf && packages) {
     // The overlay package arrives with 'ready'; until then (or without approval) there is no in-game overlay.
@@ -209,11 +213,13 @@ function setupOverlay(): AppState["overlay"] {
 /** Registers the overlay window's hotkeys system-wide; returns why not when one is taken. */
 function applyHotkeys(h: Hotkeys): string | null {
   globalShortcut.unregisterAll();
+  const keys = [h.lobby, h.detail, h.cycle];
   const ok = [
     globalShortcut.register(h.lobby, () => controller?.toggleOverlay()),
     globalShortcut.register(h.detail, () => controller?.toggleDetail()),
+    globalShortcut.register(h.cycle, () => controller?.cyclePlayer()),
   ];
-  const taken = [h.lobby, h.detail].filter((_, i) => !ok[i]);
+  const taken = keys.filter((_, i) => !ok[i]);
   if (taken.length === 0) return null;
   globalShortcut.unregisterAll();
   return `${taken.join(" and ")} ${taken.length > 1 ? "are" : "is"} already used by another program. Pick another key.`;
@@ -250,7 +256,11 @@ function startOverwolfOverlay(overlayApi: any) {
     overlayWin = null;
     controller?.setOverlayVisible(false);
   });
-  for (const [name, hk, fn] of [["toggle-lobby", HOTKEY, () => controller?.toggleOverlay()], ["toggle-detail", DETAIL_HOTKEY, () => controller?.toggleDetail()]] as const)
+  for (const [name, hk, fn] of [
+    ["toggle-lobby", HOTKEY, () => controller?.toggleOverlay()],
+    ["toggle-detail", DETAIL_HOTKEY, () => controller?.toggleDetail()],
+    ["cycle-player", CYCLE_HOTKEY, () => controller?.cyclePlayer()],
+  ] as const)
     overlayApi.hotkeys.register(
       { name, keyCode: hk.code, modifiers: { shift: hk.accelerator.startsWith("Shift+") }, passthrough: false },
       (_hk: unknown, state: string) => {
@@ -333,16 +343,20 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle("leetify:set-key", (_e, key: unknown) => (typeof key === "string" ? controller.setApiKey(key) : false));
     ipcMain.handle("leetify:clear-key", () => controller.clearApiKey());
     ipcMain.handle("hotkey:set", (_e, which: unknown, hotkey: unknown) =>
-      (which === "lobby" || which === "detail") && typeof hotkey === "string" ? controller.setHotkey(which, hotkey) : false);
+      (which === "lobby" || which === "detail" || which === "cycle") && typeof hotkey === "string" ? controller.setHotkey(which, hotkey) : false);
     ipcMain.handle("hotkey:reset", () => controller.resetHotkeys());
     ipcMain.handle("startup:set", (_e, on: unknown) => controller.setStartWithWindows(on === true));
     ipcMain.handle("hotkey:pause", (_e, paused: unknown) => {
       if (overlay.mode !== "window") return;
       if (paused === true) globalShortcut.unregisterAll();
-      else applyHotkeys({ lobby: controller.state.overlay.hotkey, detail: controller.state.overlay.detailHotkey });
+      else {
+        const o = controller.state.overlay;
+        applyHotkeys({ lobby: o.hotkey, detail: o.detailHotkey, cycle: o.cycleHotkey });
+      }
     });
     ipcMain.handle("overlay:toggle", () => controller.toggleOverlay());
     ipcMain.handle("overlay:detail", () => controller.toggleDetail());
+    ipcMain.handle("overlay:cycle", () => controller.cyclePlayer());
     ipcMain.handle("siren:set", (_e, on: unknown) => controller.setSiren(on === true));
     ipcMain.handle("siren:test", () => controller.testSiren());
     ipcMain.handle("player:open", (_e, steamId: unknown) => {

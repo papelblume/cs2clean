@@ -138,7 +138,7 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 .ov-msg { padding: 12px; margin: 0; color: var(--muted); }
 .ov-error { color: var(--high); padding-top: 4px; }
 .ov-note { color: var(--elevated); padding-top: 4px; font-size: 0.78rem; }
-.ov-foot { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px 8px; color: var(--muted); font-size: 0.72rem; }
+.ov-foot { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; align-items: center; padding: 6px 12px 8px; color: var(--muted); font-size: 0.72rem; }
 .ov-foot .wordmark { font-size: 0.9rem; opacity: 0.8; }
 
 /* F7: extended card of flagged players */
@@ -148,11 +148,16 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 .ov-card.tone-high { --tone: var(--high); }
 .ov-card.tone-very_high { --tone: var(--very-high); }
 .ov-card.tone-elevated { --tone: var(--elevated); }
-.ov-card-head { display: flex; align-items: baseline; gap: 8px; }
+.ov-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ov-card-head .ov-name { font-weight: 700; font-size: 1rem; }
-.ov-score { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
-.ov-score b { font: 700 1.35rem var(--display); color: var(--tone); letter-spacing: 0.02em; }
-.ov-card-class { margin: 2px 0 6px; }
+.ov-card.tone-insufficient_data { --tone: var(--muted); }
+.ov-card-note { margin: 6px 0 2px; color: var(--muted); font-size: 0.82rem; }
+.ov-scores { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 6px 0 4px; font-size: 0.82rem; align-items: baseline; }
+.ov-scores dt { color: var(--muted); }
+.ov-scores dd { margin: 0; text-align: right; white-space: nowrap; }
+.ov-scores b { font: 700 1.2rem var(--display); color: var(--tone); letter-spacing: 0.02em; }
+.ov-reasons { margin: 4px 0 6px; padding-left: 16px; font-size: 0.78rem; line-height: 1.35; color: var(--text); }
+.ov-reasons li + li { margin-top: 2px; }
 .ov-facts { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; margin: 0; font-size: 0.82rem; }
 .ov-facts dt { color: var(--muted); }
 .ov-facts dd { margin: 0; text-align: right; font-weight: 600; }

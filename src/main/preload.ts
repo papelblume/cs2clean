@@ -19,6 +19,7 @@ const bridge: Bridge = {
   pauseHotkeys: (paused) => ipcRenderer.invoke("hotkey:pause", paused),
   toggleOverlay: () => ipcRenderer.invoke("overlay:toggle"),
   toggleDetail: () => ipcRenderer.invoke("overlay:detail"),
+  cyclePlayer: () => ipcRenderer.invoke("overlay:cycle"),
   setSiren: (on) => ipcRenderer.invoke("siren:set", on),
   testSiren: () => ipcRenderer.invoke("siren:test"),
   openPlayer: (steamId) => ipcRenderer.invoke("player:open", steamId),

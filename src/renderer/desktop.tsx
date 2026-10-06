@@ -102,8 +102,9 @@ function MatchCard({ s }: { s: AppState }) {
           <LobbyTable rows={rows} />
           <p className="muted small hint">
             {s.overlay.mode === "none" ? null : (
-              <>In game, <kbd>{s.overlay.hotkey}</kbd> shows this list and <kbd>{s.overlay.detailHotkey}</kbd> the details
-                of flagged players. The overlay hides itself when the match goes live.</>
+              <>In game, <kbd>{s.overlay.hotkey}</kbd> shows this list, <kbd>{s.overlay.detailHotkey}</kbd> the details
+                of flagged players and <kbd>{s.overlay.cycleHotkey}</kbd> steps through every player's details.
+                The overlay hides itself when the match goes live.</>
             )}
             {s.overlay.mode === "window" && (
               <button className="linkish" onClick={() => bridge.toggleOverlay()}>
@@ -165,7 +166,8 @@ const modeName = (m: string | null) => (m ? m.charAt(0).toUpperCase() + m.slice(
 // ------------------------------------------------------------------ settings
 
 function SettingsPanel({ s }: { s: AppState }) {
-  const isDefault = s.overlay.hotkey === DEFAULT_HOTKEYS.lobby && s.overlay.detailHotkey === DEFAULT_HOTKEYS.detail;
+  const isDefault = s.overlay.hotkey === DEFAULT_HOTKEYS.lobby && s.overlay.detailHotkey === DEFAULT_HOTKEYS.detail
+    && s.overlay.cycleHotkey === DEFAULT_HOTKEYS.cycle;
   return (
     <details className="settings">
       <summary>Settings</summary>
@@ -174,6 +176,7 @@ function SettingsPanel({ s }: { s: AppState }) {
           <div className="hotkeys small">
             <HotkeyField label="Show the player list" which="lobby" value={s.overlay.hotkey} />
             <HotkeyField label="Show details of flagged players" which="detail" value={s.overlay.detailHotkey} />
+            <HotkeyField label="Cycle through all players' details" which="cycle" value={s.overlay.cycleHotkey} />
           </div>
           <div className="row small">
             <span className="muted">Click a key, then press the new one. While the app runs, CS2 doesn't get these keys.</span>
