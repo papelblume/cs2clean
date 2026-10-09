@@ -149,6 +149,7 @@ function simulated(): Bridge {
     testSiren: async () => set({ alert: { seq: state.alert.seq + 1, names: [] } }),
     openPlayer: async () => {},
     openLeetify: async () => {},
+    openDeveloperPage: async () => {},
   };
 }
 

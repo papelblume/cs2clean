@@ -4,6 +4,7 @@ import { DEFAULT_HOTKEYS, hotkeyFromEvent, type HotkeyName } from "../shared/hot
 import type { AppState, LobbyRow } from "../shared/types";
 import { bridge } from "./bridge";
 import { DISCLAIMER, Logo, mapName, SideEmblem, Wordmark } from "./brand";
+import leetifyBadge from "../../assets/Leetify-Badge-White-Small.png";
 import { PlayerClass } from "./parts";
 import { useAppState } from "./useAppState";
 import "./style.css";
@@ -22,9 +23,14 @@ function App() {
         <KeyCard s={s} />
         <MatchCard s={s} />
       </main>
+      <div className="footer-row">
+        <button className="leetify-link" onClick={() => bridge.openLeetify()} title="Data Provided by Leetify">
+          <img src={leetifyBadge} alt="Data Provided by Leetify" />
+        </button>
+      </div>
       <footer className="footer">
         <p>{DISCLAIMER}</p>
-        <p className="credit"><button className="leetify-link" onClick={() => bridge.openLeetify()}>Data Provided by Leetify</button></p>
+        
         <SettingsPanel s={s} />
       </footer>
     </div>
@@ -69,7 +75,7 @@ function KeyCard({ s }: { s: AppState }) {
       <h2>Leetify API key</h2>
       <p className="small">
         Player classes come from Leetify's public API. It works without a key at stricter rate limits; a free key
-        from <b>leetify.com/app/developer</b> makes lookups reliable.
+        from <button className="leetify-link" onClick={() => bridge.openDeveloperPage()}>leetify.com/app/developer</button> makes lookups reliable.
       </p>
       <div className="row">
         <input

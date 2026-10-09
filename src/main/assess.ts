@@ -60,6 +60,14 @@ export interface Trace {
   score: number;
   discounted: number;
   tiers: { rating: number; aim: number; clutch: number };
+  /** 1 or 100: what the match ratings were multiplied by to get website units. */
+  scale: 1 | 100;
+  /** Mean of the newest matches' ratings in website units. */
+  meanRating: number;
+  /** Share (0-1) of strong matches (rating >= THRESHOLDS.rating.strongMatch). */
+  strongShare: number;
+  /** The clutch rating from the profile, or null. */
+  clutch: number | null;
 }
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
@@ -100,11 +108,14 @@ export function metricsOf(p: LeetifyProfile): PlayerMetrics {
 export function assessProfile(p: LeetifyProfile): Assessment {
   const T = THRESHOLDS;
   const name = typeof p.name === "string" && p.name ? p.name : null;
+  // A private profile (or csst.at data) has no recent_matches but still carries the aggregates: the overall
+  // rating (ranks.leetify) and the aim/clutch ratings. Those are scored; only a profile with no ratings at all
+  // is refused (below). The missing match history just means the rating signal comes from ranks.leetify.
   const series = matchSeries(p);
   const recent = series.matches;
   const total = num(p.total_matches) ? p.total_matches : recent.length;
   const confidence = clamp01(total / T.fullSample);
-  const none = (note: string): Assessment => ({ classification: "INSUFFICIENT_DATA", totalMatches: total, confidence: 0, name, note, detail: null, trace: null });
+  const noneWithTotal = (note: string): Assessment => ({ classification: "INSUFFICIENT_DATA", totalMatches: total, confidence: 0, name, note, detail: null, trace: null });
 
   const metrics = metricsOf(p);
 
@@ -129,7 +140,7 @@ export function assessProfile(p: LeetifyProfile): Assessment {
     clutch: metrics.clutch !== null ? ramp(metrics.clutch, T.clutch) : null,
   };
   const present = (["rating", "aim", "clutch"] as const).filter((k) => signals[k] !== null);
-  if (present.length === 0) return none("Leetify sent no ratings for this player");
+  if (present.length === 0) return noneWithTotal("Leetify sent no ratings for this player");
 
   const weightSum = present.reduce((a, k) => a + T.weights[k], 0);
   const score = present.reduce((a, k) => a + T.weights[k] * signals[k]!, 0) / weightSum;
@@ -160,6 +171,6 @@ export function assessProfile(p: LeetifyProfile): Assessment {
   };
   return {
     classification, totalMatches: total, confidence, name, note: null, detail,
-    trace: { ratingFrom: recentSignal !== null ? "recent" : signals.rating !== null ? "overall" : null, signals, score, discounted, tiers },
+    trace: { ratingFrom: recentSignal !== null ? "recent" : signals.rating !== null ? "overall" : null, signals, score, discounted, tiers, scale: series.scales.rating, meanRating: matches?.avgRating ?? 0, strongShare: matches?.strongShare ?? 0, clutch: metrics.clutch },
   };
 }

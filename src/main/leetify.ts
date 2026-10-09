@@ -8,6 +8,8 @@ import type { EvidenceClass } from "../shared/types";
 import { assessProfile } from "./assess";
 import type { LobbyAnswer } from "./lobby";
 import { assessReputation, toEvidenceClass, toPlayerReputation, type Reputation } from "./reputation";
+import { scrapeCsstAtProfiles } from "./leetify-hero";
+import { debug } from "./logger";
 
 export const LEETIFY_BASE = "https://api-public.cs-prod.leetify.com";
 
@@ -161,9 +163,36 @@ export function combineClass(performance: EvidenceClass, rep: Reputation): Evide
   return SEVERITY[fromRep] > SEVERITY[performance] ? fromRep : performance;
 }
 
+/**
+ * Turns a profile into the lobby answer: the performance score (assess.ts) combined with the reputation. Used for
+ * API profiles and for profiles scraped from csst.at, so both are judged the same way. `fallbackNote` is shown when
+ * assess.ts has no note of its own (e.g. to say where scraped data came from).
+ */
+function answerFromProfile(steamId: string, profile: LeetifyProfile, fallbackNote?: string): LobbyAnswer {
+  const a = assessProfile(profile);
+  const r = assessReputation(profile);
+  return {
+    steamId,
+    classification: combineClass(a.classification, r),
+    totalMatches: Math.max(a.totalMatches, r.matchesAnalyzed),
+    name: a.name,
+    detail: a.detail,
+    note: r.tier === "BANNED" ? r.reasons[0] ?? a.note : a.note ?? fallbackNote,
+    reputation: toPlayerReputation(r),
+  };
+}
+
+/** Where a player's data came from: Leetify's API, or scraped from csst.at when the API had no profile. */
+export type DataSource = "api" | "scrape";
+
 export interface LookupOptions {
   /** Requests in flight at once. */
   concurrency?: number;
+  /**
+   * Called when a player's data source is settled: "api" or "scrape", or null when neither has data for them.
+   * Not called for a transient failure (rate limit, network), so the caller keeps what it knew before.
+   */
+  onSource?: (steamId: string, source: DataSource | null) => void;
   /** Called with false when Leetify couldn't be reached at all, true when it answered (even with an error). */
   onReach?: (ok: boolean) => void;
 }
@@ -177,19 +206,17 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
   const out: LobbyAnswer[] = new Array(steamIds.length);
   let next = 0;
   let fatal: LeetifyError | null = null;
+  const notFound: number[] = [];
+
+  debug("leetify", "lookupLobby:", steamIds.join(", "));
 
   const one = async (steamId: string): Promise<LobbyAnswer> => {
     try {
+      debug("leetify", "Fetching profile:", steamId);
       const profile = await client.profile(steamId);
-      const a = assessProfile(profile);
-      const r = assessReputation(profile);
       o.onReach?.(true);
-      return {
-        steamId, classification: combineClass(a.classification, r), totalMatches: Math.max(a.totalMatches, r.totalMatches),
-        name: a.name, detail: a.detail,
-        note: r.tier === "BANNED" ? r.reasons[0] ?? a.note : a.note,
-        reputation: toPlayerReputation(r),
-      };
+      o.onSource?.(steamId, "api");
+      return answerFromProfile(steamId, profile);
     } catch (e) {
       if (!(e instanceof LeetifyError)) throw e;
       o.onReach?.(e.kind !== "network" && e.kind !== "timeout");
@@ -197,8 +224,12 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
         fatal = e;
         return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true };
       }
-      if (e.kind === "not-found")
-        return { steamId, classification: "INSUFFICIENT_DATA", totalMatches: 0, note: "Not on Leetify, or the profile isn't public" };
+      if (e.kind === "not-found") {
+        debug("leetify", "Not found on Leetify:", steamId);
+        const idx = steamIds.indexOf(steamId);
+        if (idx !== -1) notFound.push(idx);
+        return { steamId, classification: null, totalMatches: 0, note: "Not on Leetify, or the profile isn't public" };
+      }
       if (e.kind === "rate-limited")
         return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true, retryAfterMs: e.retryAfterMs ?? undefined };
       return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true, retryAfterMs: e.retryAfterMs ?? undefined };
@@ -213,5 +244,33 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(o.concurrency ?? 3, steamIds.length)) }, worker));
   if (fatal) throw fatal;
+
+  // Fallback: scrape not-found players from csst.at using Hero.
+  if (notFound.length > 0) {
+    const idsToScrape = notFound.map((i) => steamIds[i]);
+    debug("leetify", "Hero fallback for:", idsToScrape.join(", "));
+    const heroProfiles = await scrapeCsstAtProfiles(idsToScrape, 500);
+    debug("leetify", "Hero returned:", heroProfiles.size, "profiles");
+    for (const idx of notFound) {
+      const steamId = steamIds[idx];
+      const profile = heroProfiles.get(steamId);
+      if (profile) {
+        o.onSource?.(steamId, "scrape");
+        out[idx] = answerFromProfile(steamId, profile, "Data from csst.at (Leetify API returned not found)");
+        debug("leetify", "Hero profile for", steamId, "→", out[idx].classification, "(", out[idx].totalMatches, "matches)",
+          "reputation:", out[idx].reputation?.tier, out[idx].reputation?.score);
+      } else {
+        debug("leetify", "Hero failed for", steamId);
+        o.onSource?.(steamId, null);
+        out[idx] = {
+          steamId,
+          classification: "INSUFFICIENT_DATA",
+          totalMatches: 0,
+          note: "Not on Leetify, or the profile isn't public",
+        };
+      }
+    }
+  }
+
   return out;
 }

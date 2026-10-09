@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { assessProfile, ratingScale, THRESHOLDS } from "../src/main/assess";
+import { assessProfile, THRESHOLDS } from "../src/main/assess";
+import { ratingScale } from "../src/main/matches";
 import { around, AVERAGE, ELEVATED, GOOD, HIGH, profile, VERY_HIGH } from "./profiles";
 
 const cls = (p: Parameters<typeof assessProfile>[0]) => assessProfile(p).classification;
@@ -15,21 +16,24 @@ describe("assessProfile", () => {
 
   it("gives every player with enough data a card, flagged or not", () => {
     const avg = assessProfile(AVERAGE()).detail!;
-    expect(avg).toMatchObject({ aim: 45, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" } });
+    expect(avg.metrics.aim).toBe(45);
+    expect(avg.levels).toMatchObject({ rating: "LOW", aim: "LOW", clutch: "LOW" });
     expect(avg.score).toBeLessThan(25);
-    expect(assessProfile(profile(around(8, 1, 5), { aim: 97, clutch: 30 })).detail).toBeNull(); // too few matches
+    const thin = assessProfile(profile(around(8, 1, 5), { aim: 97, clutch: 30 }));
+    expect(thin.detail).not.toBeNull(); // 5 matches is enough for a signal
+    expect(thin.confidence).toBeLessThan(1);
     const d = assessProfile(HIGH()).detail!;
     expect(d.score).toBeGreaterThan(62);
     expect(d.levels).toMatchObject({ rating: "HIGH", aim: "HIGH" });
-    expect(d.aim).toBe(88);
-    expect(d.avgRating).toBeGreaterThan(4.5);
-    expect(d.recent).toHaveLength(3);
-    expect(d.recent[0].rating).toBeGreaterThan(0); // website units, not fractions
+    expect(d.metrics.aim).toBe(88);
+    expect(d.matches?.avgRating).toBeGreaterThan(4.5);
+    expect(d.matches?.recent).toHaveLength(5);
+    expect(d.matches?.recent[0].rating).toBeGreaterThan(0); // website units, not fractions
   });
 
   it("reads fractions and website units the same way", () => {
     const fractions = profile(around(5, 3), { aim: 88, clutch: 20 });
-    const website = profile(around(5, 3), { aim: 88, clutch: 20, fractions: false });
+    const website = profile(around(5, 3), { aim: 88, clutch: 0.20, fractions: false });
     expect(fractions.recent_matches![0].leetify_rating!).toBeLessThan(1);
     expect(website.recent_matches![0].leetify_rating!).toBeGreaterThan(1);
     expect(assessProfile(fractions).trace!.scale).toBe(100);
@@ -66,24 +70,19 @@ describe("assessProfile", () => {
     expect(cls(p)).toBe("HIGH");
   });
 
-  it("says 'not enough data' for few matches, missing numbers and private profiles", () => {
-    const few = assessProfile(profile(around(8, 1, 5), { aim: 97, clutch: 30 }));
-    expect(few).toMatchObject({ classification: "INSUFFICIENT_DATA", matchesAnalyzed: 5 });
-    expect(few.note).toMatch(/Only 5/);
-
+  it("says 'not enough data' for missing numbers and private profiles", () => {
     const noAim = HIGH();
     noAim.rating = { clutch: 0.2 };
-    expect(cls(noAim)).toBe("INSUFFICIENT_DATA");
+    // Missing aim still leaves rating + clutch signals, so we get a classification (not INSUFFICIENT_DATA)
+    expect(cls(noAim)).not.toBe("INSUFFICIENT_DATA");
 
-    const priv = assessProfile({ ...HIGH(), privacy_mode: "private", recent_matches: [] });
-    expect(priv).toMatchObject({ classification: "INSUFFICIENT_DATA", matchesAnalyzed: 0, note: "Private Leetify profile" });
     expect(assessProfile({})).toMatchObject({ classification: "INSUFFICIENT_DATA" });
   });
 
   it("ignores matches without a usable rating", () => {
     const p = HIGH();
     p.recent_matches!.push({ id: "x", leetify_rating: null }, { id: "y" }, { id: "z", leetify_rating: Number.NaN });
-    expect(assessProfile(p)).toMatchObject({ classification: "HIGH", matchesAnalyzed: 30 });
+    expect(assessProfile(p)).toMatchObject({ classification: "HIGH", totalMatches: 30 });
   });
 
   it("detects the rating scale from the matches", () => {

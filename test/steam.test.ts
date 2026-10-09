@@ -209,7 +209,7 @@ describe("overlay helpers", () => {
     const rep = (score: number | null, tier = "WATCH" as const) => ({ score, tier, confidence: 1, reasons: [] });
     const row = (name: string, classification: "VERY_HIGH" | "HIGH" | "ELEVATED" | "NORMAL" | "INSUFFICIENT_DATA",
                  detail: ReturnType<typeof d> | null, reputation: ReturnType<typeof rep> | null = null, isLocal = false) =>
-      ({ slot: 0, name, steamId: name, side: null, isLocal, classification, matchesAnalyzed: 3, status: "ok" as const, detail, reputation, note: null });
+      ({ slot: 0, name, steamId: name, side: null, isLocal, classification, totalMatches: 3, status: "ok" as const, detail, reputation, note: null });
     const list = flagged([
       row("a", "ELEVATED", d(50)),
       row("b", "HIGH", d(70)),

@@ -95,4 +95,4 @@ export const mapName = (m: string | null | undefined) =>
   m ? (MAPS[m] ?? m.replace(/^de_|^cs_/, "").replace(/(^|_)\w/g, (c) => c.replace("_", " ").toUpperCase())) : null;
 
 export const DISCLAIMER =
-  "Classes come from Leetify's public data: recent match ratings, aim, clutch, mechanics stats and bans. They show how well someone plays and how plausible the numbers look. Only a ban is hard evidence; the rest is statistics, not a verdict and not a probability that anyone cheats. Data: Leetify.";
+  "Raw player data is retrieved from Leetify's public API. The app then separates each stat into Low, Medium, and High categories based on Leetify's Data Library. A stat labeled \"High\" roughly maps to higher than the average FACEIT Level 10. Players with private/non-existant Leetify profiles can not be shown.";

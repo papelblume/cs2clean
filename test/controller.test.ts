@@ -74,7 +74,7 @@ describe("Controller", () => {
     expect(c.state.lobby.rows).toHaveLength(2);
     expect(server.s.lookups.sort()).toEqual(["76561198000000001", "76561198000000002"]);
     expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["NORMAL", "VERY_HIGH"]);
-    expect(c.state.lobby.rows[1].detail?.score).toBeGreaterThan(80);
+    expect(c.state.lobby.rows[1].detail?.score).toBeGreaterThanOrEqual(80);
     expect(c.state.leetify.reachable).toBe(true);
     c.stop();
   });

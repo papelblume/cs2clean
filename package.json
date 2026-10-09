@@ -48,7 +48,11 @@
     "vitest": "^5.0.2"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "koffi": "^2.16.3"
+  },
+  "optionalDependencies": {
+    "@ulixee/hero-playground": "^2.0.0-alpha.34"
   },
   "build": {
     "appId": "eu.cheatscanner.companion",
@@ -65,6 +69,7 @@
       "!**/*.map",
       "!dist/main/steam/coplay-cli.js",
       "!dist/main/leetify-cli.js",
+      "!dist/main/leetify-hero-cli.js",
       "!node_modules/koffi/build/koffi/!(win32_x64|linux_x64)/**",
       "!node_modules/koffi/{src,doc,vendor}/**"
     ],

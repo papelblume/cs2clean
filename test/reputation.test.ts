@@ -108,7 +108,7 @@ describe("assessReputation", () => {
   it("never calls a thin sample TRUSTED, and gives UNKNOWN below the minimum", () => {
     const few = { ...ORDINARY, recent_matches: matches({ n: 8, rating: 0, ratingSd: 3, preaim: 12, reaction: 620, head: 15, spray: 35 }) };
     expect(assessReputation(few).tier).toBe("NORMAL");
-    const tiny = { ...ORDINARY, recent_matches: matches({ n: 3, rating: 0, preaim: 12, reaction: 620, head: 15, spray: 35 }) };
+    const tiny = { ...ORDINARY, recent_matches: matches({ n: 3, rating: 0, preaim: 12, reaction: 620, head: 15, spray: 35 }), total_matches: 3 };
     const r = assessReputation(tiny);
     expect(r.tier).toBe("UNKNOWN");
     expect(r.score).toBe(null);

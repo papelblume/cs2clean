@@ -187,7 +187,7 @@ function Card({ r, compact }: { r: LobbyRow; compact?: boolean }) {
       )}
       {m && matches && matches.recent.length > 0 && (
         <>
-          <div className="ov-sub">Latest matches <span className="ov-winrate">{winrateDisplay(m.winrate)}</span></div>
+          <div className="ov-sub">Latest matches <span className="ov-winrate">{winrateDisplay(m.winrate)} WIN RATE</span></div>
           <div className="ov-recent">
             {matches.recent.slice(0, compact ? 2 : 5).map((x, i) => (
               <div key={i} className="ov-recent-row">

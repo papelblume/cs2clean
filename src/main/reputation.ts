@@ -21,14 +21,14 @@
 
 import type { PlayerReputation, ReputationTier } from "../shared/reputation-types";
 import type { EvidenceClass } from "../shared/types";
-import { ratingScale } from "./assess";
+import { ratingScale } from "./matches";
 import type { LeetifyBan, LeetifyProfile, LeetifyRecentMatch } from "./leetify";
 
 export const REPUTATION = {
   /** Newest matches that count, same as assess.ts. */
   window: 30,
   /** Fewer scored matches than this is UNKNOWN. */
-  minMatches: 0,
+  minMatches: 5,
   /** Matches for full confidence; confidence ramps from minMatches to here. */
   fullSample: 20,
   /** TRUSTED (as opposed to NORMAL) needs at least this much confidence. */
@@ -189,13 +189,20 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   // A ban is checked first: it needs no match data, and a private profile can still carry one.
   const bans = (p.bans ?? []).filter((b): b is LeetifyBan => !!b);
   if (bans.length > 0) return banned(bans);
-  if (p.privacy_mode === "private") return unknown("Private Leetify profile", 0);
 
-  const rated = (p.recent_matches ?? [])
+  const ratedAll = (p.recent_matches ?? [])
     .filter((m): m is LeetifyRecentMatch & { leetify_rating: number } => !!m && num(m.leetify_rating))
     .sort((a, b) => Date.parse(b.finished_at ?? "") - Date.parse(a.finished_at ?? "") || 0)
     .slice(0, T.window);
-  if (rated.length < T.minMatches) return unknown(`Only ${rated.length} recent Leetify matches`, rated.length);
+
+  // Aggregate-only mode: no usable match history (private profile, csst.at data, or fewer than minMatches
+  // recent matches). The lifetime stats (preaim, reaction, accuracy, counter-strafing, ratings) still say a lot,
+  // so the mechanics and coherence families are scored from them; the trajectory family needs matches and stays
+  // silent. `sample` is then the profile's own match count instead of the number of recent matches.
+  const aggregateOnly = ratedAll.length < T.minMatches;
+  const rated = aggregateOnly ? [] : ratedAll;
+  const sample = aggregateOnly ? (num(p.total_matches) ? p.total_matches : 0) : rated.length;
+  if (aggregateOnly && sample < T.minMatches) return unknown(`Only ${sample} matches on this profile`, ratedAll.length);
 
   // Units. The API's scales are unverified (see assess.ts): rating-type values may be fractions or website units,
   // percent-type values fractions or percentages, reaction time milliseconds or seconds. Each is decided from the
@@ -204,7 +211,7 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   // 33.0 but counter-strafing as 0.8), one shared decision would misread one of them. A real percentage of these
   // stats is always far above 1, so any value above 1 in a field means that field is in percent.
   const st = p.stats ?? {};
-  const ratingS = ratingScale(rated.map((m) => m.leetify_rating));
+  const ratingS = rated.length > 0 ? ratingScale(rated.map((m) => m.leetify_rating)) : 1;
   const pctScale = (vals: unknown[]): 1 | 100 => (vals.filter(num).some((v) => v > 1) ? 1 : 100);
   const headS = pctScale([st.accuracy_head, ...rated.map((m) => m.accuracy_head)]);
   const sprayS = pctScale([st.spray_accuracy, ...rated.map((m) => m.spray_accuracy)]);
@@ -300,6 +307,8 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   if (gap !== null)
     add("divergence", "trajectory", ramp(gap, Tr.divergence), `Far better outside FACEIT than in FACEIT matches (${f1(gap)} standard deviations)`);
 
+  if (aggregateOnly && signals.length === 0) return unknown("Leetify sent no usable stats for this player", sample);
+
   // Families, then the combined score.
   const families = {} as Record<Family, number>;
   const adjusted = {} as Record<Family, number>;
@@ -312,8 +321,10 @@ export function assessReputation(p: LeetifyProfile): Reputation {
     keep *= 1 - T.familyCap[f] * adjusted[f];
   }
 
-  const confidence = ramp(ms.length, [T.minMatches, T.fullSample]);
-  const thin = num(p.total_matches) ? ramp(p.total_matches, T.thinProfile.matches) : 0;
+  const confidence = ramp(sample, [T.minMatches, T.fullSample]);
+  // With a match history, total_matches is the lifetime count. Without one (csst.at, private) it can be just the
+  // size of the stats window (at most 30), which would read as "thin" for everybody, so there is no boost then.
+  const thin = !aggregateOnly && num(p.total_matches) ? ramp(p.total_matches, T.thinProfile.matches) : 0;
   const suspicion = clamp01((1 - keep) * (0.5 + 0.5 * confidence) * (1 + T.thinProfile.boost * thin));
 
   // Tier from the score, then the gates: the worst tiers need two active families, TRUSTED needs enough data.
@@ -325,7 +336,8 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   const active = (at: number) => FAMILIES.filter((f) => adjusted[f] >= at).length;
   if (tier === "VERY_SUSPICIOUS" && active(T.activeAt.veryTier) < 2) { tier = "SUSPICIOUS"; score = Math.max(score, cuts.suspicious); }
   if (tier === "SUSPICIOUS" && active(T.activeAt.suspiciousTier) < 2) { tier = "WATCH"; score = Math.max(score, cuts.watch); }
-  if (tier === "TRUSTED" && confidence < T.trustedConfidence) { tier = "NORMAL"; score = Math.min(score, cuts.trusted - 1); }
+  // Without a match history one whole family (trajectory) can't speak, so "nothing unusual" never reaches TRUSTED.
+  if (tier === "TRUSTED" && (confidence < T.trustedConfidence || aggregateOnly)) { tier = "NORMAL"; score = Math.min(score, cuts.trusted - 1); }
 
   const flagged = tier === "WATCH" || tier === "SUSPICIOUS" || tier === "VERY_SUSPICIOUS";
   const reasons = !flagged ? [] : signals
@@ -335,7 +347,7 @@ export function assessReputation(p: LeetifyProfile): Reputation {
     .map((s) => s.text);
 
   const trace: ReputationTrace = { scales: { rating: ratingS, percent: { head: headS, spray: sprayS, stopping: stopS, opening: openS }, ms: msS }, band, families, adjusted, signals, thin, suspicion };
-  return { score, tier, confidence, matchesAnalyzed: ms.length, reasons, note: null, trace };
+  return { score, tier, confidence, matchesAnalyzed: ms.length, reasons, note: aggregateOnly ? "Scored from lifetime stats only (no match history)" : null, trace };
 }
 
 /** Maps a reputation onto the app's existing class so lobby answers and the overlay work unchanged. */

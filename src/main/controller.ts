@@ -6,7 +6,7 @@ import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyPro
 import { listOrder, visibleOrder } from "../shared/lobby-order";
 import type { AppState, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
-import { LeetifyClient, lookupLobby } from "./leetify";
+import { LeetifyClient, lookupLobby, type DataSource } from "./leetify";
 import { LobbyService, type LobbyOptions } from "./lobby";
 
 export interface Settings {
@@ -46,6 +46,8 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   private settings: Settings;
   /** Players the siren already went off for, in the current match. */
   private alerted = new Set<string>();
+  /** Where each player's data in the current match came from; players without data have no entry. */
+  private sources = new Map<string, DataSource>();
   private matchKey: string | null = null;
   state: AppState;
 
@@ -183,8 +185,9 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   }
 
   /**
-   * Cycle hotkey (F6): the card of the first player in the list (CT, then T), then the next one on each press,
-   * and the overlay hides again after the last. Every player, flagged or not, yourself included.
+   * Cycle hotkey (F6): the card of the first player, then the next one on each press, and the overlay hides
+   * again after the last. Every player, flagged or not, yourself included. The order is cycleOrder(): API
+   * players first, then scraped ones.
    */
   cyclePlayer(): void {
     this.stepPlayer(1);
@@ -198,9 +201,24 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.stepPlayer(-1);
   }
 
+  /**
+   * The order the cycle hotkeys walk: players with Leetify API data first, then players scraped from csst.at,
+   * then players without any data. Inside each group the list order stays (CT, then T). Only the walk is
+   * grouped; the list in the overlay keeps its own order.
+   */
+  private cycleOrder() {
+    const rows = visibleOrder(this.state.lobby.rows);
+    const group = (r: (typeof rows)[number]): number => {
+      const source = r.steamId ? this.sources.get(r.steamId) : undefined;
+      return source === "api" ? 0 : source === "scrape" ? 1 : 2;
+    };
+    // Array.prototype.sort is stable, so players of one group keep their relative order.
+    return [...rows].sort((a, b) => group(a) - group(b));
+  }
+
   private stepPlayer(dir: 1 | -1): void {
     const o = this.state.overlay;
-    const order = visibleOrder(this.state.lobby.rows);
+    const order = this.cycleOrder();
     const running = o.visible && o.view === "player";
     // Where the walk is; -1 when it isn't running (or its player left), so it starts at the first or last player.
     const at = running && o.focusSlot !== null ? order.findIndex((r) => r.slot === o.focusSlot) : -1;
@@ -238,6 +256,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       // Another match (or none): the siren may go off again for the new lobby.
       this.matchKey = key;
       this.alerted.clear();
+      this.sources.clear();
       this.state.overlay = { ...this.state.overlay, focusSlot: null };
     }
     this.state.match = inMatch ? { map: m.map, mode: m.mode, phase: m.phase } : null;
@@ -276,6 +295,10 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     try {
       return await lookupLobby(this.leetify, steamIds, {
         concurrency: this.deps.leetifyConcurrency,
+        onSource: (steamId, source) => {
+          if (source) this.sources.set(steamId, source);
+          else this.sources.delete(steamId);
+        },
         onReach: (ok) => {
           if (this.state.leetify.reachable !== ok) this.state.leetify = { ...this.state.leetify, reachable: ok };
         },

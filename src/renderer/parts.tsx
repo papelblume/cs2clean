@@ -30,12 +30,11 @@ function strength(r: LobbyRow): number {
 
 /**
  * Players the F7 view lists: everyone whose class is ELEVATED or above (whatever raised it, ratings or
- * reputation, a ban included), yourself too, highest class first, then the most flagged. Their card may lack
- * the performance numbers, so this doesn't depend on `detail`.
+ * reputation, a ban included), highest class first, then the most flagged. Excludes yourself.
  */
 export function flagged(rows: LobbyRow[]): LobbyRow[] {
   return rows
-    .filter((r) => r.classification && r.classification in RANK)
+    .filter((r) => !r.isLocal && r.classification && r.classification in RANK)
     .sort((a, b) => (RANK[a.classification!] - RANK[b.classification!]) || strength(b) - strength(a));
 }
 

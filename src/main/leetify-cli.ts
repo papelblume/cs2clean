@@ -52,9 +52,9 @@ async function main() {
       console.log(`raw leetify_rating, newest 8: ${raw.slice(0, 8).join(", ") || "(none)"}`);
       if (raw.length) console.log(`raw min/max: ${Math.min(...raw)} / ${Math.max(...raw)}`);
       const a = assessProfile(p);
-      console.log(`class: ${a.classification}   matches scored: ${a.matchesAnalyzed}${a.note ? `   note: ${a.note}` : ""}`);
+      console.log(`class: ${a.classification}   matches scored: ${a.totalMatches}${a.note ? `   note: ${a.note}` : ""}`);
       if (a.trace) {
-        const t = a.trace, f = (n: number) => n.toFixed(2);
+        const t = a.trace, f = (n: number | null) => n?.toFixed(2) ?? "n/a";
         console.log(`units: ${t.scale === 100 ? "fractions, multiplied by 100" : "already website units"}`);
         console.log(`avg match rating: ${f(t.meanRating)}   strong matches (>= ${THRESHOLDS.rating.strongMatch}): ${Math.round(t.strongShare * 100)}%   clutch: ${f(t.clutch)}`);
         console.log(`signals 0..1  rating ${f(t.signals.rating)}  aim ${f(t.signals.aim)}  clutch ${f(t.signals.clutch)}   combined ${f(t.score)}`);

@@ -10,7 +10,7 @@ describe("LobbyService", () => {
   afterEach(() => vi.useRealTimers());
 
   it("asks once for a filling lobby, and not again for known players", async () => {
-    const lookup = vi.fn(async (ids: string[]) => ids.map((steamId) => ({ steamId, classification: "NORMAL" as const, matchesAnalyzed: 3 })));
+    const lookup = vi.fn(async (ids: string[]) => ids.map((steamId) => ({ steamId, classification: "NORMAL" as const, totalMatches: 3 })));
     const lobby = new LobbyService(lookup, () => {}, { debounceMs: 100 });
     lobby.setMatch(match("76561198000000001"));
     lobby.setMatch(match("76561198000000001", "76561198000000002", null));
@@ -18,7 +18,7 @@ describe("LobbyService", () => {
     await vi.advanceTimersByTimeAsync(150);
     expect(lookup).toHaveBeenCalledTimes(1);
     expect(lookup.mock.calls[0][0]).toEqual(["76561198000000001", "76561198000000002"]);
-    expect(lobby.rows()[0]).toMatchObject({ status: "ok", classification: "NORMAL", matchesAnalyzed: 3 });
+    expect(lobby.rows()[0]).toMatchObject({ status: "ok", classification: "NORMAL", totalMatches: 3 });
 
     // Same players again (e.g. a kills update): no new request.
     lobby.setMatch(match("76561198000000002", "76561198000000001"));
@@ -30,7 +30,7 @@ describe("LobbyService", () => {
     let fail = true;
     const lookup = vi.fn(async (ids: string[]) => {
       if (fail) throw new Error("the server can't be reached");
-      return ids.map((steamId) => ({ steamId, classification: "HIGH" as const, matchesAnalyzed: 9 }));
+      return ids.map((steamId) => ({ steamId, classification: "HIGH" as const, totalMatches: 9 }));
     });
     const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, retryMs: 1000 });
     lobby.setMatch(match("76561198000000001"));
@@ -47,8 +47,8 @@ describe("LobbyService", () => {
     let limited = true;
     const lookup = vi.fn(async (ids: string[]) =>
       ids.map((steamId) => steamId === "76561198000000002" && limited
-        ? { steamId, classification: null, matchesAnalyzed: 0, transient: true, retryAfterMs: 5000, note: "Leetify's request limit was hit" }
-        : { steamId, classification: "NORMAL" as const, matchesAnalyzed: 30 }));
+        ? { steamId, classification: null, totalMatches: 0, transient: true, retryAfterMs: 5000, note: "Leetify's request limit was hit" }
+        : { steamId, classification: "NORMAL" as const, totalMatches: 30 }));
     const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, retryMs: 1000 });
     lobby.setMatch(match("76561198000000001", "76561198000000002"));
     await vi.advanceTimersByTimeAsync(20);

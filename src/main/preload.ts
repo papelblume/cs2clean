@@ -24,6 +24,8 @@ const bridge: Bridge = {
   setSiren: (on) => ipcRenderer.invoke("siren:set", on),
   testSiren: () => ipcRenderer.invoke("siren:test"),
   openPlayer: (steamId) => ipcRenderer.invoke("player:open", steamId),
+  openLeetify: () => ipcRenderer.invoke("leetify:open"),
+  openDeveloperPage: () => ipcRenderer.invoke("leetify:developer"),
 };
 
 contextBridge.exposeInMainWorld("cheatscanner", bridge);

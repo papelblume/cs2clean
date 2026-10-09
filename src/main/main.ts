@@ -367,6 +367,12 @@ if (!app.requestSingleInstanceLock()) {
       const url = controller.playerUrl(String(steamId ?? ""));
       if (url) void shell.openExternal(url);
     });
+    ipcMain.handle("leetify:open", () => {
+      void shell.openExternal("https://leetify.com/");
+    });
+    ipcMain.handle("leetify:developer", () => {
+      void shell.openExternal("https://leetify.com/app/developer");
+    });
 
     createDesktopWindow();
     controller.start();

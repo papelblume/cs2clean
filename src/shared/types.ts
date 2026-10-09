@@ -176,4 +176,6 @@ export interface Bridge {
   openPlayer(steamId: string): Promise<void>;
   /** Opens leetify.com (the "Data Provided by Leetify" link). */
   openLeetify(): Promise<void>;
+  /** Opens leetify.com/app/developer (the API key page). */
+  openDeveloperPage(): Promise<void>;
 }

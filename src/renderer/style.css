@@ -179,3 +179,11 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 /* Leetify API key field */
 .key-input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; }
 .key-input::placeholder { color: var(--muted); }
+
+/* Leetify attribution (Leetify's developer guidelines: legible, and a link by underline, bold or their pink) */
+.leetify-link { font: inherit; font-size: 0.78rem; font-weight: 700; color: #f84982; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+.footer-row { display: flex; align-items: flex-start; justify-content: flex-end; margin-bottom: 6px; }
+.footer-row .leetify-link img { height: 45px; display: block; }
+.ov-credit { flex-basis: 100%; font-size: 0.68rem; color: var(--muted); }
+.ov-name .you { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
+.matches.low { opacity: 0.55; font-style: italic; }
