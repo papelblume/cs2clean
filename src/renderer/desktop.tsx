@@ -24,6 +24,7 @@ function App() {
       </main>
       <footer className="footer">
         <p>{DISCLAIMER}</p>
+        <p className="credit"><button className="leetify-link" onClick={() => bridge.openLeetify()}>Data Provided by Leetify</button></p>
         <SettingsPanel s={s} />
       </footer>
     </div>
@@ -103,7 +104,8 @@ function MatchCard({ s }: { s: AppState }) {
           <p className="muted small hint">
             {s.overlay.mode === "none" ? null : (
               <>In game, <kbd>{s.overlay.hotkey}</kbd> shows this list, <kbd>{s.overlay.detailHotkey}</kbd> the details
-                of flagged players and <kbd>{s.overlay.cycleHotkey}</kbd> steps through every player's details.
+                of flagged players, and <kbd>{s.overlay.cycleHotkey}</kbd> / <kbd>{s.overlay.previousHotkey}</kbd> step forward / back
+                through every player's details (yours included).
                 The overlay hides itself when the match goes live.</>
             )}
             {s.overlay.mode === "window" && (
@@ -114,7 +116,8 @@ function MatchCard({ s }: { s: AppState }) {
           </p>
           {s.game.source === "steam" && (
             <p className="muted small">
-              Players come from Steam's list of people you recently played with, so teams aren't known.
+              Players come from Steam's list of people you recently played with, so teams aren't known. Only the
+              first 10 players of a lobby are looked up.
             </p>
           )}
         </>
@@ -152,11 +155,14 @@ function LobbyLine({ r }: { r: LobbyRow }) {
   return (
     <div className={`player${r.isLocal ? " is-local" : ""}`}>
       <SideEmblem side={r.side} />
-      <button className="player-name" disabled={!r.steamId} title={r.steamId ? "Open on Leetify" : undefined}
+      <button className="player-name" disabled={!r.steamId} title={r.steamId ? "View on Leetify" : undefined}
         onClick={() => r.steamId && bridge.openPlayer(r.steamId)}>
         {r.name}{r.isLocal && <span className="you">you</span>}
       </button>
       <PlayerClass r={r} />
+      {r.steamId && r.status !== "skipped" && (
+        <button className="leetify-link" onClick={() => bridge.openPlayer(r.steamId!)}>View on Leetify</button>
+      )}
     </div>
   );
 }
@@ -167,7 +173,7 @@ const modeName = (m: string | null) => (m ? m.charAt(0).toUpperCase() + m.slice(
 
 function SettingsPanel({ s }: { s: AppState }) {
   const isDefault = s.overlay.hotkey === DEFAULT_HOTKEYS.lobby && s.overlay.detailHotkey === DEFAULT_HOTKEYS.detail
-    && s.overlay.cycleHotkey === DEFAULT_HOTKEYS.cycle;
+    && s.overlay.cycleHotkey === DEFAULT_HOTKEYS.cycle && s.overlay.previousHotkey === DEFAULT_HOTKEYS.previous;
   return (
     <details className="settings">
       <summary>Settings</summary>
@@ -176,7 +182,8 @@ function SettingsPanel({ s }: { s: AppState }) {
           <div className="hotkeys small">
             <HotkeyField label="Show the player list" which="lobby" value={s.overlay.hotkey} />
             <HotkeyField label="Show details of flagged players" which="detail" value={s.overlay.detailHotkey} />
-            <HotkeyField label="Cycle through all players' details" which="cycle" value={s.overlay.cycleHotkey} />
+            <HotkeyField label="Next player's details" which="cycle" value={s.overlay.cycleHotkey} />
+            <HotkeyField label="Previous player's details" which="previous" value={s.overlay.previousHotkey} />
           </div>
           <div className="row small">
             <span className="muted">Click a key, then press the new one. While the app runs, CS2 doesn't get these keys.</span>
