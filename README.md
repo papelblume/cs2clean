@@ -1,15 +1,18 @@
 # Cheatscanner app
 
-The desktop companion and in-game overlay. When a CS2 match loads, it looks every player up on
-[Leetify](https://leetify.com) (Leetify's Public API) and shows a class: Normal, Elevated, High, Very high, or
-not enough data, with the number of recent Leetify matches it is based on. **F7** shows a card for each flagged
-player, **F6** steps through every player's card one at a time (flagged or not), and a siren plays when a High or
-Very high player is in your match. A card has a reputation score (how plausible the stats look), a performance score
-(how far above average the ratings are), the reasons behind a flag, and the player's average match rating, aim and
-clutch ratings and latest matches.
+The desktop companion and in-game overlay. When a CS2 match loads, it looks the first 10 players up on
+[Leetify](https://leetify.com) (Leetify's Public API) and shows each one's class (Normal, Elevated, High, Very high, or
+not enough data) and reputation score (0 to 100, 100 meaning nothing unusual). **F7** shows a card for each flagged
+player, **F6** / **F5** step forward / back through every player's card one at a time (flagged or not, yours
+included), and a siren plays
+when a High or Very high player is in your match. A card has the reputation score and tier, the reasons behind a
+flag, a performance score, colour-coded LOW / MEDIUM / HIGH levels for the Leetify rating, aim and clutch, Leetify's own
+numbers for the player (positioning, utility, opening, crosshair placement, time to damage, head and spray accuracy,
+counter-strafing) and, for a public profile, how the recent matches look (recent matches, average match rating, strong
+matches, the latest matches).
 
 The classes are statistics over Leetify's public data, not proof of anything except a ban on record (see
-[How the classes are computed](#how-the-classes-are-computed)). Data: Leetify.
+[How the classes are computed](#how-the-classes-are-computed)). Data Provided by Leetify.
 
 Platforms: Windows (installer or Microsoft Store) and Linux (from source, with native Steam and CS2; see
 [Running it on Linux](#running-it-on-linux)).
@@ -30,11 +33,12 @@ injects into the game or hooks its drawing:
 | Key | What it does |
 | --- | --- |
 | **Shift+F2** | Show the lobby list (again to hide) |
-| **F7** | Show the cards of flagged players (again to hide) |
-| **F6** | Show the next player's card: the first press shows the first player (CT, then T; you are left out), each further press the next one, and after the last the overlay hides. Shift+F2 or F7 switch to their view, and F6 starts over from the first player |
+| **F7** | Show the cards of flagged players, yourself included (again to hide) |
+| **F6** | Show the next player's card: the first press shows the first player in the list (CT, then T), each further press the next one, yourself included, and after the last the overlay hides. Shift+F2 or F7 switch to their view, and F6 starts over from the first player |
+| **F5** | Show the previous player's card: the first press shows the last player in the list, each further press the one before, and before the first the overlay hides. F6 and F5 walk the same list, so they can be mixed |
 
 Settings also has "Start automatically with Windows, minimized" (installed Windows app only; it starts with
-`--minimized`). All three keys can be changed under Settings in the app (letters and digits only with Ctrl or Alt).
+`--minimized`). All four keys can be changed under Settings in the app (letters and digits only with Ctrl or Alt).
 
 ## Leetify API key
 
@@ -42,9 +46,12 @@ Lookups work without a key, at Leetify's stricter rate limits. A free key from
 https://leetify.com/app/developer makes them reliable: paste it into the app's window (it is checked with Leetify
 before it is saved), or set `LEETIFY_API_KEY` in the environment. A saved key wins over the variable.
 
-Leetify's API has no batch lookup, so a full lobby is up to 10 requests (3 at a time). Answers are kept for 15
-minutes, and a player Leetify rate-limits is asked for again after the pause Leetify names. Only players with a
-public Leetify profile have data; the others show "Not enough data" (hover for the reason).
+Leetify's API has no batch lookup, so a lobby costs one request per player, 3 at a time, and only the first 10
+players of a lobby (in the order the game lists them) are looked up; any further ones show "Not checked". Answers are
+kept for 15 minutes, and a player Leetify rate-limits is asked for again after the pause Leetify names. Every player
+who has a Leetify profile gets a score, whatever the API sends: the aggregate numbers (ratings, stats, ranks, bans) come
+with every profile, private ones included, and a public profile adds its recent matches. Only a player who isn't on
+Leetify at all shows "Not enough data" (hover for the reason).
 
 ## Running it (Windows PowerShell, one command per line)
 
@@ -209,35 +216,44 @@ CS2 game state ─────┼─► GameSource ─► Controller ─┤
 
 ## How the classes are computed
 
-Two scores are computed for every player from `GET /v3/profile`, and the overlay uses the more severe class of the two
-(neither can lower the other).
+Two scores are computed for every player from `GET /v3/profile`, and the overlay shows the more severe class of the two
+(neither can lower the other). Both work with whatever the API sends: the aggregate numbers are always there (private
+profiles too), and a public profile's `recent_matches` add to them when present. Nothing is refused for having few
+matches: a thin history is discounted (the score is scaled between half and full as the matches behind it go from 0 to
+50) and the confidence says how much stands behind it. A profile with no ratings or stats at all still gets a score, the
+highest one possible without enough data, and a note saying so.
 
-**Performance** (`src/main/assess.ts`): how far above average the player is. It combines the `leetify_rating` of the
-newest 30 `recent_matches` (their average, and the share of strong matches), the profile's `rating.aim`, and its
-`rating.clutch`. Each becomes a 0 to 1 signal (match rating 50%, aim 35%, clutch 15%), and the combined score picks
-the class. A class also needs the signals to agree: one strong number alone never flags a player, and Very high needs
-both a very high match rating and a high aim. Fewer than 10 scored matches, a private profile or missing ratings give
-"Not enough data". The cut-offs are in `THRESHOLDS`.
+**Performance** (`src/main/assess.ts`): how far above average the player is. It combines three signals: the Leetify
+rating (the average of the newest 30 matches and the share of strong ones when the profile is public, else the overall
+`ranks.leetify`), the aim rating (`rating.aim`) and the clutch rating (`rating.clutch`). A missing signal is left out
+and the others re-weighted. The combined score picks the class, and the signals have to agree: one strong number alone
+never flags a player, and Very high needs both a very high Leetify rating and a high aim. The cut-offs are in
+`THRESHOLDS`.
 
 **Reputation** (`src/main/reputation.ts`): how implausible the numbers look for the player's rank, as a 0 to 100 score
-where 100 means nothing unusual. It looks at preaim, reaction time, accuracy, opening duels and counter-strafing
-(judged against the player's Premier rating), at stats that contradict each other (a very high aim rating with low
-positioning and utility), and at the recent matches over time (a sudden step up, an unnaturally steady reaction time,
-much better results outside FACEIT). The signals are grouped into families and capped, so no single family can condemn
-a player alone and the worst tiers need at least two. A ban on record decides everything. The cut-offs are in
+where 100 means nothing unusual. Three families of signals: mechanics (crosshair placement, time to damage, head and spray
+accuracy, opening duels, counter-strafing, judged against the player's Premier rating), coherence (stats that contradict
+each other, such as a very high aim rating with low positioning and utility) and, for a public profile, trajectory (a
+sudden step up in the newest matches, a time to damage that never varies, results much better outside FACEIT). The
+signals are capped per family, so no single family can condemn a player alone and the worst tiers need two. A ban on
+record decides everything. TRUSTED needs enough data behind it, so a thin history tops out at 84. The cut-offs are in
 `REPUTATION`, and they are placeholders, not checked against known cheaters.
 
-What this does and does not tell you: Top-rank players, pros and smurfs score high on performance, and public
+What this does and does not tell you: top-rank players, pros and smurfs score high on performance (a Premier 25,500
+player with a Leetify rating of 6.55 and aim 94 is Very high on performance and 100/100 on reputation), and public
 aggregates can't see a careful cheater. Nothing here looks at demos. Treat a flag as "worth a closer look", not as an
 accusation.
 
-Units: Leetify's website shows match ratings and clutch like "+5.32", and the API may send them as fractions
-(0.0532) or in the website's units; the docs don't make this obvious. The code reads the matches' own size to tell
-which (website-sized values mean website units; fractions never exceed 1). Percent-style stats (headshot and spray
-accuracy, counter-strafing, opening duels) are decided one by one, so a mix of styles is read correctly, and reaction
-time is told apart as milliseconds or seconds. Tests cover these. It was written without calling the live API, and the
-field names come from a third-party client of it, so run the probe once to see which fields exist and what you get; it
-also shows the numbers next to what the app computes, for tuning `THRESHOLDS` and `REPUTATION`:
+Units are the API's, and Leetify's own numbers are not rescaled or renamed on screen, as Leetify's developer guidelines
+ask: the ratings have no units, percentages are 0 to 100, crosshair placement is in degrees, time to damage in
+milliseconds. What this app computes is labelled as its own: the performance and reputation scores, the LOW / MEDIUM /
+HIGH levels, and the match summary (the average match rating is shown in the units Leetify's website uses). The card links back with "View on
+Leetify" (desktop list) and "Data Provided by Leetify" (footers).
+
+The aggregate field names and units were checked against real responses. The per-match fields of `recent_matches` were
+not (they come from a third-party client), so `src/main/matches.ts` reads them defensively (fractions or website units,
+milliseconds or seconds) and everything that uses them has a fallback without. To see what the API sends for a player,
+next to what the app computes (and to tune `THRESHOLDS` and `REPUTATION`):
 
 ```bash
 LEETIFY_API_KEY=... npm run leetify:probe -- 76561198000000000 76561198000000001 --raw

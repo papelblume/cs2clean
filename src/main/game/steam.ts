@@ -8,7 +8,7 @@
 import type { MatchState, RosterPlayer } from "../../shared/types";
 import type { CoplayResult } from "../steam/coplay";
 import type { GameState } from "../steam/gsi";
-import { expectedOthers, pickFriends, pickMatchPlayers } from "../steam/pick";
+import { pickFriends, pickMatchPlayers } from "../steam/pick";
 import { GameSource } from "./source";
 
 export interface SteamSourceDeps {
@@ -124,7 +124,8 @@ export class SteamSource extends GameSource {
   private nextDelay(): number {
     const fast = this.deps.fastMs ?? 8_000, slow = this.deps.slowMs ?? 60_000;
     if (!this.inMap) return slow;
-    const complete = this.players.length >= expectedOthers(this.game?.mode);
+    // Cap at 10 players total (9 others + local).
+    const complete = this.players.length >= 9;
     if (!this.gsiLive) return 20_000;
     return complete ? slow : fast;
   }
@@ -142,26 +143,36 @@ export class SteamSource extends GameSource {
         now: Math.floor(this.now / 1000),
         localSteamId: local,
         matchStart: this.matchStart != null ? Math.floor(this.matchStart / 1000) : null,
-        expectedOthers: expectedOthers(this.game?.mode),
+        expectedOthers: 9, // cap at 10 total players
       });
       if (this.inMap) {
-        // Without the game's own map report, a group starting well after the previous one is a new match.
-        const groupStart = Math.min(...picked.players.map((e) => e.time));
-        if (!this.gsiLive && this.groupStart != null && groupStart - this.groupStart > 600) this.players = [];
+        // Detect a new match group: significant time gap from the previous group, or all current players
+        // have disappeared from the coplay list (a new server on the same map).
+        const groupStart = picked.players.length > 0 ? Math.min(...picked.players.map((e) => e.time)) : 0;
+        if (picked.players.length > 0 && this.groupStart != null && groupStart - this.groupStart > 60) {
+          // New match: time gap indicates a fresh game session.
+          this.players = [];
+        } else if (picked.players.length > 0 && this.players.length > 0) {
+          // Check if all current players have left (no overlap in Steam IDs).
+          const currentIds = new Set(picked.players.map((e) => e.steamId));
+          const allGone = this.players.every((p) => !p.steamId || !currentIds.has(p.steamId));
+          if (allGone) this.players = [];
+        }
         if (picked.players.length) this.groupStart = groupStart;
         // Players stay for the whole match once seen, so a later scan can't drop one.
         const byId = new Map(this.players.map((p) => [p.steamId, p]));
         for (const e of picked.players)
           byId.set(e.steamId, { slot: 0, name: e.name ?? byId.get(e.steamId)?.name ?? "Unknown player", steamId: e.steamId, side: null, isLocal: false });
         // Steam leaves friends out of its players list: top up a short list with friends in this match.
-        const expected = expectedOthers(this.game?.mode);
+        // Cap at 10 total players (9 others + local).
+        const maxOthers = 9;
         const friends = pickFriends(res.friends ?? [], {
           map: this.game?.map ?? null, localPresence: res.localPresence,
-          exclude: new Set([...byId.keys(), local].filter((x): x is string => !!x)), max: expected - byId.size,
+          exclude: new Set([...byId.keys(), local].filter((x): x is string => !!x)), max: maxOthers - byId.size,
         });
         for (const f of friends)
           byId.set(f.steamId, { slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false });
-        this.players = [...byId.values()].slice(0, expected + 2).map((p, i) => ({ ...p, slot: i + 1 }));
+        this.players = [...byId.values()].slice(0, maxOthers).map((p, i) => ({ ...p, slot: i + 1 }));
       }
       // Players found but CS2 never sent game state: it was most likely started before the cfg existed.
       const noGsi = this.gsiAt === 0 && this.players.length > 0

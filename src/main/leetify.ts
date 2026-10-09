@@ -11,24 +11,23 @@ import { assessReputation, toEvidenceClass, toPlayerReputation, type Reputation 
 
 export const LEETIFY_BASE = "https://api-public.cs-prod.leetify.com";
 
-/** The fields of a /v3/profile response that the app reads. Everything is optional: the API's shape isn't ours. */
+/**
+ * The fields of a /v3/profile response that the app reads. Everything is optional: the API's shape isn't ours.
+ * The aggregates (ranks, rating, stats, bans) are always sent, private profiles included, and their units are
+ * checked against real responses: the ratings have none, percentages are 0-100, preaim is degrees, reaction time
+ * is milliseconds, winrate is a fraction. `recent_matches` (up to 100 per-match entries) comes only with a public
+ * profile, and its field names and units are NOT verified against live responses (they come from a third-party
+ * client), so main/matches.ts reads them defensively and everything that uses them has a fallback without.
+ */
 export interface LeetifyRecentMatch {
-  id?: string;
   finished_at?: string | null;
   map_name?: string | null;
   data_source?: string | null;
   outcome?: string | null;
   /** The player's Leetify rating in that match. */
   leetify_rating?: number | null;
-  /** Rank at that match and its kind (rank_type tells Premier from other ranks). */
-  rank?: number | null;
-  rank_type?: number | null;
-  /** [own team's rounds, other team's rounds]. */
-  score?: number[] | null;
-  /** Per-match mechanics. Preaim is degrees of crosshair error, reaction time is milliseconds. */
   preaim?: number | null;
   reaction_time_ms?: number | null;
-  accuracy_enemy_spotted?: number | null;
   accuracy_head?: number | null;
   spray_accuracy?: number | null;
 }
@@ -39,7 +38,6 @@ export interface LeetifyBan {
   banned_since?: string | null;
 }
 
-/** Lifetime stats block. Percent-like fields may be fractions or percentages; reputation.ts normalizes. */
 export interface LeetifyStats {
   accuracy_enemy_spotted?: number | null;
   accuracy_head?: number | null;
@@ -67,7 +65,7 @@ export interface LeetifyStats {
 export interface LeetifyProfile {
   steam64_id?: string;
   name?: string | null;
-  /** "public" or "private"; recent_matches is empty for private profiles. */
+  /** "public" or "private". A private profile still carries the aggregate ratings and stats below. */
   privacy_mode?: string | null;
   total_matches?: number | null;
   winrate?: number | null;
@@ -75,8 +73,8 @@ export interface LeetifyProfile {
   bans?: LeetifyBan[] | null;
   ranks?: { leetify?: number | null; premier?: number | null; faceit?: number | null; faceit_elo?: number | null } | null;
   rating?: {
-    aim?: number | null; clutch?: number | null;
-    positioning?: number | null; utility?: number | null; opening?: number | null;
+    aim?: number | null; positioning?: number | null; utility?: number | null;
+    clutch?: number | null; opening?: number | null; ct_leetify?: number | null; t_leetify?: number | null;
   } | null;
   stats?: LeetifyStats | null;
   recent_matches?: LeetifyRecentMatch[] | null;
@@ -187,9 +185,8 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
       const r = assessReputation(profile);
       o.onReach?.(true);
       return {
-        steamId, classification: combineClass(a.classification, r), matchesAnalyzed: Math.max(a.matchesAnalyzed, r.matchesAnalyzed),
+        steamId, classification: combineClass(a.classification, r), totalMatches: Math.max(a.totalMatches, r.totalMatches),
         name: a.name, detail: a.detail,
-        // A ban is the one finding that can stand without a class from assess.ts (e.g. a private profile), so it is the note.
         note: r.tier === "BANNED" ? r.reasons[0] ?? a.note : a.note,
         reputation: toPlayerReputation(r),
       };
@@ -198,11 +195,13 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
       o.onReach?.(e.kind !== "network" && e.kind !== "timeout");
       if (e.kind === "invalid-key") {
         fatal = e;
-        return { steamId, classification: null, matchesAnalyzed: 0, note: e.message, transient: true };
+        return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true };
       }
       if (e.kind === "not-found")
-        return { steamId, classification: "INSUFFICIENT_DATA", matchesAnalyzed: 0, note: "Not on Leetify, or the profile isn't public" };
-      return { steamId, classification: null, matchesAnalyzed: 0, note: e.message, transient: true, retryAfterMs: e.retryAfterMs ?? undefined };
+        return { steamId, classification: "INSUFFICIENT_DATA", totalMatches: 0, note: "Not on Leetify, or the profile isn't public" };
+      if (e.kind === "rate-limited")
+        return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true, retryAfterMs: e.retryAfterMs ?? undefined };
+      return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true, retryAfterMs: e.retryAfterMs ?? undefined };
     }
   };
 

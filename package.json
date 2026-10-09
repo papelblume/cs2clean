@@ -19,7 +19,7 @@
     "check:package": "electron-builder --linux dir --x64 && node tools/check-package.mjs release/linux-unpacked/resources/app.asar",
     "dev:ui": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "SKIP_SCRAPER=1 vitest run"
   },
   "overwolf": {
     "packages": [
