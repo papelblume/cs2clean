@@ -20,6 +20,7 @@ const bridge: Bridge = {
   toggleOverlay: () => ipcRenderer.invoke("overlay:toggle"),
   toggleDetail: () => ipcRenderer.invoke("overlay:detail"),
   cyclePlayer: () => ipcRenderer.invoke("overlay:cycle"),
+  previousPlayer: () => ipcRenderer.invoke("overlay:previous"),
   setSiren: (on) => ipcRenderer.invoke("siren:set", on),
   testSiren: () => ipcRenderer.invoke("siren:test"),
   openPlayer: (steamId) => ipcRenderer.invoke("player:open", steamId),

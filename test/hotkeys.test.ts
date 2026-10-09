@@ -4,7 +4,7 @@ import { cleanHotkeys, duplicateHotkey, hotkeyFromEvent, hotkeyProblem } from ".
 const ev = (code: string, mods: Partial<{ ctrlKey: boolean; altKey: boolean; shiftKey: boolean }> = {}) =>
   ({ code, ctrlKey: false, altKey: false, shiftKey: false, ...mods });
 
-const defaults = { lobby: "Shift+F2", detail: "F7", cycle: "F6" };
+const defaults = { lobby: "Shift+F2", detail: "F7", cycle: "F6", previous: "Shift+F6" };
 
 describe("hotkeys", () => {
   it("turns key presses into accelerators", () => {
@@ -29,15 +29,18 @@ describe("hotkeys", () => {
   });
 
   it("knows the cycle hotkey, and settings saved before it existed keep working", () => {
-    expect(cleanHotkeys({ lobby: "F8", detail: "F9" })).toEqual({ lobby: "F8", detail: "F9", cycle: "F6" }); // old file: no cycle
+    expect(cleanHotkeys({ lobby: "F8", detail: "F9" })).toEqual({ lobby: "F8", detail: "F9", cycle: "F6", previous: "Shift+F6" }); // old file
     expect(cleanHotkeys({ lobby: "F8", detail: "F9", cycle: "Ctrl+Alt+K" }).cycle).toBe("Ctrl+Alt+K");
     expect(cleanHotkeys({ lobby: "F8", detail: "F9", cycle: "F8" }).cycle).toBe("F6");   // taken by another hotkey
     expect(cleanHotkeys({ lobby: "F6" })).toEqual(defaults);                              // default cycle would clash: all defaults
+    expect(cleanHotkeys({ lobby: "Shift+F6" })).toEqual(defaults);                              // so would the default previous
+    expect(cleanHotkeys({ lobby: "F8", detail: "F9", cycle: "F10", previous: "F11" })).toEqual({ lobby: "F8", detail: "F9", cycle: "F10", previous: "F11" });
+    expect(cleanHotkeys({ lobby: "F8", detail: "F9", cycle: "F10", previous: "F10" }).previous).toBe("Shift+F6"); // taken by cycle
   });
 
   it("finds a key used twice", () => {
-    expect(duplicateHotkey({ lobby: "F1", detail: "F2", cycle: "F3" })).toBeNull();
-    expect(duplicateHotkey({ lobby: "F1", detail: "F2", cycle: "F1" })).toBe("F1");
-    expect(duplicateHotkey({ lobby: "F1", detail: "F2", cycle: "F2" })).toBe("F2");
+    expect(duplicateHotkey({ lobby: "F1", detail: "F2", cycle: "F3", previous: "F4" })).toBeNull();
+    expect(duplicateHotkey({ lobby: "F1", detail: "F2", cycle: "F1", previous: "F4" })).toBe("F1");
+    expect(duplicateHotkey({ lobby: "F1", detail: "F2", cycle: "F3", previous: "F2" })).toBe("F2");
   });
 });

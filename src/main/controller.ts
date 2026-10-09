@@ -3,7 +3,7 @@
 
 import { EventEmitter } from "node:events";
 import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyProblem, type HotkeyName, type Hotkeys } from "../shared/hotkeys";
-import { cycleOrder } from "../shared/lobby-order";
+import { listOrder, visibleOrder } from "../shared/lobby-order";
 import type { AppState, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby } from "./leetify";
@@ -128,13 +128,13 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       h = { ...DEFAULT_HOTKEYS };
       err = this.deps.applyHotkeys(h) ? err : `${err} Using the default hotkeys instead.`;
     }
-    this.state.overlay = { ...this.state.overlay, hotkey: h.lobby, detailHotkey: h.detail, cycleHotkey: h.cycle };
+    this.state.overlay = { ...this.state.overlay, hotkey: h.lobby, detailHotkey: h.detail, cycleHotkey: h.cycle, previousHotkey: h.previous };
     if (err) this.state.notice = err;
   }
 
   private get hotkeys(): Hotkeys {
     const o = this.state.overlay;
-    return { lobby: o.hotkey, detail: o.detailHotkey, cycle: o.cycleHotkey };
+    return { lobby: o.hotkey, detail: o.detailHotkey, cycle: o.cycleHotkey, previous: o.previousHotkey };
   }
 
   /** Changes one overlay hotkey; returns false (with a notice) when it can't be used. */
@@ -159,7 +159,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     }
     this.settings = { ...this.settings, hotkeys: next };
     this.deps.store.save(this.settings);
-    this.update({ notice: null, overlay: { ...this.state.overlay, hotkey: next.lobby, detailHotkey: next.detail, cycleHotkey: next.cycle } });
+    this.update({ notice: null, overlay: { ...this.state.overlay, hotkey: next.lobby, detailHotkey: next.detail, cycleHotkey: next.cycle, previousHotkey: next.previous } });
     return true;
   }
 
@@ -183,15 +183,29 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   }
 
   /**
-   * Cycle hotkey (F6): the card of the first player (CT, then T, yourself left out), then the next one on each
-   * press, and the overlay hides again after the last. Shows every player, flagged or not.
+   * Cycle hotkey (F6): the card of the first player in the list (CT, then T), then the next one on each press,
+   * and the overlay hides again after the last. Every player, flagged or not, yourself included.
    */
   cyclePlayer(): void {
+    this.stepPlayer(1);
+  }
+
+  /**
+   * Previous hotkey (F5): the same walk backwards. Starts at the last player, then each press goes one back,
+   * and the overlay hides again before the first.
+   */
+  previousPlayer(): void {
+    this.stepPlayer(-1);
+  }
+
+  private stepPlayer(dir: 1 | -1): void {
     const o = this.state.overlay;
-    const order = cycleOrder(this.state.lobby.rows);
-    const at = o.visible && o.view === "player" && o.focusSlot !== null ? order.findIndex((r) => r.slot === o.focusSlot) : -1;
-    const next = at + 1; // -1 when the cycle isn't running (or its player left): start at the first player
-    if (o.visible && o.view === "player" && (next >= order.length)) {
+    const order = visibleOrder(this.state.lobby.rows);
+    const running = o.visible && o.view === "player";
+    // Where the walk is; -1 when it isn't running (or its player left), so it starts at the first or last player.
+    const at = running && o.focusSlot !== null ? order.findIndex((r) => r.slot === o.focusSlot) : -1;
+    const next = at < 0 ? (dir === 1 ? 0 : order.length - 1) : at + dir;
+    if (running && (next < 0 || next >= order.length) && (at >= 0 || order.length === 0)) {
       this.update({ overlay: { ...o, visible: false, focusSlot: null } });
       return;
     }
@@ -234,8 +248,12 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     } else if (inMatch && m.phase === "live" && prev?.phase !== "live") {
       // The match started: out of the way until a hotkey brings it back.
       this.state.overlay = { ...o, visible: false };
+    } else if (!inMatch && prev) {
+      // Game closed: hide the overlay if it's still open.
+      this.state.overlay = { ...o, visible: false };
     }
     this.lobby.setMatch(inMatch ? m : null);
+    this.lobby.setLocalSteamId(m.localSteamId);
   }
 
   /** Siren once per HIGH player per match (the overlay plays it when alert.seq changes). */

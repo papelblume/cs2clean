@@ -33,31 +33,67 @@ export interface MatchState {
   players: RosterPlayer[];
 }
 
-export type RowStatus = "loading" | "ok" | "no-steam-id" | "error";
+/** "skipped": beyond the first players of a big lobby, which are the only ones looked up (see main/lobby.ts). */
+export type RowStatus = "loading" | "ok" | "no-steam-id" | "error" | "skipped";
 
 export type AxisLevel = "LOW" | "MEDIUM" | "HIGH";
 
-/** The overlay's extended card (F6 and F7): the performance numbers of any player with enough recent matches. */
-export interface PlayerDetail {
-  /** Combined performance score, 0-100. How far above average, not a probability of anything. */
-  score: number;
-  /** Average Leetify rating of the recent matches, in the units Leetify's website shows (+5.0 is a strong match). */
+/**
+ * Leetify's own numbers for a player, exactly as the Public API sends them (never rescaled or renamed, as
+ * Leetify's developer guidelines ask), or null where the API sent none. The units are the API's: the ratings
+ * have none, percentages are 0-100, preaim is degrees, reaction time is milliseconds.
+ */
+export interface PlayerMetrics {
+  /** ranks.leetify: the overall Leetify rating. */
+  leetify: number | null;
+  aim: number | null;
+  positioning: number | null;
+  utility: number | null;
+  clutch: number | null;
+  opening: number | null;
+  /** stats.preaim, shown as "Crosshair placement". */
+  preaim: number | null;
+  /** stats.reaction_time_ms, shown as "Time to damage". */
+  reactionMs: number | null;
+  headAccuracy: number | null;
+  sprayAccuracy: number | null;
+  spottedAccuracy: number | null;
+  counterStrafing: number | null;
+  ctOpeningDuel: number | null;
+  tOpeningDuel: number | null;
+  premier: number | null;
+  /** The matches the profile covers. */
+  totalMatches: number | null;
+  /** Win rate (0-1 fraction, e.g. 0.55 = 55%). */
+  winrate: number | null;
+}
+
+/** What the newest matches say, from the per-match data of a public profile. Ours, computed from Leetify's numbers. */
+export interface MatchSummary {
+  /** Matches that went into it (the newest 30 at most). */
+  count: number;
+  /** Their average Leetify rating, in the units Leetify's website shows (+5.0 is a strong match). */
   avgRating: number;
-  /** Share (0-1) of the recent matches with a strong rating. */
+  /** Share (0-1) of them with a strong rating. */
   strongShare: number;
-  /** Leetify aim rating, 0-100. */
-  aim: number;
-  /** Leetify clutch rating, website units. */
-  clutch: number;
-  levels: { rating: AxisLevel; aim: AxisLevel; clutch: AxisLevel };
-  /** Latest matches, newest first. */
+  /** The newest few, newest first. */
   recent: { map: string | null; rating: number; playedAt: string | null }[];
+}
+
+/** The overlay's extended card (F6 and F7): any player with some rating data. */
+export interface PlayerDetail {
+  /** Combined performance score, 0-100: how far above average the Leetify rating, aim and clutch are. Ours, not Leetify's. */
+  score: number;
+  levels: { rating: AxisLevel; aim: AxisLevel; clutch: AxisLevel };
+  metrics: PlayerMetrics;
+  /** From the per-match data; null when the API sent none (a private profile, or no matches yet). */
+  matches: MatchSummary | null;
 }
 
 export interface LobbyRow extends RosterPlayer {
   classification: EvidenceClass | null;
-  /** Recent Leetify matches the class is based on. */
-  matchesAnalyzed: number;
+  /** The Leetify matches the profile covers (0 when unknown). */
+  totalMatches: number;
   status: RowStatus;
   detail: PlayerDetail | null;
   /** The 0-100 reputation score, tier and reasons (main/reputation.ts); null when there was no lookup. */
@@ -94,8 +130,10 @@ export interface AppState {
     hotkey: string;
     /** Shows the extended card of the flagged players. */
     detailHotkey: string;
-    /** Steps through the players one card at a time, flagged or not. */
+    /** Steps forward through the players one card at a time, flagged or not. */
     cycleHotkey: string;
+    /** Steps back through the players the same way. */
+    previousHotkey: string;
     /** "overwolf": drawn in the game by Overwolf; "window": a see-through, click-through window on top of
      *  the game (needs CS2 in "Fullscreen Windowed"). */
     mode: "overwolf" | "window" | "none";
@@ -122,7 +160,7 @@ export interface Bridge {
   setApiKey(key: string): Promise<boolean>;
   clearApiKey(): Promise<void>;
   /** Changes one overlay hotkey (an Electron accelerator such as "Shift+F2"); false if it can't be used. */
-  setHotkey(which: "lobby" | "detail" | "cycle", hotkey: string): Promise<boolean>;
+  setHotkey(which: "lobby" | "detail" | "cycle" | "previous", hotkey: string): Promise<boolean>;
   resetHotkeys(): Promise<boolean>;
   setStartWithWindows(on: boolean): Promise<void>;
   /** Turns the hotkeys off while Settings waits for a key press, so the press reaches the page. */
@@ -131,7 +169,11 @@ export interface Bridge {
   toggleDetail(): Promise<void>;
   /** Shows the next player's card; after the last player, hides the overlay. */
   cyclePlayer(): Promise<void>;
+  /** Shows the previous player's card (the last one to start with); before the first player, hides the overlay. */
+  previousPlayer(): Promise<void>;
   setSiren(on: boolean): Promise<void>;
   testSiren(): Promise<void>;
   openPlayer(steamId: string): Promise<void>;
+  /** Opens leetify.com (the "Data Provided by Leetify" link). */
+  openLeetify(): Promise<void>;
 }

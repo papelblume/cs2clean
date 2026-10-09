@@ -1,8 +1,11 @@
 // Overlay hotkeys, written as Electron accelerators ("Shift+F2", "Ctrl+Alt+K"). Used by the Settings page
 // (to turn a key press into a hotkey) and by the main process (to check one before registering it).
 
-/** lobby: the player list; detail: the cards of flagged players; cycle: one card at a time for every player. */
-export const DEFAULT_HOTKEYS = { lobby: "Shift+F2", detail: "F7", cycle: "F6" } as const;
+/**
+ * lobby: the player list; detail: the cards of flagged players; cycle: the next player's card, one at a time for
+ * every player; previous: the previous player's card.
+ */
+export const DEFAULT_HOTKEYS = { lobby: "Shift+F2", detail: "F7", cycle: "F6", previous: "Shift+F6" } as const;
 
 export type HotkeyName = keyof typeof DEFAULT_HOTKEYS;
 export type Hotkeys = Record<HotkeyName, string>;

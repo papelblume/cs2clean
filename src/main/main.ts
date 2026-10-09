@@ -33,6 +33,7 @@ import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
 const HOTKEY = { label: DEFAULT_HOTKEYS.lobby, code: "F2", accelerator: DEFAULT_HOTKEYS.lobby };
 const DETAIL_HOTKEY = { label: DEFAULT_HOTKEYS.detail, code: "F7", accelerator: DEFAULT_HOTKEYS.detail };
 const CYCLE_HOTKEY = { label: DEFAULT_HOTKEYS.cycle, code: "F6", accelerator: DEFAULT_HOTKEYS.cycle };
+const PREVIOUS_HOTKEY = { label: DEFAULT_HOTKEYS.previous, code: "F5", accelerator: DEFAULT_HOTKEYS.previous };
 
 const root = join(__dirname, "..", "..");
 const rendererDir = join(root, "dist", "renderer");
@@ -193,7 +194,7 @@ const OVERLAY_SIZE = { width: 380, height: 640 };
 
 function setupOverlay(): AppState["overlay"] {
   const base = {
-    hotkey: HOTKEY.label, detailHotkey: DETAIL_HOTKEY.label, cycleHotkey: CYCLE_HOTKEY.label,
+    hotkey: HOTKEY.label, detailHotkey: DETAIL_HOTKEY.label, cycleHotkey: CYCLE_HOTKEY.label, previousHotkey: PREVIOUS_HOTKEY.label,
     visible: false, view: "lobby" as const, focusSlot: null, siren: true,
   };
   const packages = overwolfPackages() as any;
@@ -213,11 +214,12 @@ function setupOverlay(): AppState["overlay"] {
 /** Registers the overlay window's hotkeys system-wide; returns why not when one is taken. */
 function applyHotkeys(h: Hotkeys): string | null {
   globalShortcut.unregisterAll();
-  const keys = [h.lobby, h.detail, h.cycle];
+  const keys = [h.lobby, h.detail, h.cycle, h.previous];
   const ok = [
     globalShortcut.register(h.lobby, () => controller?.toggleOverlay()),
     globalShortcut.register(h.detail, () => controller?.toggleDetail()),
     globalShortcut.register(h.cycle, () => controller?.cyclePlayer()),
+    globalShortcut.register(h.previous, () => controller?.previousPlayer()),
   ];
   const taken = keys.filter((_, i) => !ok[i]);
   if (taken.length === 0) return null;
@@ -260,6 +262,7 @@ function startOverwolfOverlay(overlayApi: any) {
     ["toggle-lobby", HOTKEY, () => controller?.toggleOverlay()],
     ["toggle-detail", DETAIL_HOTKEY, () => controller?.toggleDetail()],
     ["cycle-player", CYCLE_HOTKEY, () => controller?.cyclePlayer()],
+    ["previous-player", PREVIOUS_HOTKEY, () => controller?.previousPlayer()],
   ] as const)
     overlayApi.hotkeys.register(
       { name, keyCode: hk.code, modifiers: { shift: hk.accelerator.startsWith("Shift+") }, passthrough: false },
@@ -343,7 +346,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle("leetify:set-key", (_e, key: unknown) => (typeof key === "string" ? controller.setApiKey(key) : false));
     ipcMain.handle("leetify:clear-key", () => controller.clearApiKey());
     ipcMain.handle("hotkey:set", (_e, which: unknown, hotkey: unknown) =>
-      (which === "lobby" || which === "detail" || which === "cycle") && typeof hotkey === "string" ? controller.setHotkey(which, hotkey) : false);
+      (which === "lobby" || which === "detail" || which === "cycle" || which === "previous") && typeof hotkey === "string" ? controller.setHotkey(which, hotkey) : false);
     ipcMain.handle("hotkey:reset", () => controller.resetHotkeys());
     ipcMain.handle("startup:set", (_e, on: unknown) => controller.setStartWithWindows(on === true));
     ipcMain.handle("hotkey:pause", (_e, paused: unknown) => {
@@ -351,12 +354,13 @@ if (!app.requestSingleInstanceLock()) {
       if (paused === true) globalShortcut.unregisterAll();
       else {
         const o = controller.state.overlay;
-        applyHotkeys({ lobby: o.hotkey, detail: o.detailHotkey, cycle: o.cycleHotkey });
+        applyHotkeys({ lobby: o.hotkey, detail: o.detailHotkey, cycle: o.cycleHotkey, previous: o.previousHotkey });
       }
     });
     ipcMain.handle("overlay:toggle", () => controller.toggleOverlay());
     ipcMain.handle("overlay:detail", () => controller.toggleDetail());
     ipcMain.handle("overlay:cycle", () => controller.cyclePlayer());
+    ipcMain.handle("overlay:previous", () => controller.previousPlayer());
     ipcMain.handle("siren:set", (_e, on: unknown) => controller.setSiren(on === true));
     ipcMain.handle("siren:test", () => controller.testSiren());
     ipcMain.handle("player:open", (_e, steamId: unknown) => {

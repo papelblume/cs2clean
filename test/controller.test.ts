@@ -54,7 +54,7 @@ function setup(settings: Settings = {}, source: GameSource = new ReplaySource(LI
     version: "test",
     source,
     store: { load: () => saved, save: (x) => (saved = x) },
-    overlay: { hotkey: "Shift+F2", detailHotkey: "F7", cycleHotkey: "F6", mode: "window", visible: false, view: "lobby", focusSlot: null, siren: true },
+    overlay: { hotkey: "Shift+F2", detailHotkey: "F7", cycleHotkey: "F6", previousHotkey: "Shift+F6", mode: "window", visible: false, view: "lobby", focusSlot: null, siren: true },
     fetchImpl: server.fetchImpl,
     lobby: { debounceMs: 5 },
     ...extra,
@@ -217,18 +217,18 @@ describe("Controller", () => {
   it("changes the overlay hotkeys, and keeps the old ones when a new one can't be used", () => {
     const applied: string[] = [];
     const taken = new Set(["Ctrl+F9"]);
-    const applyHotkeys = (h: { lobby: string; detail: string; cycle: string }) => {
-      applied.push(`${h.lobby} ${h.detail} ${h.cycle}`);
-      return [h.lobby, h.detail, h.cycle].some((k) => taken.has(k)) ? "Ctrl+F9 is already used by another program." : null;
+    const applyHotkeys = (h: { lobby: string; detail: string; cycle: string; previous: string }) => {
+      applied.push(`${h.lobby} ${h.detail} ${h.cycle} ${h.previous}`);
+      return [h.lobby, h.detail, h.cycle, h.previous].some((k) => taken.has(k)) ? "Ctrl+F9 is already used by another program." : null;
     };
     const { c, saved } = setup({}, undefined, { applyHotkeys });
     c.start();
-    expect(applied).toEqual(["Shift+F2 F7 F6"]);
+    expect(applied).toEqual(["Shift+F2 F7 F6 Shift+F6"]);
     expect(c.state.hotkeysEditable).toBe(true);
 
     expect(c.setHotkey("lobby", "F8")).toBe(true);
     expect(c.state.overlay.hotkey).toBe("F8");
-    expect(saved().hotkeys).toEqual({ lobby: "F8", detail: "F7", cycle: "F6" });
+    expect(saved().hotkeys).toEqual({ lobby: "F8", detail: "F7", cycle: "F6", previous: "Shift+F6" });
 
     // A plain letter would stop the user typing it anywhere.
     expect(c.setHotkey("detail", "K")).toBe(false);
@@ -237,7 +237,7 @@ describe("Controller", () => {
     expect(c.state.notice).toMatch(/other overlay hotkey/);
     expect(c.setHotkey("detail", "Ctrl+F9")).toBe(false);
     expect(c.state.notice).toMatch(/another program/);
-    expect(applied.at(-1)).toBe("F8 F7 F6"); // the old keys are registered again
+    expect(applied.at(-1)).toBe("F8 F7 F6 Shift+F6"); // the old keys are registered again
     expect(c.state.overlay.detailHotkey).toBe("F7");
 
     expect(c.setHotkey("detail", "Ctrl+Alt+K")).toBe(true);
@@ -249,20 +249,23 @@ describe("Controller", () => {
     expect(c.state.overlay.cycleHotkey).toBe("F6");
     expect(c.setHotkey("cycle", "Insert")).toBe(true);
     expect(c.state.overlay.cycleHotkey).toBe("Insert");
-    expect(saved().hotkeys).toEqual({ lobby: "F8", detail: "Ctrl+Alt+K", cycle: "Insert" });
+    expect(c.setHotkey("previous", "Insert")).toBe(false);        // the next-player key
+    expect(c.setHotkey("previous", "Delete")).toBe(true);
+    expect(c.state.overlay.previousHotkey).toBe("Delete");
+    expect(saved().hotkeys).toEqual({ lobby: "F8", detail: "Ctrl+Alt+K", cycle: "Insert", previous: "Delete" });
 
     expect(c.resetHotkeys()).toBe(true);
-    expect(c.state.overlay).toMatchObject({ hotkey: "Shift+F2", detailHotkey: "F7", cycleHotkey: "F6" });
+    expect(c.state.overlay).toMatchObject({ hotkey: "Shift+F2", detailHotkey: "F7", cycleHotkey: "F6", previousHotkey: "Shift+F6" });
     c.stop();
   });
 
-  it("F6 steps through every player but yourself (CT, then T), and hides after the last", async () => {
+  it("F6 steps through every player, yourself included (CT, then T), and hides after the last", async () => {
     const src = new FakeSource();
     const { c, server } = setup({}, src);
     server.s.profiles[P(3).steamId] = VERY_HIGH(); // one flagged player: F6 doesn't care
     c.start();
     await vi.advanceTimersByTimeAsync(20);
-    // Slots 0 (me, CT), 1 (T), 2 (CT), 3 (side unknown), 4 (T): the cycle goes 2, 1, 4, 3.
+    // Slots 0 (me, CT), 1 (T), 2 (CT), 3 (side unknown), 4 (T): the cycle goes 0, 2, 1, 4, 3.
     src.send({ phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }, { ...P(2), side: "CT" }, P(3), { ...P(4), side: "T" }] });
     await vi.advanceTimersByTimeAsync(900);
     expect(c.state.overlay.visible).toBe(false);
@@ -273,22 +276,83 @@ describe("Controller", () => {
       c.cyclePlayer();
       seen.push(shown());
     }
-    expect(seen).toEqual(["player:2", "player:1", "player:4", "player:3", "hidden", "player:2"]);
+    expect(seen).toEqual(["player:0", "player:2", "player:1", "player:4", "player:3", "hidden"]);
 
     // Other keys switch views, and F6 then starts again from the first player.
     c.toggleOverlay();
     expect(c.state.overlay).toMatchObject({ visible: true, view: "lobby" });
     c.cyclePlayer();
-    expect(shown()).toBe("player:2");
+    expect(shown()).toBe("player:0");
     c.toggleDetail();
     c.cyclePlayer();
-    expect(shown()).toBe("player:2");
+    expect(shown()).toBe("player:0");
 
     // A new match forgets who was shown.
     c.cyclePlayer();
-    expect(shown()).toBe("player:1");
+    expect(shown()).toBe("player:2");
     src.send({ map: "de_nuke", phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }] });
     expect(c.state.overlay.focusSlot).toBeNull();
+    c.stop();
+  });
+
+  it("Shift+F6 walks the same list backwards: the last player first, and it hides before the first", async () => {
+    const src = new FakeSource();
+    const { c } = setup({}, src);
+    c.start();
+    await vi.advanceTimersByTimeAsync(20);
+    // Same lobby as the F6 test: the list is 0 (me, CT), 2 (CT), 1 (T), 4 (T), 3 (side unknown).
+    src.send({ phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }, { ...P(2), side: "CT" }, P(3), { ...P(4), side: "T" }] });
+    await vi.advanceTimersByTimeAsync(900);
+
+    const shown = () => (c.state.overlay.visible ? `${c.state.overlay.view}:${c.state.overlay.focusSlot}` : "hidden");
+    const seen: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      c.previousPlayer();
+      seen.push(shown());
+    }
+    expect(seen).toEqual(["player:3", "player:4", "player:1", "player:2", "player:0", "hidden", "player:3"]);
+
+    // F6 and Shift+F6 move along the same walk.
+    c.previousPlayer();                       // player:4
+    c.cyclePlayer();                          // back to 3
+    expect(shown()).toBe("player:3");
+    c.cyclePlayer();                          // after the last: hides
+    expect(shown()).toBe("hidden");
+    c.cyclePlayer();                          // F6 starts at the first player...
+    expect(shown()).toBe("player:0");
+    c.previousPlayer();                       // ...and Shift+F6 before the first hides
+    expect(shown()).toBe("hidden");
+
+    // Another key switches views, and Shift+F6 then starts again from the last player.
+    c.toggleOverlay();
+    c.previousPlayer();
+    expect(shown()).toBe("player:3");
+    c.stop();
+  });
+
+  it("Shift+F6 with nobody in the lobby shows the overlay once and hides it on the next press", async () => {
+    const src = new FakeSource();
+    const { c } = setup({}, src);
+    c.start();
+    c.previousPlayer();
+    expect(c.state.overlay).toMatchObject({ visible: true, view: "player", focusSlot: null });
+    c.previousPlayer();
+    expect(c.state.overlay.visible).toBe(false);
+    c.stop();
+  });
+
+  it("looks up only the first 10 players of a 12-player lobby", async () => {
+    const src = new FakeSource();
+    const { c, server } = setup({}, src);
+    c.start();
+    await vi.advanceTimersByTimeAsync(20);
+    src.send({ players: Array.from({ length: 12 }, (_, i) => P(i)) });
+    await vi.advanceTimersByTimeAsync(900);
+    expect(server.s.lookups).toHaveLength(10);
+    expect(new Set(server.s.lookups)).toEqual(new Set(Array.from({ length: 10 }, (_, i) => P(i).steamId)));
+    const rows = c.state.lobby.rows;
+    expect(rows.slice(10).map((r) => r.status)).toEqual(["skipped", "skipped"]);
+    expect(rows.slice(0, 10).every((r) => r.classification === "NORMAL")).toBe(true);
     c.stop();
   });
 
