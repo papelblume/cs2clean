@@ -14,7 +14,7 @@ matches, the latest matches).
 The classes are statistics over Leetify's public data, not proof of anything except a ban on record (see
 [How the classes are computed](#how-the-classes-are-computed)). Data Provided by Leetify.
 
-Platforms: Windows (installer or Microsoft Store) and Linux (from source, with native Steam and CS2; see
+Platforms: Windows (installer or portable) and Linux (AppImage or tar.gz from GitHub releases; see
 [Running it on Linux](#running-it-on-linux)).
 
 It runs as a plain Electron app, **without Overwolf**. Nothing in it reads or changes CS2's memory,
@@ -96,19 +96,16 @@ Other options, passed after `electron .`:
 
 ## Running it on Linux
 
-Linux works from source, with native Steam and native CS2. There is no packaged Linux build yet.
+Download the latest AppImage or tar.gz from
+[GitHub releases](https://github.com/cheatscanner/eu/releases). The AppImage is a single executable — make it
+executable (`chmod +x Cheatscanner-*.AppImage`) and run it. The tar.gz extracts to a directory; run the
+`Cheatscanner` binary inside.
 
-Requirements:
+Both need native Steam running and signed in, CS2 in **Fullscreen Windowed** mode, and an X11 session
+(tried on Linux Mint 22.3, Cinnamon; Wayland is untested).
 
-- **Steam**, the native package (not Flatpak or Snap: their sandboxes keep the Steam client out of reach of
-  other processes), running and signed in. The app finds it in `~/.steam/debian-installation` or
-  `~/.local/share/Steam`.
-- **CS2**, native, in one of Steam's libraries (found through `libraryfolders.vdf`), with display mode
-  **Fullscreen Windowed**.
-- **An X11 session.** The overlay window and its global hotkeys have been tried on X11 (Linux Mint 22.3,
-  Cinnamon); Wayland is untested.
-- **Node 22.12 or newer** (`engines` in `package.json`; tested with Node 24). Distro packages are often
-  older, so check `node --version` and use nvm, NodeSource or similar if needed.
+To run from source instead (needs **Node 22.12 or newer**; distro packages are often older, so check
+`node --version` and use nvm, NodeSource or similar if needed):
 
 ```bash
 cd companion
@@ -137,7 +134,7 @@ sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
 
 Settings are kept in `~/.config/Cheatscanner`. The Leetify API key is encrypted with the
 desktop keyring through Electron's `safeStorage`; with no keyring available it is stored as plain text in
-`settings.json`. "Start automatically with Windows" and the installer and Store packages are Windows only.
+`settings.json`. "Start automatically with Windows" is the Windows installer only.
 
 ## Building the installer (Windows PowerShell, one command per line)
 
@@ -147,9 +144,9 @@ npm ci
 npm run dist
 ```
 
-This writes `release\Cheatscanner-Setup-<version>.exe` (the version comes from `package.json`). The installed
-app talks to Leetify's Public API.
-It installs per user (no admin prompt), adds Start menu and desktop shortcuts, and keeps its settings in
+This writes `release\Cheatscanner-Setup-<version>.exe` (NSIS installer) and
+`release\Cheatscanner-<version>-portable.exe` (portable). The installer installs per user (no admin
+prompt), adds Start menu and desktop shortcuts, and keeps its settings in
 `%APPDATA%\Cheatscanner`, the same place `npm start` uses, so a saved API key carries over.
 
 The installer isn't code-signed yet, so Windows SmartScreen shows "Windows protected your PC" the first
@@ -158,31 +155,8 @@ picks one up from `CSC_LINK` / `CSC_KEY_PASSWORD`.
 
 Build on Windows. On Linux or macOS, electron-builder needs Wine for the Windows installer.
 
-## Microsoft Store package
-
-```powershell
-cd companion
-npm ci
-npm run dist:store
-```
-
-This writes `release\Cheatscanner-<version>.appx`, an MSIX-family package with the Store identity from
-Partner Center (`build.appx` in `package.json`). Upload it in Partner Center under the app's submission,
-Packages. Microsoft signs it after certification, so no certificate is needed, and the Store handles updates
-(raise `version` in `package.json` for each new upload). It must be built on Windows 10 or 11. The tile images
-are in `assets/appx`.
-
-### Releases from GitHub
-
-Actions > **companion-release** > Run workflow, with a version such as `0.2.0` (or push a tag
-`companion-v0.2.0`). It builds the installer and the Store package on Windows with that version, attaches both
-to a GitHub release, and submits the package to the Store when the `PARTNER_CENTER_*` secrets exist (see the
-top of `.github/workflows/companion-release.yml`). The first Store submission is made by hand in Partner Center;
-later ones reuse its listing.
-
-Differences from the `.exe` install: "Start automatically with Windows" isn't offered (Store apps can't add
-a plain login item), and Windows may keep the app's settings in a separate place, so the API key has to be
-entered again once.
+The portable `.exe` runs without installation — no shortcuts are created and settings go to
+`%APPDATA%\Cheatscanner` just like the installer.
 
 ## Overwolf (optional)
 
@@ -267,6 +241,5 @@ npm run build
 ```
 
 To offer it on the website's front page, send it to the server with `tools\deploy\push-companion.ps1`
-(see `docs/deploy/hetzner.md`, section 10).
-The app is also in the Microsoft Store (https://apps.microsoft.com/detail/9N3R274VP3GV); the front page links
-there first and offers the installer from the server as a fallback.
+(see `docs/deploy/hetzner.md`, section 10). The front page links to the Windows installer from the server
+and to the Linux AppImage from GitHub releases.
