@@ -18,7 +18,7 @@
     "check:package": "electron-builder --linux dir --x64 && node tools/check-package.mjs release/linux-unpacked/resources/app.asar",
     "dev:ui": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.json",
-    "test": "SKIP_SCRAPER=1 vitest run"
+    "test": "vitest run"
   },
   "overwolf": {
     "packages": [
@@ -37,6 +37,7 @@
     "@types/node": "^24.9.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@ulixee/hero-playground": "^2.0.0-alpha.34",
     "@vitejs/plugin-react": "^5.0.0",
     "electron": "^42.11.8",
     "electron-builder": "^26.15.3",
@@ -47,11 +48,7 @@
     "vitest": "^5.0.2"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
     "koffi": "^2.16.3"
-  },
-  "optionalDependencies": {
-    "@ulixee/hero-playground": "^2.0.0-alpha.34"
   },
   "build": {
     "appId": "eu.cs2clean.companion",
