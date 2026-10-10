@@ -125,6 +125,17 @@ The recording is saved to `%APPDATA%\CS2Clean\recordings`. You can then replay i
 npx electron . --replay=recordings/your-recording.jsonl
 ```
 
+## Creating a release
+
+To create a new release, push a version tag:
+
+```bash
+git tag cs2clean-v0.2.0
+git push origin cs2clean-v0.2.0
+```
+
+Or trigger the **cs2clean-release** workflow manually from the Actions tab and enter a version number.
+
 ## Building the installer (Windows PowerShell)
 
 ```powershell
