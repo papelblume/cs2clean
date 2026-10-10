@@ -14,3 +14,12 @@ export function debug(category: string, ...args: unknown[]): void {
   const ts = new Date().toISOString().slice(11, 19);
   console.log(`[${ts}][${category}]`, ...args);
 }
+
+/**
+ * A problem worth seeing without DEBUG set. Goes to stderr, so a process whose stdout carries a result (the
+ * Hero sidecar's CLI) isn't disturbed.
+ */
+export function warn(category: string, ...args: unknown[]): void {
+  const ts = new Date().toISOString().slice(11, 19);
+  console.warn(`[${ts}][${category}]`, ...args);
+}

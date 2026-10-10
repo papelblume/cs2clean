@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { DEFAULT_HOTKEYS, type Hotkeys } from "../shared/hotkeys";
 import type { AppState } from "../shared/types";
 import { Controller, type Settings, type SettingsStore } from "./controller";
+import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
 import { OverwolfSource, type OverwolfPackages } from "./game/overwolf";
 import { record } from "./game/recorder";
 import { ReplaySource } from "./game/replay";
@@ -327,6 +328,8 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     const source = gameSource();
     if (arg("record")) console.log("recording to", record(source, join(app.getPath("userData"), "recordings")));
+    // The csst.at fallback keeps its log, its Chrome download and (on Mint) a cat shim under the app's data folder.
+    configureHero({ dataDir: app.getPath("userData") });
     controller = new Controller({
       version: app.getVersion(),
       source,
@@ -374,8 +377,11 @@ if (!app.requestSingleInstanceLock()) {
       void shell.openExternal("https://leetify.com/app/developer");
     });
 
+    // The window follows the fallback's status, and a broken one shows up now, not at the first unknown player.
+    onHeroStatus((s) => controller.setFallback(s));
     createDesktopWindow();
     controller.start();
+    void checkHeroRuntime();
   });
 
   app.on("will-quit", () => {

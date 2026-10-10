@@ -86,8 +86,13 @@ Requires **Node 22.12 or newer**:
 git clone https://github.com/EspectroDK/CS2Clean.git
 cd CS2Clean
 npm ci
+npm run hero:install
 npm start
 ```
+
+`npm run hero:install` sets up the csst.at fallback (the Hero sidecar; docs/DESIGN.md explains it). It needs Node 22 itself: the Node that runs it
+if that is 22, otherwise the newest nvm `v22.x`, or the one `CS2CLEAN_NODE22` points at. It installs Hero with that Node
+and copies the Node next to it. Skip it and the app still works; the window then says "csst.at fallback unavailable" and why.
 
 ### Linux requirements
 
@@ -140,12 +145,16 @@ npx electron . --replay=recordings/your-recording.jsonl
 | Overlay not visible in CS2 | Make sure CS2 is in **Fullscreen Windowed** mode, not plain Fullscreen |
 | `chrome-sandbox` error on Linux | Run the `chown`/`chmod` commands above |
 | Leetify rate limits | Get a free API key from leetify.com/app/developer |
+| "csst.at fallback unavailable" | The window gives the reason. Nothing else stops working: only players Leetify has no profile for can't be looked up on csst.at. The full error is in `hero.log` in the app's data folder (`%APPDATA%\CS2Clean` on Windows, `~/.config/CS2Clean` on Linux). From a source checkout the usual fix is `npm run hero:install`. |
+| "Setting up the csst.at fallback: downloading Chrome" | One-time download (a few hundred MB; Chrome is 370 MB on disk) into the app's data folder, the first time a player isn't on Leetify. Lookups carry on meanwhile and the fallback works from the next one after it. |
 
 ## Checks
 
 ```bash
 npm test
 npm run build
+npm run hero:check                                   # the sidecar's selftest, from a source checkout
+npm run hero:check -- release/linux-unpacked/resources/hero   # ...or on a packaged build
 ```
 
 ## Credits

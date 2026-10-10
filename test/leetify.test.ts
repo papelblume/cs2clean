@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LeetifyClient, LeetifyError, lookupLobby } from "../src/main/leetify";
+import { LeetifyClient, LeetifyError, lookupLobby, type LeetifyProfile } from "../src/main/leetify";
+import { HERO_READY, type HeroProblem, type HeroScrape, type HeroStatus } from "../src/main/leetify-hero";
 import { AVERAGE, HIGH } from "./profiles";
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -30,6 +31,18 @@ function fake(answers: Record<string, unknown>, o: { key?: string; delayMs?: num
 }
 
 const ID = (n: number) => String(76561198000000000n + BigInt(n));
+
+/** A stand-in for the csst.at fallback: `found` are the profiles it returns, `status` how the fallback itself fared. */
+function scraper(found: Record<string, LeetifyProfile>, status: HeroStatus = HERO_READY) {
+  const calls: string[][] = [];
+  const scrape = async (ids: string[]): Promise<HeroScrape> => {
+    calls.push(ids);
+    return { profiles: new Map(Object.entries(found).filter(([id]) => ids.includes(id))), status };
+  };
+  return { scrape, calls };
+}
+
+const broken = (problem: HeroProblem, reason: string): HeroStatus => ({ state: "unavailable", problem, reason, detail: null });
 
 describe("LeetifyClient", () => {
   it("asks for /v3/profile with the SteamID64 and sends the key both ways", async () => {
@@ -81,8 +94,8 @@ describe("lookupLobby", () => {
   });
 
   it("treats a player without a public profile as an answer, not a failure", async () => {
-    const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)]);
-    expect(out[0]).toMatchObject({ classification: "INSUFFICIENT_DATA", note: expect.stringMatching(/Not on Leetify/) });
+    const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: scraper({}).scrape });
+    expect(out[0]).toMatchObject({ classification: "INSUFFICIENT_DATA", note: "Not on Leetify, or the profile isn't public" });
     expect(out[0].transient).toBeUndefined();
   });
 
@@ -106,6 +119,50 @@ describe("lookupLobby", () => {
     const out = await lookupLobby(new LeetifyClient("k", f.fetchImpl), Object.keys(answers), { concurrency: 3 });
     expect(out).toHaveLength(8);
     expect(f.log.maxInFlight).toBe(3);
+  });
+
+  describe("the csst.at fallback", () => {
+    it("is asked only about players Leetify doesn't know, and its profile becomes the answer", async () => {
+      const sc = scraper({ [ID(2)]: AVERAGE() });
+      const sources: [string, string | null][] = [];
+      const out = await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1), ID(2)], {
+        scrape: sc.scrape,
+        onSource: (id, s) => sources.push([id, s]),
+      });
+      expect(sc.calls).toEqual([[ID(2)]]);
+      expect(out[0].classification).toBe("HIGH");
+      expect(out[1]).toMatchObject({ classification: "NORMAL", note: expect.stringMatching(/csst\.at/) });
+      expect(sources).toContainEqual([ID(2), "scrape"]);
+    });
+
+    it("is not asked at all when Leetify knows everybody", async () => {
+      const sc = scraper({});
+      await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1)], { scrape: sc.scrape });
+      expect(sc.calls).toEqual([]);
+    });
+
+    it("says why when it is broken for good, instead of guessing the profile is private", async () => {
+      const reason = "A native module was built for a different Node version (module ABI 127; the Node that runs it needs 137).";
+      const sc = scraper({}, broken("abi-mismatch", reason));
+      const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: sc.scrape });
+      expect(out[0]).toMatchObject({ classification: "INSUFFICIENT_DATA" });
+      expect(out[0].note).toContain("The csst.at fallback couldn't check");
+      expect(out[0].note).toContain(reason);
+      expect(out[0].transient).toBeUndefined(); // settled: asking again in a minute wouldn't change a build problem
+    });
+
+    it.each<HeroProblem>(["browser-missing", "site-unreachable", "timeout"])(
+      "asks again later when the problem can clear up by itself (%s)", async (problem) => {
+        const sc = scraper({}, broken(problem, "try later"));
+        const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: sc.scrape });
+        expect(out[0]).toMatchObject({ classification: null, transient: true, retryAfterMs: 60_000 });
+        expect(out[0].note).toContain("try later");
+      });
+
+    it("keeps the plain answer when the fallback works and csst.at has nothing on the player", async () => {
+      const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: scraper({}).scrape });
+      expect(out[0].note).toBe("Not on Leetify, or the profile isn't public");
+    });
   });
 
   it("reports whether Leetify could be reached", async () => {

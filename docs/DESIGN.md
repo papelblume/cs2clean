@@ -128,7 +128,44 @@ HTTP client for Leetify's Public API:
 - Validates API keys
 - Fetches player profiles by Steam ID
 - Handles rate limiting and retries
-- Scrapes csst.at as a fallback (requires Node 22 for Ulixee Hero)
+- Scrapes csst.at as a fallback, through the Hero sidecar (see below)
+
+### csst.at fallback: the Hero sidecar (`src/main/leetify-hero.ts`, `hero-runtime/`)
+
+Players Leetify has no profile for are looked up on csst.at with Ulixee Hero. Hero needs `better-sqlite3`, a native
+module that must be built for the Node that loads it. electron-builder rebuilds native modules for Electron's ABI, and
+Electron's Node is not the Node that Hero can use, so Hero cannot live inside the app. It lives next to it:
+
+```
+packaged app   <resources>/hero/   cli.js, node_modules/, bin/node(.exe)      (electron-builder extraResources)
+source build   <repo>/hero-runtime/                                           (npm run hero:install, npm run build)
+```
+
+- `hero-runtime/package.json` and its own lockfile pin Hero. It is **not** in the app's `package.json`, so electron-builder
+  never sees it and nothing is rebuilt for Electron.
+- `bin/node` is a copy of the Node 22 that ran `npm ci` in `hero-runtime/`, so `better-sqlite3` is always loaded by the
+  Node it was installed with. The app starts `cli.js` with it as a child process (`src/main/leetify-hero-cli.ts`, bundled by
+  `tools/build-hero-runtime.mjs`). Nothing here is inside `app.asar`: a Node that isn't Electron can't read inside one.
+- `package.json` lists two `extraResources` entries for it, one for the folder and one for `hero-runtime/node_modules`.
+  That is not redundancy: electron-builder drops a root-level `node_modules` from any `extraResources` source
+  (`app-builder-lib/out/util/filter.js`) whatever the patterns say, and a single entry silently packaged Node without Hero.
+- Chrome (370 MB on disk for Chrome 139) is not packaged. The first lookup that needs it downloads it into `<data>/hero-browsers` in the
+  background; lookups don't wait for it, they ask again a minute later.
+- On Linux Mint, Hero crashes on `cat /etc/upstream-release` (a folder there), so the child gets a `cat` shim first on its
+  PATH, written under the data folder.
+- Overrides: `CS2CLEAN_HERO_DIR` (the sidecar folder), `CS2CLEAN_NODE22` (the Node to run it with), `CS2CLEAN_DATA_DIR`.
+
+**Failures are never silent.** Every way the fallback can break ends as a `HeroStatus` with a problem kind
+(`no-runtime`, `no-node`, `spawn-failed`, `setup-failed`, `abi-mismatch`, `native-load`, `module-missing`, `browser-missing`,
+`site-unreachable`, `timeout`, `crashed`, `bad-output`), a reason in plain words, and the raw error text. It is logged to the
+console and to `hero.log` in the data folder (the console is invisible in a packaged app), and the desktop window shows
+"csst.at fallback unavailable" with the reason. A player the fallback couldn't check gets a note saying so, not "profile
+isn't public". Problems that can clear up by themselves (`browser-missing`, `site-unreachable`, `timeout`) are asked again
+later; build problems are not. `classifyHeroFailure()` maps what actually happened (the OS's error for starting Node, a
+timeout, the CLI's JSON error, Node's own `NODE_MODULE_VERSION` crash text) to those kinds.
+
+Checks: CI runs `npm run hero:install` (which ends with the sidecar's selftest: Hero and `better-sqlite3` load, a database
+opens) and then `node tools/build-hero-runtime.mjs check release/<platform>-unpacked/resources/hero` on the **packaged** copy.
 
 ### Scoring System
 
@@ -185,6 +222,7 @@ Full-featured window for setup and monitoring:
 - Lobby list with player details
 - Settings panel (hotkeys, siren toggle, auto-start)
 - Leetify status indicator
+- csst.at fallback status: shown only when it can't be used, with the reason
 
 ## Data Flow
 
@@ -228,6 +266,9 @@ TypeScript → Vite (renderer) + tsc (main) → Electron
                          Linux: AppImage + tar.gz
 ```
 
+The release workflow also runs `npm run hero:install` before packaging and checks the packaged sidecar afterwards
+(`tools/build-hero-runtime.mjs check`). The sidecar adds the bundled Node 22 (about 120 MB unpacked) and Hero to every build.
+
 ### Release Tags
 
 Push a tag to trigger the GitHub Actions workflow:
@@ -263,7 +304,7 @@ npm run typecheck  # TypeScript type checking
 
 4. **Steam friends fill-in**: When the coplay list is short, the app tops it up with Steam friends playing on the same map or in the same party.
 
-5. **csst.at fallback**: When Leetify's API returns "not found", the app fetches profiles from csst.at as a fallback (requires Node 22).
+5. **csst.at fallback in a sidecar**: When Leetify's API returns "not found", the app fetches profiles from csst.at through Hero, which runs in a separate folder with its own Node 22 and its own `better-sqlite3` (see "Hero sidecar"). When it can't, the window says so and why.
 
 6. **GSI config auto-write**: The app writes `gamestate_integration_cs2clean.cfg` into CS2's `cfg` folder on first start.
 

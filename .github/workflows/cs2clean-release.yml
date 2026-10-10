@@ -29,7 +29,9 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            hero-runtime/package-lock.json
 
       - name: Version
         id: version
@@ -45,12 +47,19 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
-      - run: npm rebuild better-sqlite3
+      # The csst.at fallback runs in a sidecar (hero-runtime/) with its own Node 22 and its own better-sqlite3, shipped
+      # outside app.asar as extraResources. This installs it with the Node 22 above, copies that Node next to it,
+      # bundles its CLI and runs its selftest, so the binary that gets packaged is the one that was just tested.
+      - name: Hero sidecar (Node 22 and its own better-sqlite3)
+        run: npm run hero:install
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run dist
       - run: npx electron-builder --win portable --x64
       - run: ls -l release
+      # The selftest again, on the copy inside the package: its Node starts, Hero and better-sqlite3 load from there.
+      - name: Check the packaged sidecar
+        run: node tools/build-hero-runtime.mjs check release/win-unpacked/resources/hero
 
       - uses: actions/upload-artifact@v4
         with:
@@ -77,7 +86,9 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            hero-runtime/package-lock.json
 
       - name: Version
         id: version
@@ -93,12 +104,18 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
-      - run: npm rebuild better-sqlite3
+      # The csst.at fallback runs in a sidecar (hero-runtime/) with its own Node 22 and its own better-sqlite3, shipped
+      # outside app.asar as extraResources. This installs it with the Node 22 above, copies that Node next to it,
+      # bundles its CLI and runs its selftest, so the binary that gets packaged is the one that was just tested.
+      - name: Hero sidecar (Node 22 and its own better-sqlite3)
+        run: npm run hero:install
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run build
       - run: npx electron-builder --linux --x64
       - run: ls -l release
+      - name: Check the packaged sidecar
+        run: node tools/build-hero-runtime.mjs check release/linux-unpacked/resources/hero
 
       - uses: actions/upload-artifact@v4
         with:

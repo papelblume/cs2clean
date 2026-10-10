@@ -6,7 +6,7 @@ import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyPro
 import { listOrder, visibleOrder } from "../shared/lobby-order";
 import type { AppState, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
-import { LeetifyClient, lookupLobby, type DataSource } from "./leetify";
+import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
 import { LobbyService, type LobbyOptions } from "./lobby";
 
 export interface Settings {
@@ -34,6 +34,8 @@ export interface ControllerDeps {
   lobby?: LobbyOptions;
   /** Requests to Leetify in flight at once. */
   leetifyConcurrency?: number;
+  /** The csst.at fallback; absent in the app (the real one), a stand-in in tests. */
+  scrape?: LookupOptions["scrape"];
   /** Registers the overlay hotkeys with the system; returns why it failed (e.g. taken by another program). */
   applyHotkeys?: (h: Hotkeys) => string | null;
   /** Starting with Windows (a login item); absent where it isn't offered. */
@@ -59,7 +61,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), deps.lobby);
     this.state = {
       version: deps.version,
-      leetify: { hasKey: !!key, reachable: null },
+      leetify: { hasKey: !!key, reachable: null, fallback: { working: null, reason: null } },
       notice: null,
       game: { source: deps.source.kind, running: false, problem: null },
       match: null,
@@ -83,6 +85,14 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   stop(): void {
     this.deps.source.stop();
     this.lobby.dispose();
+  }
+
+  /** The csst.at fallback's status (main/leetify-hero.ts): the window shows when it can't be used, and why. */
+  setFallback(s: { state: "ready" | "unavailable"; reason: string | null }): void {
+    const next = { working: s.state === "ready", reason: s.state === "ready" ? null : s.reason };
+    const cur = this.state.leetify.fallback;
+    if (cur.working === next.working && cur.reason === next.reason) return;
+    this.update({ leetify: { ...this.state.leetify, fallback: next } });
   }
 
   // ------------------------------------------------------------------ API key
@@ -295,6 +305,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     try {
       return await lookupLobby(this.leetify, steamIds, {
         concurrency: this.deps.leetifyConcurrency,
+        scrape: this.deps.scrape,
         onSource: (steamId, source) => {
           if (source) this.sources.set(steamId, source);
           else this.sources.delete(steamId);
