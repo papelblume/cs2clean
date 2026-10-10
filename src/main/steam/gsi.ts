@@ -11,7 +11,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export const GSI_PORT = 37215;
-const CFG_NAME = "gamestate_integration_cheatscanner.cfg";
+const CFG_NAME = "gamestate_integration_cs2clean.cfg";
 
 export type MapPhase = "warmup" | "live" | "intermission" | "gameover";
 
@@ -37,7 +37,7 @@ export function parseGsi(body: unknown): GameState {
 }
 
 export function gsiConfig(token: string, port = GSI_PORT): string {
-  return `"Cheatscanner"
+  return `"CS2Clean"
 {
   "uri"        "http://127.0.0.1:${port}/gsi"
   "timeout"    "1.0"

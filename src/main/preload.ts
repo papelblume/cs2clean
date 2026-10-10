@@ -28,4 +28,4 @@ const bridge: Bridge = {
   openDeveloperPage: () => ipcRenderer.invoke("leetify:developer"),
 };
 
-contextBridge.exposeInMainWorld("cheatscanner", bridge);
+contextBridge.exposeInMainWorld("cs2clean", bridge);

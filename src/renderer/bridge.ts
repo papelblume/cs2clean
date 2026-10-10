@@ -9,7 +9,7 @@ import type { AppState, Bridge, LobbyRow, MatchSummary, PlayerDetail, PlayerMetr
 
 declare global {
   interface Window {
-    cheatscanner?: Bridge;
+    cs2clean?: Bridge;
   }
 }
 
@@ -153,4 +153,4 @@ function simulated(): Bridge {
   };
 }
 
-export const bridge: Bridge = window.cheatscanner ?? simulated();
+export const bridge: Bridge = window.cs2clean ?? simulated();

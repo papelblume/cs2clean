@@ -111,7 +111,7 @@ function steamSource(): SteamSource {
     if (r.status === "not-found")
       gsiProblem = "Couldn't find CS2's folder, so the app can't tell when a match starts. It still reads Steam's players list.";
     else if (r.status === "installed")
-      gsiProblem = "If CS2 is already running, restart it once so it loads Cheatscanner's game-state file.";
+      gsiProblem = "If CS2 is already running, restart it once so it loads CS2Clean's game-state file.";
   } catch (e) {
     gsiProblem = `Couldn't write CS2's game-state file: ${e instanceof Error ? e.message : e}`;
   }
@@ -164,7 +164,7 @@ function load(win: BrowserWindow, page: "index" | "overlay") {
 function createDesktopWindow() {
   desktop = new BrowserWindow({
     width: 460, height: 720, minWidth: 380, minHeight: 520,
-    title: "Cheatscanner", backgroundColor: "#0d1014", show: false,
+    title: "CS2Clean", backgroundColor: "#0d1014", show: false,
     icon: join(root, "assets", "icon.png"),
     autoHideMenuBar: true,
     webPreferences: webPreferences(),

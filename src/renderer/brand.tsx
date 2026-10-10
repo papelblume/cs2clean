@@ -1,4 +1,4 @@
-// Cheatscanner brand pieces, matching the website (web/src/art.tsx, web/src/ui.tsx).
+// CS2Clean brand pieces.
 
 import type { ReputationTier } from "../shared/reputation-types";
 import type { EvidenceClass, Side } from "../shared/types";
@@ -14,19 +14,26 @@ export function Logo({ size = 28 }: { size?: number }) {
   );
 }
 
-/** "cheatscanner.eu" with the TLD in the accent colour. */
+/** The brand wordmark: "CS2" in accent colour, "Clean" in the default colour. */
 export function Wordmark({ domain }: { domain?: string | null }) {
-  const [name, tld] = splitDomain(domain);
+  if (domain && domain.trim()) {
+    const [name, tld] = splitDomain(domain);
+    return (
+      <span className="wordmark">
+        {name}
+        {tld && <span className="wordmark-tld">.{tld}</span>}
+      </span>
+    );
+  }
   return (
     <span className="wordmark">
-      {name}
-      {tld && <span className="wordmark-tld">.{tld}</span>}
+      <span className="wordmark-accent">CS2</span>Clean
     </span>
   );
 }
 
 function splitDomain(domain?: string | null): [string, string | null] {
-  const d = (domain || "cheatscanner.eu").trim();
+  const d = (domain || "").trim();
   const i = d.lastIndexOf(".");
   return i > 0 ? [d.slice(0, i), d.slice(i + 1)] : [d, null];
 }

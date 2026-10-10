@@ -1,11 +1,11 @@
 {
-  "name": "cheatscanner-companion",
-  "productName": "Cheatscanner",
+  "name": "cs2clean",
+  "productName": "CS2Clean",
   "private": true,
-  "version": "0.1.0",
-  "description": "Cheatscanner companion app and in-game overlay for CS2. Shows the evidence class of the players in your match.",
-  "author": "cheatscanner.eu",
-  "homepage": "https://cheatscanner.eu",
+  "version": "0.2.0",
+  "description": "CS2Clean companion app and in-game overlay for CS2. Shows the evidence class of the players in your match.",
+  "author": "CS2Clean",
+  "homepage": "https://github.com/papelblume/cs2clean",
   "main": "dist/main/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.main.json && tsc --noEmit -p tsconfig.json && vite build",
@@ -54,9 +54,9 @@
     "@ulixee/hero-playground": "^2.0.0-alpha.34"
   },
   "build": {
-    "appId": "eu.cheatscanner.companion",
-    "productName": "Cheatscanner",
-    "copyright": "cheatscanner.eu",
+    "appId": "eu.cs2clean.companion",
+    "productName": "CS2Clean",
+    "copyright": "CS2Clean",
     "directories": {
       "output": "release",
       "buildResources": "assets"
@@ -101,9 +101,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Cheatscanner",
+      "shortcutName": "CS2Clean",
       "runAfterFinish": true,
-      "artifactName": "Cheatscanner-Setup-${version}.${ext}"
+      "artifactName": "CS2Clean-Setup-${version}.${ext}"
     },
     "publish": null,
     "linux": {
@@ -122,7 +122,7 @@
         }
       ],
       "category": "Game",
-      "description": "Cheatscanner companion app and in-game overlay for CS2",
+      "description": "CS2Clean companion app and in-game overlay for CS2",
       "icon": "assets/icon.png"
     }
   }

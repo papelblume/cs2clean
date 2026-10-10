@@ -75,7 +75,7 @@ export class OverwolfSource extends GameSource {
     });
     gep.on("elevated-privileges-required", (_e: unknown, gameId: number) => {
       if (gameId === CS2_GAME_ID)
-        this.emit("problem", "CS2 is running as administrator, so the app can't see it. Start Cheatscanner as administrator too, or CS2 without it.");
+        this.emit("problem", "CS2 is running as administrator, so the app can't see it. Start CS2Clean as administrator too, or CS2 without it.");
     });
     gep.on("error", (_e: unknown, gameId: number, error: string) => {
       if (gameId === CS2_GAME_ID) this.emit("problem", `Overwolf game events error: ${error}`);

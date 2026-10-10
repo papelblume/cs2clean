@@ -1,245 +1,173 @@
-# Cheatscanner app
+# CS2Clean
 
-The desktop companion and in-game overlay. When a CS2 match loads, it looks the first 10 players up on
-[Leetify](https://leetify.com) (Leetify's Public API) and shows each one's class (Normal, Elevated, High, Very high, or
-not enough data) and reputation score (0 to 100, 100 meaning nothing unusual). **F7** shows a card for each flagged
-player, **F6** / **F5** step forward / back through every player's card one at a time (flagged or not, yours
-included), and a siren plays
-when a High or Very high player is in your match. A card has the reputation score and tier, the reasons behind a
-flag, a performance score, colour-coded LOW / MEDIUM / HIGH levels for the Leetify rating, aim and clutch, Leetify's own
-numbers for the player (positioning, utility, opening, crosshair placement, time to damage, head and spray accuracy,
-counter-strafing) and, for a public profile, how the recent matches look (recent matches, average match rating, strong
-matches, the latest matches).
+A desktop companion and in-game overlay for CS2 that checks player reputations using Leetify's Public API. When a match loads, CS2Clean looks up the first 10 players and shows each one's reputation score (0–100, 100 = nothing unusual) and classification: **Normal**, **Elevated**, **High**, or **Very high**.
 
-The classes are statistics over Leetify's public data, not proof of anything except a ban on record (see
-[How the classes are computed](#how-the-classes-are-computed)). Data Provided by Leetify.
+## What it does
 
-Platforms: Windows (installer or portable) and Linux (AppImage or tar.gz from GitHub releases; see
-[Running it on Linux](#running-it-on-linux)).
+- **Lobby check** — when a match loads, reads the player list from Steam and looks up each player on Leetify
+- **In-game overlay** — a transparent, click-through window on top of the game showing player cards with reputation scores, classification reasons, aim/clutch ratings, and Leetify's own stats
+- **Siren alert** — plays an audible alert when a High or Very high player is detected
+- **Player cards** — detailed view for each player: performance score, reputation tier, reasons for flags, and (for public profiles) recent match history
+- **Configurable hotkeys** — all overlay keys can be changed in Settings
+- **No game injection** — nothing reads or modifies CS2's memory. The overlay is an ordinary transparent window kept on top of the game
 
-It runs as a plain Electron app, **without Overwolf**. Nothing in it reads or changes CS2's memory,
-injects into the game or hooks its drawing:
+## How it works
 
-- **Who is in the match**: Steam's "recently played with" list (Steam > View > Players). CS2 reports
-  everyone in your match to Steam when the match loads; a small helper process reads that list from the
-  running Steam client. It has no teams, so the list shows one group of players.
-- **When the match starts**: CS2's Game State Integration. The app writes
-  `gamestate_integration_cheatscanner.cfg` into CS2's `cfg` folder (restart CS2 once after the first
-  start) and listens on `127.0.0.1:37215`.
-- **Overlay**: a see-through window kept on top of the game; clicks go through to the game. It shows
-  itself in warm-up and hides when the match goes live. Needs CS2's display mode **Fullscreen Windowed**
-  (Settings > Video); in plain Fullscreen the game is drawn over it.
+| Data source | What it provides |
+|-------------|-----------------|
+| **Steam's coplay list** | Who is in your match (Steam > View > Players). CS2 reports the roster to Steam when the match loads. |
+| **CS2 Game State Integration (GSI)** | When warm-up starts, when the match goes live, the map name, and your own Steam ID. The app writes a config file into CS2's `cfg` folder and listens on `127.0.0.1:37215`. |
+| **Leetify Public API** | Player ratings, stats, and match history. Two scores are computed from this data: a performance class and a 0–100 reputation score. |
+
+**Privacy note:** The Leetify API key is encrypted with your OS keychain (Windows DPAPI, Linux desktop keyring) and stored in the app's settings file. If no keychain is available, it is stored as plain text.
+
+## Keyboard shortcuts
 
 | Key | What it does |
-| --- | --- |
-| **Shift+F2** | Show the lobby list (again to hide) |
-| **F7** | Show the cards of flagged players, yourself included (again to hide) |
-| **F6** | Show the next player's card: the first press shows the first player in the list (CT, then T), each further press the next one, yourself included, and after the last the overlay hides. Shift+F2 or F7 switch to their view, and F6 starts over from the first player |
-| **F5** | Show the previous player's card: the first press shows the last player in the list, each further press the one before, and before the first the overlay hides. F6 and F5 walk the same list, so they can be mixed |
+|-----|--------------|
+| **Shift+F2** | Toggle the lobby list (desktop window) |
+| **F7** | Show cards of flagged players in the overlay |
+| **F6** | Step forward through player cards (one at a time) |
+| **F5** | Step backward through player cards |
 
-Settings also has "Start automatically with Windows, minimized" (installed Windows app only; it starts with
-`--minimized`). All four keys can be changed under Settings in the app (letters and digits only with Ctrl or Alt).
+All four keys can be changed under **Settings** in the app (letters and digits only with Ctrl or Alt).
 
 ## Leetify API key
 
-Lookups work without a key, at Leetify's stricter rate limits. A free key from
-https://leetify.com/app/developer makes them reliable: paste it into the app's window (it is checked with Leetify
-before it is saved), or set `LEETIFY_API_KEY` in the environment. A saved key wins over the variable.
+Lookups work without a key, but at Leetify's stricter rate limits. A free key from [leetify.com/app/developer](https://leetify.com/app/developer) makes lookups reliable:
 
-Leetify's API has no batch lookup, so a lobby costs one request per player, 3 at a time, and only the first 10
-players of a lobby (in the order the game lists them) are looked up; any further ones show "Not checked". Answers are
-kept for 15 minutes, and a player Leetify rate-limits is asked for again after the pause Leetify names. Every player
-who has a Leetify profile gets a score, whatever the API sends: the aggregate numbers (ratings, stats, ranks, bans) come
-with every profile, private ones included, and a public profile adds its recent matches. Only a player who isn't on
-Leetify at all shows "Not enough data" (hover for the reason).
+1. Get a free key from the link above
+2. Paste it into the app's window (it is validated before saving), or set `LEETIFY_API_KEY` in the environment
+3. A saved key takes priority over the environment variable
 
-## Running it (Windows PowerShell, one command per line)
+## Platforms
 
-Steam must be running and signed in. Then:
+- **Windows** — installer (NSIS) or portable `.exe` from [GitHub releases](https://github.com/EspectroDK/CS2Clean/releases)
+- **Linux** — AppImage or tar.gz from [GitHub releases](https://github.com/EspectroDK/CS2Clean/releases)
 
-```powershell
-cd companion
-npm ci
-npm start
-```
+## Installation (Windows)
 
-Paste your Leetify API key if you have one, restart CS2 once, and join a match.
+1. Download the latest release from the [GitHub releases page](https://github.com/EspectroDK/CS2Clean/releases)
+2. Run the installer (per-user, no admin required) or the portable `.exe` (no installation)
+3. Start CS2 and launch CS2Clean
+4. Paste your Leetify API key if you have one
+5. Restart CS2 once (so it loads the GSI config), then join a match
 
-To check what the app sees from Steam, run this in a match's warm-up. It prints Steam's players list with
-times and the players the app would pick as your match:
+The installer adds Start menu and desktop shortcuts. Settings are stored in `%APPDATA%\CS2Clean`.
 
-```powershell
-npm run coplay
-```
+**SmartScreen:** The installer is not yet code-signed. Windows will show "Windows protected your PC" — click **More info**, then **Run anyway**.
 
-Without CS2, `npm run start:replay` plays a recorded session (`fixtures/premier-mirage.jsonl`: warm-up,
-then live after 30 s). To use one of your own analyzed matches:
+## Installation (Linux)
 
-```powershell
-node tools/replay-from-match.mjs <matchId>
-npx electron . --replay=fixtures/local-match.jsonl
-```
+### Pre-built binaries
 
-(Replay mode needs a cheatscanner.eu server to build the recording; the replayed players' Steam IDs are not
-real Leetify players, so the overlay will show them as "Not enough data".)
+1. Download the latest AppImage or tar.gz from [GitHub releases](https://github.com/EspectroDK/CS2Clean/releases)
+2. **AppImage:** make it executable and run it:
+   ```bash
+   chmod +x CS2Clean-*.AppImage
+   ./CS2Clean-*.AppImage
+   ```
+3. **tar.gz:** extract and run the binary inside:
+   ```bash
+   tar -xzf CS2Clean-*.tar.gz
+   ./CS2Clean
+   ```
 
-Other options, passed after `electron .`:
+### From source
 
-| Option | What it does |
-| --- | --- |
-| `--replay` / `--replay=<file>` | Play a recording instead of live data |
-| `--dev-ui=<url>` | Load the pages from `npm run dev:ui` (hot reload) |
-
-`npm run dev:ui` also works in a normal browser with a simulated app: open
-`http://localhost:5173/index.html?screen=lobby` (or `nokey`, `waiting`, `problem`) and
-`overlay.html?screen=lobby` or `overlay.html?screen=detail`.
-
-## Running it on Linux
-
-Download the latest AppImage or tar.gz from
-[GitHub releases](https://github.com/cheatscanner/eu/releases). The AppImage is a single executable — make it
-executable (`chmod +x Cheatscanner-*.AppImage`) and run it. The tar.gz extracts to a directory; run the
-`Cheatscanner` binary inside.
-
-Both need native Steam running and signed in, CS2 in **Fullscreen Windowed** mode, and an X11 session
-(tried on Linux Mint 22.3, Cinnamon; Wayland is untested).
-
-To run from source instead (needs **Node 22.12 or newer**; distro packages are often older, so check
-`node --version` and use nvm, NodeSource or similar if needed):
+Requires **Node 22.12 or newer**:
 
 ```bash
-cd companion
+git clone https://github.com/EspectroDK/CS2Clean.git
+cd CS2Clean
 npm ci
 npm start
 ```
 
-Replay mode, the other options and `npm run dev:ui` above work the same in a Linux shell.
+### Linux requirements
 
-Paste your Leetify API key if you have one (or start with `LEETIFY_API_KEY=... npm start`), restart CS2 once,
-and join a match. On first start the app writes
-`gamestate_integration_cheatscanner.cfg` into
-`<Steam library>/steamapps/common/Counter-Strike Global Offensive/game/csgo/cfg/`.
+- Native Steam running and signed in
+- CS2 in **Fullscreen Windowed** mode (Settings > Video > Display Mode)
+- X11 session (Wayland is untested)
 
-`npm run coplay` prints Steam's players list; compare it with Steam > View > Players. If it says Steam isn't
-running, check that native Steam is signed in and that `~/.steam/steam.pid` names a live process.
+On first start the app writes `gamestate_integration_cs2clean.cfg` into CS2's `cfg` folder.
 
-If Electron refuses to start with a `chrome-sandbox` (SUID sandbox) error, which distros that restrict
-unprivileged user namespaces do (Ubuntu 24.04 and its derivatives), give the bundled helper the permissions it
-needs:
+If Electron refuses to start with a `chrome-sandbox` error (common on Ubuntu 24.04 and derivatives), grant the sandbox the permissions it needs:
 
 ```bash
 sudo chown root:root node_modules/electron/dist/chrome-sandbox
 sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
 ```
 
-Settings are kept in `~/.config/Cheatscanner`. The Leetify API key is encrypted with the
-desktop keyring through Electron's `safeStorage`; with no keyring available it is stored as plain text in
-`settings.json`. "Start automatically with Windows" is the Windows installer only.
+Settings are kept in `~/.config/CS2Clean`.
 
-## Building the installer (Windows PowerShell, one command per line)
+## Running from the desktop window
+
+After joining a match warm-up, press **Shift+F2** to open the lobby list. It shows each player's name, classification, and reputation score. Click a player to open their Leetify profile.
+
+## Replay mode (no CS2 needed)
+
+To try the app without CS2, replay mode plays a recorded session:
+
+```bash
+npm run start:replay
+```
+
+To record a real match (Overwolf mode only):
+
+```bash
+npm run start:overwolf -- --record
+```
+
+The recording is saved to `%APPDATA%\CS2Clean\recordings`. You can then replay it with:
+
+```bash
+npx electron . --replay=recordings/your-recording.jsonl
+```
+
+## Building the installer (Windows PowerShell)
 
 ```powershell
-cd companion
 npm ci
 npm run dist
 ```
 
-This writes `release\Cheatscanner-Setup-<version>.exe` (NSIS installer) and
-`release\Cheatscanner-<version>-portable.exe` (portable). The installer installs per user (no admin
-prompt), adds Start menu and desktop shortcuts, and keeps its settings in
-`%APPDATA%\Cheatscanner`, the same place `npm start` uses, so a saved API key carries over.
-
-The installer isn't code-signed yet, so Windows SmartScreen shows "Windows protected your PC" the first
-time: click **More info**, then **Run anyway**. Signing needs a code-signing certificate; electron-builder
-picks one up from `CSC_LINK` / `CSC_KEY_PASSWORD`.
+Output:
+- `release\CS2Clean-Setup-<version>.exe` — NSIS installer
+- `release\CS2Clean-<version>-portable.exe` — portable executable
 
 Build on Windows. On Linux or macOS, electron-builder needs Wine for the Windows installer.
 
-The portable `.exe` runs without installation — no shortcuts are created and settings go to
-`%APPDATA%\Cheatscanner` just like the installer.
-
 ## Overwolf (optional)
 
-The Overwolf route still works if Overwolf approves the app: `npm run start:overwolf` (ow-electron with
-`--overwolf`) takes the roster from Overwolf's CS2 game events and draws the overlay with Overwolf's
-overlay package. `--record` then saves Overwolf's CS2 data to `%APPDATA%\Cheatscanner\recordings`.
-
-## How it fits together
-
-```text
-Steam players list ─┐ (helper process)          ┌─ desktop window (src/renderer/desktop.tsx)
-CS2 game state ─────┼─► GameSource ─► Controller ─┤
- (or Overwolf,      │   game/*.ts        │        └─ overlay window (src/renderer/overlay.tsx)
-  or a replay)      │                    ▼
-                    │            LobbyService ─► leetify.ts ──HTTPS──► Leetify Public API  GET /v3/profile
-                    │                              └─► assess.ts + reputation.ts (profile ─► class)
-```
-
-- `src/main/steam/`: `coplay.ts` (reads Steam's players list; runs in `coplay-worker.ts`, a separate
-  process), `pick.ts` (picks the current match from the list), `gsi.ts` (CS2 game state: cfg file and
-  listener), `coplay-cli.ts` (`npm run coplay`).
-- `src/main/game/`: `steam.ts` (default source), `overwolf.ts`, `replay.ts`, `gep.ts`, `recorder.ts`.
-- `src/main/leetify.ts` (Leetify client: key header, error kinds, Retry-After, a few requests at a time),
-  `src/main/assess.ts` (profile ─► performance class), `src/main/reputation.ts` (profile ─► reputation score and tier), `src/main/lobby.ts` (cache, retries), `src/main/leetify-cli.ts`
-  (`npm run leetify:probe`).
-- `src/main/controller.ts`: API key, lobby lookups, overlay visibility (warm-up / live / hotkeys), siren;
-  no Electron code, so it is unit-tested.
-- `src/main/main.ts`: windows, hotkeys, IPC, the helper process.
-- `src/main/preload.ts`: the only bridge the pages get. The API key stays in the main process, encrypted
-  with the OS key store (`safeStorage`: Windows DPAPI, the desktop keyring on Linux) in `settings.json`.
-
-## How the classes are computed
-
-Two scores are computed for every player from `GET /v3/profile`, and the overlay shows the more severe class of the two
-(neither can lower the other). Both work with whatever the API sends: the aggregate numbers are always there (private
-profiles too), and a public profile's `recent_matches` add to them when present. Nothing is refused for having few
-matches: a thin history is discounted (the score is scaled between half and full as the matches behind it go from 0 to
-50) and the confidence says how much stands behind it. A profile with no ratings or stats at all still gets a score, the
-highest one possible without enough data, and a note saying so.
-
-**Performance** (`src/main/assess.ts`): how far above average the player is. It combines three signals: the Leetify
-rating (the average of the newest 30 matches and the share of strong ones when the profile is public, else the overall
-`ranks.leetify`), the aim rating (`rating.aim`) and the clutch rating (`rating.clutch`). A missing signal is left out
-and the others re-weighted. The combined score picks the class, and the signals have to agree: one strong number alone
-never flags a player, and Very high needs both a very high Leetify rating and a high aim. The cut-offs are in
-`THRESHOLDS`.
-
-**Reputation** (`src/main/reputation.ts`): how implausible the numbers look for the player's rank, as a 0 to 100 score
-where 100 means nothing unusual. Three families of signals: mechanics (crosshair placement, time to damage, head and spray
-accuracy, opening duels, counter-strafing, judged against the player's Premier rating), coherence (stats that contradict
-each other, such as a very high aim rating with low positioning and utility) and, for a public profile, trajectory (a
-sudden step up in the newest matches, a time to damage that never varies, results much better outside FACEIT). The
-signals are capped per family, so no single family can condemn a player alone and the worst tiers need two. A ban on
-record decides everything. TRUSTED needs enough data behind it, so a thin history tops out at 84. The cut-offs are in
-`REPUTATION`, and they are placeholders, not checked against known cheaters.
-
-What this does and does not tell you: top-rank players, pros and smurfs score high on performance (a Premier 25,500
-player with a Leetify rating of 6.55 and aim 94 is Very high on performance and 100/100 on reputation), and public
-aggregates can't see a careful cheater. Nothing here looks at demos. Treat a flag as "worth a closer look", not as an
-accusation.
-
-Units are the API's, and Leetify's own numbers are not rescaled or renamed on screen, as Leetify's developer guidelines
-ask: the ratings have no units, percentages are 0 to 100, crosshair placement is in degrees, time to damage in
-milliseconds. What this app computes is labelled as its own: the performance and reputation scores, the LOW / MEDIUM /
-HIGH levels, and the match summary (the average match rating is shown in the units Leetify's website uses). The card links back with "View on
-Leetify" (desktop list) and "Data Provided by Leetify" (footers).
-
-The aggregate field names and units were checked against real responses. The per-match fields of `recent_matches` were
-not (they come from a third-party client), so `src/main/matches.ts` reads them defensively (fractions or website units,
-milliseconds or seconds) and everything that uses them has a fallback without. To see what the API sends for a player,
-next to what the app computes (and to tune `THRESHOLDS` and `REPUTATION`):
+CS2Clean also works through [Overwolf](https://overwolf.com/) if your app is approved. Overwolf provides its own CS2 game events and in-game overlay rendering:
 
 ```bash
-LEETIFY_API_KEY=... npm run leetify:probe -- 76561198000000000 76561198000000001 --raw
+npm run start:overwolf
 ```
+
+The overlay uses Overwolf's built-in hotkeys (none are bound in CS2 by default).
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| "Steam didn't answer" | Make sure Steam is running and you're signed in |
+| "Couldn't find CS2's folder" | The app can still read Steam's players list; GSI won't detect match phases. Install CS2 in a standard location. |
+| "CS2 is running as administrator" | Start CS2Clean as administrator too, or start CS2 without admin rights |
+| Overlay not visible in CS2 | Make sure CS2 is in **Fullscreen Windowed** mode, not plain Fullscreen |
+| `chrome-sandbox` error on Linux | Run the `chown`/`chmod` commands above |
+| Leetify rate limits | Get a free API key from leetify.com/app/developer |
 
 ## Checks
 
-```powershell
+```bash
 npm test
 npm run build
 ```
 
-To offer it on the website's front page, send it to the server with `tools\deploy\push-companion.ps1`
-(see `docs/deploy/hetzner.md`, section 10). The front page links to the Windows installer from the server
-and to the Linux AppImage from GitHub releases.
+## Credits
+
+CS2Clean is a fork of [cheatscanner.eu](https://github.com/EspectroDK/cheatscanner.eu).
+
+Player data is provided by [Leetify](https://leetify.com). CS2Clean does not look at demos and makes no accusations — treat a flag as "worth a closer look", not as proof of cheating.
