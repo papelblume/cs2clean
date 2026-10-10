@@ -39,7 +39,7 @@
     "@types/react-dom": "^19.1.0",
     "@ulixee/hero-playground": "^2.0.0-alpha.34",
     "@vitejs/plugin-react": "^5.0.0",
-    "electron": "^39.2.1",
+    "electron": "^42.11.8",
     "electron-builder": "^26.15.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

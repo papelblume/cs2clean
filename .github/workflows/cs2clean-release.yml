@@ -45,6 +45,7 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
+      - run: npm rebuild better-sqlite3
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run dist
@@ -92,6 +93,7 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
+      - run: npm rebuild better-sqlite3
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run build
