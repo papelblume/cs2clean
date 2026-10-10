@@ -1,14 +1,19 @@
 # CS2Clean
 
-A desktop companion and in-game overlay for CS2 that checks player reputations using Leetify's Public API. When a match loads, CS2Clean looks up the first 10 players and shows each one's reputation score (0–100, 100 = nothing unusual) and classification: **Normal**, **Elevated**, **High**, or **Very high**.
+**Know your lobby before the first round.**
+
+A desktop companion and in-game overlay for CS2 that automatically checks player reputations using Leetify's Public API. When a match loads, CS2Clean looks up the first 10 players and shows each one's reputation score (0–100, 100 = nothing unusual) and classification: **Normal**, **Elevated**, **High**, **Very high**, or **Not enough data**.
 
 ## What it does
 
 - **Lobby check** — when a match loads, reads the player list from Steam and looks up each player on Leetify
-- **In-game overlay** — a transparent, click-through window on top of the game showing player cards with reputation scores, classification reasons, aim/clutch ratings, and Leetify's own stats
+- **In-game overlay** — a transparent, click-through window on top of the game showing player cards with reputation scores, classifications, aim/clutch ratings, and Leetify's own stats. It appears automatically in warm-up and hides when the match goes live
 - **Siren alert** — plays an audible alert when a High or Very high player is detected
 - **Player cards** — detailed view for each player: performance score, reputation tier, reasons for flags, and (for public profiles) recent match history
+- **Two scores, different questions** — the performance class measures how far above average a player performs; the reputation score measures how implausible their stats look for their rank. One strong number alone never flags a player. A ban on record is the only hard evidence.
 - **Configurable hotkeys** — all overlay keys can be changed in Settings
+- **Start with Windows** — optional auto-start, minimized to the taskbar (Windows only)
+- **Siren toggle** — turn the alert sound on or off in Settings
 - **No game injection** — nothing reads or modifies CS2's memory. The overlay is an ordinary transparent window kept on top of the game
 
 ## How it works
@@ -28,9 +33,9 @@ A desktop companion and in-game overlay for CS2 that checks player reputations u
 | **Shift+F2** | Toggle the lobby list (desktop window) |
 | **F7** | Show cards of flagged players in the overlay |
 | **F6** | Step forward through player cards (one at a time) |
-| **F5** | Step backward through player cards |
+| **Shift+F6** | Step backward through player cards |
 
-All four keys can be changed under **Settings** in the app (letters and digits only with Ctrl or Alt).
+All four keys can be changed under **Settings** in the app.
 
 ## Leetify API key
 
@@ -125,40 +130,6 @@ The recording is saved to `%APPDATA%\CS2Clean\recordings`. You can then replay i
 npx electron . --replay=recordings/your-recording.jsonl
 ```
 
-## Creating a release
-
-To create a new release, push a version tag:
-
-```bash
-git tag cs2clean-v0.2.0
-git push origin cs2clean-v0.2.0
-```
-
-Or trigger the **cs2clean-release** workflow manually from the Actions tab and enter a version number.
-
-## Building the installer (Windows PowerShell)
-
-```powershell
-npm ci
-npm run dist
-```
-
-Output:
-- `release\CS2Clean-Setup-<version>.exe` — NSIS installer
-- `release\CS2Clean-<version>-portable.exe` — portable executable
-
-Build on Windows. On Linux or macOS, electron-builder needs Wine for the Windows installer.
-
-## Overwolf (optional)
-
-CS2Clean also works through [Overwolf](https://overwolf.com/) if your app is approved. Overwolf provides its own CS2 game events and in-game overlay rendering:
-
-```bash
-npm run start:overwolf
-```
-
-The overlay uses Overwolf's built-in hotkeys (none are bound in CS2 by default).
-
 ## Troubleshooting
 
 | Problem | Fix |
@@ -182,3 +153,5 @@ npm run build
 CS2Clean is a fork of [cheatscanner.eu](https://github.com/EspectroDK/cheatscanner.eu).
 
 Player data is provided by [Leetify](https://leetify.com). CS2Clean does not look at demos and makes no accusations — treat a flag as "worth a closer look", not as proof of cheating.
+
+This project have been developed using AI tools - Claude Opus 5.5, Sonnet 5.5, and Qwen3.6-35B.
