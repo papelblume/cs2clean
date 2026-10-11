@@ -77,6 +77,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       hotkeysEditable: !!deps.applyHotkeys,
       startWithWindows: deps.startup ? deps.startup.get() : null,
       alert: { seq: 0, names: [] },
+      update: { available: false, remoteVersion: null, checked: false },
     };
   }
 
@@ -100,6 +101,12 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const cur = this.state.leetify.fallback;
     if (cur.working === next.working && cur.reason === next.reason) return;
     this.update({ leetify: { ...this.state.leetify, fallback: next } });
+  }
+
+  /** Update available: shows a banner with the remote version and a link to the releases page. */
+  setUpdateAvailable(result: { available: boolean; remoteVersion: string | null } | null): void {
+    if (!result) return;
+    this.update({ update: { available: result.available, remoteVersion: result.remoteVersion, checked: true } });
   }
 
   // ------------------------------------------------------------------ API key

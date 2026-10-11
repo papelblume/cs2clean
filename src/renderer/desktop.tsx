@@ -26,18 +26,25 @@ function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand"><Logo size={26} /><Wordmark /></div>
-        <div className="status-dots"><LeetifyDot s={s} /><FallbackDot s={s} /></div>
+        <LeetifyDot s={s} />
       </header>
       <main className="content">
         {s.notice && <p className="notice">{s.notice}</p>}
-        <FallbackNotice s={s} />
         <ApiKeysCard s={s} />
         <MatchCard s={s} />
       </main>
       <div className="footer-row">
-        <button className="leetify-link" onClick={() => bridge.openLeetify()} title="Data Provided by Leetify">
-          <img src={leetifyBadge} alt="Data Provided by Leetify" />
-        </button>
+        {s.update.available && (
+          <a className="update-banner" href="#" onClick={(e) => { e.preventDefault(); bridge.openReleases(); }}
+             title="Download the latest version">
+            Update available: {s.update.remoteVersion}
+          </a>
+        )}
+        <span className="leetify-badge">
+          <button className="leetify-link" onClick={() => bridge.openLeetify()} title="Data Provided by Leetify">
+            <img src={leetifyBadge} alt="Data Provided by Leetify" />
+          </button>
+        </span>
       </div>
       <footer className="footer">
         <p>{DISCLAIMER}</p>
@@ -45,27 +52,6 @@ function App() {
         <SettingsPanel s={s} />
       </footer>
     </div>
-  );
-}
-
-/** The csst.at fallback (players Leetify has no profile for) can't be used: say so, and why. Silent while it works. */
-function FallbackDot({ s }: { s: AppState }) {
-  if (s.leetify.fallback.working !== false) return null;
-  return (
-    <span className="server-dot server-bad" title={s.leetify.fallback.reason ?? undefined}>
-      <span className="dot" />csst.at fallback unavailable
-    </span>
-  );
-}
-
-function FallbackNotice({ s }: { s: AppState }) {
-  const f = s.leetify.fallback;
-  if (f.working !== false) return null;
-  return (
-    <p className="notice">
-      <strong>csst.at fallback unavailable.</strong> Players Leetify has no profile for can't be looked up there.
-      {f.reason && <> {f.reason}</>}
-    </p>
   );
 }
 
@@ -292,7 +278,10 @@ function SettingsPanel({ s }: { s: AppState }) {
           In plain Fullscreen, Windows draws the game over it.
         </p>
       )}
-      <p className="muted small">Version {s.version}.</p>
+      <p className="muted small">
+        Version {s.version}.{" "}
+        <button className="button quiet small-button" onClick={() => bridge.updateCheck()}>Check for updates</button>
+      </p>
     </details>
   );
 }

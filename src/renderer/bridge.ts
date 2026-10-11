@@ -93,7 +93,7 @@ function simulated(): Bridge {
   // ?fallback=off previews the window with the csst.at fallback unavailable.
   const fallbackOff = new URLSearchParams(location.search).get("fallback") === "off";
   let state: AppState = {
-    version: "0.1.0",
+    version: "1.0.0",
     leetify: {
       hasKey: screen !== "nokey",
       reachable: true,
@@ -132,6 +132,7 @@ function simulated(): Bridge {
     hotkeysEditable: true,
     startWithWindows: false,
     alert: { seq: 0, names: [] },
+    update: { available: false, remoteVersion: null, checked: false },
   };
   const listeners = new Set<(s: AppState) => void>();
   const set = (patch: Partial<AppState>) => {
@@ -173,6 +174,8 @@ function simulated(): Bridge {
     openSteamDeveloper: async () => {},
     setSteamApiKey: async (key) => (key.trim() !== ""),
     clearSteamApiKey: async () => {},
+    updateCheck: async () => {},
+    openReleases: async () => {},
   };
 }
 

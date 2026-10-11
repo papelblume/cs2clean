@@ -22,6 +22,9 @@ A desktop companion and in-game overlay for CS2 that automatically checks player
 - **Siren toggle** — turn the alert sound on or off in Settings
 - **No game injection** — nothing reads or modifies CS2's memory. The overlay is an ordinary transparent window kept on top of the game
 
+The app checks for updates on startup (at most once per day). You can also trigger a manual check from Settings.
+
+
 ## How it works
 
 | Data source | What it provides |

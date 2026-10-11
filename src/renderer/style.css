@@ -115,6 +115,28 @@ input:focus { border-color: var(--accent); outline: none; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 .footer { padding: 12px 18px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; }
+.update-banner {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-right: 8px;
+  margin-left: 14px;
+  display: inline-block;
+  text-decoration: none;
+}
+.update-banner:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.leetify-badge {
+  margin-left: auto;
+}
+.update-banner:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
 .settings summary { cursor: pointer; color: var(--text); font-weight: 600; margin-top: 4px; }
 .settings label.check { flex-direction: row; align-items: center; gap: 8px; margin: 8px 0; flex: 1; }
 .settings label.check input { flex: none; }
@@ -187,7 +209,7 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 
 /* Leetify attribution (Leetify's developer guidelines: legible, and a link by underline, bold or their pink) */
 .leetify-link { font: inherit; font-size: 0.78rem; font-weight: 700; color: #f84982; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
-.footer-row { display: flex; align-items: flex-start; justify-content: flex-end; margin-bottom: 6px; }
+.footer-row { display: flex; align-items: flex-end; justify-content: flex-end; margin-bottom: 6px; }
 .footer-row .leetify-link img { height: 45px; display: block; }
 .ov-credit { flex-basis: 100%; font-size: 0.68rem; color: var(--muted); }
 .ov-name .you { color: var(--muted); font-weight: 400; font-size: 0.8rem; }

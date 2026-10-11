@@ -21,6 +21,7 @@ import { DEFAULT_HOTKEYS, type Hotkeys } from "../shared/hotkeys";
 import type { AppState } from "../shared/types";
 import { Controller, type Settings, type SettingsStore } from "./controller";
 import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
+import { checkForUpdate, OWNER, REPO } from "./update-checker";
 import { OverwolfSource, type OverwolfPackages } from "./game/overwolf";
 import { record } from "./game/recorder";
 import { ReplaySource } from "./game/replay";
@@ -318,6 +319,28 @@ const startup = {
   set: (on: boolean) => app.setLoginItemSettings({ openAtLogin: on, args: STARTUP_ARGS }),
 };
 
+/** Check for updates at most once per day (stored in settings.json). Set force=true to bypass cooldown. */
+function checkUpdate(ctrl: Controller, force = false): void {
+  const settingsFile = join(app.getPath("userData"), "settings.json");
+  let lastCheck: number | null = null;
+  try {
+    const raw = JSON.parse(readFileSync(settingsFile, "utf8"));
+    if (typeof raw.lastUpdateCheck === "number") lastCheck = raw.lastUpdateCheck;
+  } catch { /* first start */ }
+  const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+  if (!force && lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return;
+  void checkForUpdate(ctrl.state.version).then((result) => {
+    ctrl.setUpdateAvailable(result);
+    if (result) {
+      try {
+        const raw = JSON.parse(readFileSync(settingsFile, "utf8"));
+        raw.lastUpdateCheck = Date.now();
+        writeFileSync(settingsFile, JSON.stringify(raw));
+      } catch { /* ignore */ }
+    }
+  });
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -388,12 +411,18 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle("steam:open-developer", () => {
       void shell.openExternal("https://steamcommunity.com/dev/apikey");
     });
+    ipcMain.handle("update:check", () => checkUpdate(controller, true));
+    ipcMain.handle("update:open-releases", () => {
+      void shell.openExternal(`https://github.com/${OWNER}/${REPO}/releases`);
+    });
 
     // The window follows the fallback's status, and a broken one shows up now, not at the first unknown player.
     onHeroStatus((s) => controller.setFallback(s));
     createDesktopWindow();
     controller.start();
     void checkHeroRuntime();
+    // Check for updates: only once per day (stored in settings.json).
+    void checkUpdate(controller);
   });
 
   app.on("will-quit", () => {

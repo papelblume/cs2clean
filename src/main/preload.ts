@@ -29,6 +29,8 @@ const bridge: Bridge = {
   openSteamDeveloper: () => ipcRenderer.invoke("steam:open-developer"),
   setSteamApiKey: (key) => ipcRenderer.invoke("steam:set-key", key),
   clearSteamApiKey: () => ipcRenderer.invoke("steam:clear-key"),
+  updateCheck: () => ipcRenderer.invoke("update:check"),
+  openReleases: () => ipcRenderer.invoke("update:open-releases"),
 };
 
 contextBridge.exposeInMainWorld("cs2clean", bridge);

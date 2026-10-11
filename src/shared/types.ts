@@ -163,6 +163,8 @@ export interface AppState {
   startWithWindows: boolean | null;
   /** Bumped when a HIGH player is found in the current match; the overlay plays the siren on a change. */
   alert: { seq: number; names: string[] };
+  /** Update available: checked at most once per day, reset by clicking the link. */
+  update: { available: boolean; remoteVersion: string | null; checked: boolean };
 }
 
 /** What the windows may ask the main process to do (exposed by the preload script). */
@@ -197,4 +199,8 @@ export interface Bridge {
   setSteamApiKey(key: string): Promise<boolean>;
   /** Removes the saved Steam Web API key. */
   clearSteamApiKey(): Promise<void>;
+  /** Checks for a newer release version (respects cooldown). */
+  updateCheck(): Promise<void>;
+  /** Opens the GitHub releases page. */
+  openReleases(): Promise<void>;
 }
