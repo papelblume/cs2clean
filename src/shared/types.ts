@@ -100,6 +100,10 @@ export interface LobbyRow extends RosterPlayer {
   reputation: PlayerReputation | null;
   /** Why there is no class (private profile, not on Leetify, rate limit...), for a tooltip. */
   note: string | null;
+  /** UUID for the Steam friendship group this player belongs to in the current lobby; null when solo. */
+  groupId: string | null;
+  /** Group label for display, e.g. "3 friends"; null when solo. */
+  groupName: string | null;
 }
 
 export type GameSourceKind = "steam" | "overwolf" | "replay";
@@ -116,6 +120,10 @@ export interface AppState {
      * it has been checked; false when it can't be used, with `reason` in plain words for the window.
      */
     fallback: { working: boolean | null; reason: string | null };
+  };
+  steam: {
+    /** A Steam Web API key is saved. Used for grouping friends in the lobby. */
+    hasKey: boolean;
   };
   /** Shown once, e.g. "Leetify rejected the API key". */
   notice: string | null;
@@ -183,4 +191,10 @@ export interface Bridge {
   openLeetify(): Promise<void>;
   /** Opens leetify.com/app/developer (the API key page). */
   openDeveloperPage(): Promise<void>;
+  /** Opens steamcommunity.com/dev/apikey in the browser. */
+  openSteamDeveloper(): Promise<void>;
+  /** Saves a Steam Web API key; returns false if empty. */
+  setSteamApiKey(key: string): Promise<boolean>;
+  /** Removes the saved Steam Web API key. */
+  clearSteamApiKey(): Promise<void>;
 }

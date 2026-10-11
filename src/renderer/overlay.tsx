@@ -13,6 +13,16 @@ import { playSiren } from "./siren";
 import { useAppState } from "./useAppState";
 import "./style.css";
 
+/** Deterministic color for a friendship group based on groupId hash. */
+function groupColor(groupId: string): string {
+  let hash = 0;
+  for (let i = 0; i < groupId.length; i++) {
+    hash = groupId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 65%, 55%)`;
+}
+
 function Overlay() {
   const s = useAppState();
   useSiren(s);
@@ -74,10 +84,12 @@ function Body({ s }: { s: AppState }) {
 }
 
 function Line({ r }: { r: LobbyRow }) {
+  const groupStyle = r.groupId ? { borderLeftColor: groupColor(r.groupId) } : undefined;
   return (
-    <div className={`ov-row${r.isLocal ? " is-local" : ""}`}>
+    <div className={`ov-row${r.isLocal ? " is-local" : ""}`} style={groupStyle}>
       <SideEmblem side={r.side} size={14} />
       <span className="ov-name">{r.name}</span>
+      {r.groupName && <span className="ov-group-badge" title={`${r.groupName} in this lobby`}>{r.groupName}</span>}
       <PlayerClass r={r} compact />
     </div>
   );

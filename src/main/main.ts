@@ -59,7 +59,10 @@ function settingsStore(): SettingsStore {
         let leetifyKey: string | null = raw.leetifyKey ?? null;
         if (raw.leetifyKeyEnc && safeStorage.isEncryptionAvailable())
           leetifyKey = safeStorage.decryptString(Buffer.from(raw.leetifyKeyEnc, "base64"));
-        return { leetifyKey, siren: raw.siren, hotkeys: raw.hotkeys };
+        let steamApiKey: string | null = raw.steamApiKey ?? null;
+        if (raw.steamApiKeyEnc && safeStorage.isEncryptionAvailable())
+          steamApiKey = safeStorage.decryptString(Buffer.from(raw.steamApiKeyEnc, "base64"));
+        return { leetifyKey, steamApiKey, siren: raw.siren, hotkeys: raw.hotkeys };
       } catch {
         return {};
       }
@@ -68,6 +71,8 @@ function settingsStore(): SettingsStore {
       const out: Record<string, unknown> = { siren: s.siren, hotkeys: s.hotkeys };
       if (s.leetifyKey && safeStorage.isEncryptionAvailable()) out.leetifyKeyEnc = safeStorage.encryptString(s.leetifyKey).toString("base64");
       else if (s.leetifyKey) out.leetifyKey = s.leetifyKey;
+      if (s.steamApiKey && safeStorage.isEncryptionAvailable()) out.steamApiKeyEnc = safeStorage.encryptString(s.steamApiKey).toString("base64");
+      else if (s.steamApiKey) out.steamApiKey = s.steamApiKey;
       writeFileSync(file, JSON.stringify(out, null, 2));
     },
   };
@@ -335,6 +340,7 @@ if (!app.requestSingleInstanceLock()) {
       source,
       store: settingsStore(),
       envKey: process.env.LEETIFY_API_KEY?.trim() || null,
+      steamApiKey: process.env.STEAM_API_KEY?.trim() || null,
       overlay,
       applyHotkeys: overlay.mode === "window" ? applyHotkeys : undefined,
       // Store (MSIX) installs can't add a plain login item, so they don't offer it.
@@ -375,6 +381,12 @@ if (!app.requestSingleInstanceLock()) {
     });
     ipcMain.handle("leetify:developer", () => {
       void shell.openExternal("https://leetify.com/app/developer");
+    });
+    ipcMain.handle("steam:set-key", (_e, key: unknown) =>
+      (typeof key === "string" ? controller.setSteamApiKey(key) : false));
+    ipcMain.handle("steam:clear-key", () => controller.clearSteamApiKey());
+    ipcMain.handle("steam:open-developer", () => {
+      void shell.openExternal("https://steamcommunity.com/dev/apikey");
     });
 
     // The window follows the fallback's status, and a broken one shows up now, not at the first unknown player.

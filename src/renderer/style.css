@@ -86,13 +86,14 @@ input:focus { border-color: var(--accent); outline: none; }
 
 .lobby { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 .team-label { font: 600 0.78rem var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-.player { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px; }
+.player { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px; border-left: 3px solid transparent; }
 .player:nth-child(odd) { background: var(--bg-2); }
 .player.is-local { box-shadow: inset 2px 0 0 var(--accent); }
 .player-name { flex: 1; min-width: 0; text-align: left; font: inherit; color: var(--text); background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-name:disabled { cursor: default; }
 .player-name:hover:not(:disabled) { color: var(--accent); }
 .you { font-size: 0.7rem; color: var(--accent); margin-left: 6px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.group-badge { font-size: 0.65rem; color: var(--muted); margin-left: 6px; padding: 1px 5px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font-weight: 600; }
 .emblem, .emblem-none { flex: none; display: inline-block; }
 .hint { margin: 12px 0 0; }
 
@@ -133,8 +134,10 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 .ov-list { padding: 6px 6px 4px; }
 .ov-team + .ov-team { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
 .ov-row { display: flex; align-items: center; gap: 7px; padding: 3px 6px; border-radius: 6px; }
+.ov-row { border-left: 3px solid transparent; }
 .ov-row.is-local { background: rgba(240, 161, 58, 0.1); }
 .ov-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-group-badge { font-size: 0.62rem; color: var(--muted); margin-left: 4px; padding: 1px 4px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); font-weight: 600; white-space: nowrap; }
 .ov .badge { font-size: 0.7rem; padding: 1px 7px 1px 6px; }
 .ov .skeleton { width: 58px; height: 15px; }
 .ov-msg { padding: 12px; margin: 0; color: var(--muted); }

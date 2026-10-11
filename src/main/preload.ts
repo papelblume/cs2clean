@@ -26,6 +26,9 @@ const bridge: Bridge = {
   openPlayer: (steamId) => ipcRenderer.invoke("player:open", steamId),
   openLeetify: () => ipcRenderer.invoke("leetify:open"),
   openDeveloperPage: () => ipcRenderer.invoke("leetify:developer"),
+  openSteamDeveloper: () => ipcRenderer.invoke("steam:open-developer"),
+  setSteamApiKey: (key) => ipcRenderer.invoke("steam:set-key", key),
+  clearSteamApiKey: () => ipcRenderer.invoke("steam:clear-key"),
 };
 
 contextBridge.exposeInMainWorld("cs2clean", bridge);

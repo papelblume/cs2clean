@@ -12,6 +12,8 @@ import { LobbyService, type LobbyOptions } from "./lobby";
 export interface Settings {
   /** The user's Leetify API key (https://leetify.com/app/developer). */
   leetifyKey?: string | null;
+  /** The user's Steam Web API key (https://steamcommunity.com/dev/apikey). */
+  steamApiKey?: string | null;
   /** Siren when a HIGH player is found (default on). */
   siren?: boolean;
   /** Overlay hotkeys chosen in Settings (default Shift+F2, F7 and F6). */
@@ -29,6 +31,8 @@ export interface ControllerDeps {
   store: SettingsStore;
   /** A key from the environment (LEETIFY_API_KEY), used when none is saved. */
   envKey?: string | null;
+  /** Steam Web API key from STEAM_API_KEY environment variable. */
+  steamApiKey?: string | null;
   overlay: AppState["overlay"];
   fetchImpl?: typeof fetch;
   lobby?: LobbyOptions;
@@ -58,10 +62,13 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.settings = { ...deps.store.load() };
     const key = this.settings.leetifyKey || deps.envKey || null;
     this.leetify = new LeetifyClient(key, deps.fetchImpl);
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), deps.lobby);
+    const steamKey = this.settings.steamApiKey || deps.steamApiKey || null;
+    const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey };
+    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), lobbyOpts);
     this.state = {
       version: deps.version,
       leetify: { hasKey: !!key, reachable: null, fallback: { working: null, reason: null } },
+      steam: { hasKey: !!steamKey },
       notice: null,
       game: { source: deps.source.kind, running: false, problem: null },
       match: null,
@@ -118,6 +125,25 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
 
   clearApiKey(): void {
     this.useKey(null);
+  }
+
+  /** Checks the Steam key is non-empty and saves it. No server validation. */
+  async setSteamApiKey(raw: string): Promise<boolean> {
+    const key = raw.trim();
+    if (!key) return false;
+    this.settings = { ...this.settings, steamApiKey: key };
+    this.deps.store.save(this.settings);
+    // Rebuild lobby service with the new key so it picks it up.
+    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: key });
+    this.state = { ...this.state, steam: { hasKey: true } };
+    return true;
+  }
+
+  clearSteamApiKey(): void {
+    this.settings = { ...this.settings, steamApiKey: null };
+    this.deps.store.save(this.settings);
+    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: null });
+    this.state = { ...this.state, steam: { hasKey: false } };
   }
 
   private useKey(key: string | null): void {

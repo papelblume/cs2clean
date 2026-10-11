@@ -1,11 +1,17 @@
-# CS2Clean
+
+https://github.com/user-attachments/assets/e75a84d9-3591-409e-a9bc-52b89796e756 
+
+
+<h1 align="left">
+  CS2Clean
+  <img align="right" width="367" height="284" alt="FACEIT-ban" src="https://github.com/user-attachments/assets/1ab863aa-d131-4393-9be9-9dbc563d929e" />
+</h1>
 
 **Know your lobby before the first round.**
 
-A desktop companion and in-game overlay for CS2 that automatically checks player reputations using Leetify's Public API. When a match loads, CS2Clean looks up the first 10 players and shows each one's reputation score (0–100, 100 = nothing unusual) and classification: **Normal**, **Elevated**, **High**, **Very high**, or **Not enough data**.
 
+A desktop companion and in-game overlay for CS2 that automatically checks player reputations using Leetify's Public API. When a match loads, CS2Clean looks up the first 10 players in your lobby and shows each one's judged reputation score (0–100, 100 = nothing unusual) and risk classification: **Normal**, **Elevated**, **High**, or **Very high**.
 ## What it does
-
 - **Lobby check** — when a match loads, reads the player list from Steam and looks up each player on Leetify
 - **In-game overlay** — a transparent, click-through window on top of the game showing player cards with reputation scores, classifications, aim/clutch ratings, and Leetify's own stats. It appears automatically in warm-up and hides when the match goes live
 - **Siren alert** — plays an audible alert when a High or Very high player is detected
@@ -47,12 +53,12 @@ Lookups work without a key, but at Leetify's stricter rate limits. A free key fr
 
 ## Platforms
 
-- **Windows** — installer (NSIS) or portable `.exe` from [GitHub releases](https://github.com/EspectroDK/CS2Clean/releases)
-- **Linux** — AppImage or tar.gz from [GitHub releases](https://github.com/EspectroDK/CS2Clean/releases)
+- **Windows** — installer (NSIS) or portable `.exe` from [GitHub releases](https://github.com/papelblume/CS2Clean/releases)
+- **Linux** — AppImage or tar.gz from [GitHub releases](https://github.com/papelblume/CS2Clean/releases)
 
 ## Installation (Windows)
 
-1. Download the latest release from the [GitHub releases page](https://github.com/EspectroDK/CS2Clean/releases)
+1. Download the latest release from the [GitHub releases page](https://github.com/papelblume/CS2Clean/releases)
 2. Run the installer (per-user, no admin required) or the portable `.exe` (no installation)
 3. Start CS2 and launch CS2Clean
 4. Paste your Leetify API key if you have one
@@ -66,7 +72,7 @@ The installer adds Start menu and desktop shortcuts. Settings are stored in `%AP
 
 ### Pre-built binaries
 
-1. Download the latest AppImage or tar.gz from [GitHub releases](https://github.com/EspectroDK/CS2Clean/releases)
+1. Download the latest AppImage or tar.gz from [GitHub releases](https://github.com/papelblume/CS2Clean/releases)
 2. **AppImage:** make it executable and run it:
    ```bash
    chmod +x CS2Clean-*.AppImage
@@ -83,7 +89,7 @@ The installer adds Start menu and desktop shortcuts. Settings are stored in `%AP
 Requires **Node 22.12 or newer**:
 
 ```bash
-git clone https://github.com/EspectroDK/CS2Clean.git
+git clone https://github.com/papelblume/CS2Clean.git
 cd CS2Clean
 npm ci
 npm run hero:install
@@ -164,3 +170,4 @@ CS2Clean is a fork of [cheatscanner.eu](https://github.com/EspectroDK/cheatscann
 Player data is provided by [Leetify](https://leetify.com). CS2Clean does not look at demos and makes no accusations — treat a flag as "worth a closer look", not as proof of cheating.
 
 This project have been developed using AI tools - Claude Opus 5.5, Sonnet 5.5, and Qwen3.6-35B.
+

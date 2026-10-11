@@ -8,6 +8,7 @@
 import type { PlayerReputation } from "../shared/reputation-types";
 import type { EvidenceClass, LobbyRow, MatchState, PlayerDetail } from "../shared/types";
 import { expectedOthers } from "./steam/pick";
+import { groupPlayers } from "./steam/friends";
 
 /** What a lookup says about one player. */
 export interface LobbyAnswer {
@@ -66,6 +67,8 @@ export interface LobbyOptions {
   maxPlayers?: number;
   /** The local player's Steam ID; always re-looked up when a new match starts. */
   localSteamId?: string | null;
+  /** Steam Web API key for fetching friends lists (optional). */
+  steamApiKey?: string | null;
   now?: () => number;
 }
 
@@ -84,6 +87,12 @@ export class LobbyService {
   private localPlayerDoneFor: string | null = null;
   error: string | null = null;
   updatedAt: string | null = null;
+  /** Friendship groups for the current match, keyed by player SteamID. */
+  private friendshipGroups = new Map<string, { groupId: string | null; groupName: string | null }>();
+  /** Steam IDs that are private in the current match. */
+  private privatePlayers = new Set<string>();
+  /** Whether friendship grouping has been attempted for the current match. */
+  private friendshipComputedFor: string | null = null;
 
   constructor(private lookup: Lookup, private onChange: () => void, private opts: LobbyOptions = {}) {}
 
@@ -119,6 +128,9 @@ export class LobbyService {
     this.queue = [];
     this.queueSent = 0;
     this.localPlayerDoneFor = null;
+    this.friendshipGroups.clear();
+    this.privatePlayers.clear();
+    this.friendshipComputedFor = null;
     this.schedule();
     this.onChange();
   }
@@ -133,8 +145,8 @@ export class LobbyService {
     return (this.match?.players ?? []).map((p, i) => {
       if (i >= this.limit)
         return { ...p, classification: null, totalMatches: 0, status: "skipped", detail: null, reputation: null,
-                 note: `Not checked: only the first ${this.limit} players of a lobby are looked up` };
-      if (!p.steamId) return { ...p, classification: null, totalMatches: 0, status: "no-steam-id", detail: null, reputation: null, note: null };
+                 note: `Not checked: only the first ${this.limit} players of a lobby are looked up`, groupId: null, groupName: null };
+      if (!p.steamId) return { ...p, classification: null, totalMatches: 0, status: "no-steam-id", detail: null, reputation: null, note: null, groupId: null, groupName: null };
       const c = this.cache.get(p.steamId);
       if (c)
         return {
@@ -142,9 +154,12 @@ export class LobbyService {
           // Steam sometimes doesn't know a stranger's name yet; the server's last known name fills in.
           name: p.name === UNKNOWN_NAME && c.name ? c.name : p.name,
           classification: c.classification, totalMatches: c.totalMatches, status: "ok", detail: c.detail, reputation: c.reputation, note: c.note,
+          groupId: this.friendshipGroups.get(p.steamId!)?.groupId ?? null,
+          groupName: this.friendshipGroups.get(p.steamId!)?.groupName ?? null,
         };
       const failed = this.failed.has(p.steamId);
-      return { ...p, classification: null, totalMatches: 0, status: failed ? "error" : "loading", detail: null, reputation: null, note: failed ? this.failed.get(p.steamId) ?? null : null };
+      return { ...p, classification: null, totalMatches: 0, status: failed ? "error" : "loading", detail: null, reputation: null, note: failed ? this.failed.get(p.steamId) ?? null : null,
+               groupId: null, groupName: null };
     });
   }
 
@@ -246,7 +261,48 @@ export class LobbyService {
     }
     this.inFlight = false;
     this.onChange();
+    // Compute friendship groups after successful lookups (once per match).
+    if (retryIn === null) {
+      void this.computeFriendshipGroups();
+    }
     this.schedule(retryIn ?? undefined);
+  }
+
+  /** Fetch friends lists for all lobby players and compute connected components. */
+  private async computeFriendshipGroups(): Promise<void> {
+    const key = this.opts.steamApiKey;
+    if (!key) return;
+    const matchKey = this.matchKey;
+    if (!matchKey || matchKey === this.friendshipComputedFor) return;
+    this.friendshipComputedFor = matchKey;
+
+    // Gather unique Steam IDs from the current match.
+    const ids = new Set<string>();
+    for (const p of (this.match?.players ?? [])) {
+      if (p.steamId) ids.add(p.steamId);
+    }
+    const idList = [...ids];
+    if (idList.length < 2) {
+      // Nothing to group with a single player.
+      return;
+    }
+
+    try {
+      const result = await groupPlayers(idList, key);
+      // Map each player to their group.
+      for (const group of result.groups) {
+        const groupId = group.length > 1 ? group.join(":") : null;
+        const groupName = group.length > 1 ? `${group.length} friends` : null;
+        for (const steamId of group) {
+          this.friendshipGroups.set(steamId, { groupId, groupName });
+        }
+      }
+      for (const sid of result.private) {
+        this.privatePlayers.add(sid);
+      }
+    } catch {
+      // Friendship grouping failed silently; the app still works without it.
+    }
   }
 
   dispose(): void {

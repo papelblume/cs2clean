@@ -28,6 +28,15 @@ const ROSTER: [string, "T" | "CT", LobbyRow["classification"], number, LobbyRow[
   ["late_joiner2", "T", null, 0, "skipped"],
 ];
 
+/** Fake friendship groups for dev mode: Nova/Kestrel/Oberon are friends, Brakk/n0va are friends. */
+const FAKE_GROUPS: Record<number, { groupId: string | null; groupName: string | null }> = {
+  0: { groupId: "group-alpha", groupName: "3 friends" },  // Nova
+  1: { groupId: "group-alpha", groupName: "3 friends" },  // Kestrel
+  3: { groupId: "group-alpha", groupName: "3 friends" },  // Oberon_7
+  5: { groupId: "group-beta", groupName: "2 friends" },   // Brakk
+  6: { groupId: "group-beta", groupName: "2 friends" },   // n0va
+};
+
 /** A typical player's Leetify numbers (as the API sends them), with overrides. */
 const metrics = (o: Partial<PlayerMetrics> = {}): PlayerMetrics => ({
   leetify: 0.4, aim: 48.2, positioning: 47.9, utility: 45.1, clutch: 0.02, opening: -0.01,
@@ -92,6 +101,7 @@ function simulated(): Bridge {
         ? { working: false, reason: "A native module was built for a different Node version (module ABI 127; the Node that runs it needs 137). Reinstall the sidecar with Node 22 (npm run hero:install)." }
         : { working: true, reason: null },
     },
+    steam: { hasKey: false },
     notice: null,
     game: {
       source: "steam",
@@ -109,6 +119,8 @@ function simulated(): Bridge {
         note: status === "skipped" ? "Not checked: only the first 10 players of a lobby are looked up"
           : classification === "INSUFFICIENT_DATA" ? "Only 3 Leetify matches" : name === "n0va" ? "Ban on record (faceit) since 2026-08-14" : null,
         steamId: status === "no-steam-id" ? null : String(76561198000000001n + BigInt(slot)),
+        groupId: FAKE_GROUPS[slot]?.groupId ?? null,
+        groupName: FAKE_GROUPS[slot]?.groupName ?? null,
       })) : [],
       updatedAt: inGame ? new Date().toISOString() : null,
       error: null,
@@ -158,6 +170,9 @@ function simulated(): Bridge {
     openPlayer: async () => {},
     openLeetify: async () => {},
     openDeveloperPage: async () => {},
+    openSteamDeveloper: async () => {},
+    setSteamApiKey: async (key) => (key.trim() !== ""),
+    clearSteamApiKey: async () => {},
   };
 }
 
