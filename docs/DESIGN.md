@@ -42,7 +42,7 @@ The app does not look at demos and makes no accusations. Treat a flag as "worth 
 ### Process Separation
 
 - **Main process**: Controller, game sources, lobby service, Leetify client, window management, IPC, hotkeys
-- **Coplay worker**: Separate utility process that reads Steam's players list (isolated from the app so a Steam client quirk can't crash it)
+- **Coplay worker**: Separate utility process that reads Steam's players list (isolated from the app so a Steam client quirk can't crash it). Uses [`koffi`](https://github.com/felixge/node-koffi), a native FFI library, to call Steam's native API without a full native addon.
 - **Renderer**: Two React windows (desktop + overlay), both receive state via IPC and use the bridge for IPC calls
 
 ## Components
@@ -63,12 +63,13 @@ The central state machine. Connects game sources to the lobby service, manages s
 ```typescript
 interface AppState {
   version: string;
-  leetify: { hasKey: boolean; reachable: boolean | null };
+  leetify: { hasKey: boolean; reachable: boolean | null; fallback: { working: boolean | null; reason: string | null } };
+  steam: { hasKey: boolean };
   notice: string | null;
   game: { source: GameKind; running: boolean; problem: string | null };
   match: { map: string | null; mode: string | null; phase: MatchPhase | null } | null;
-  lobby: { rows: LobbyRow[]; updatedAt: Date | null; error: string | null };
-  overlay: { mode: OverlayMode; visible: boolean; view: ViewKind; focusSlot: number | null; siren: boolean; hotkey: string; detailHotkey: string; cycleHotkey: string; previousHotkey: string };
+  lobby: { rows: LobbyRow[]; updatedAt: string | null; error: string | null };
+  overlay: { hotkey: string; detailHotkey: string; cycleHotkey: string; previousHotkey: string; mode: OverlayMode; visible: boolean; view: ViewKind; focusSlot: number | null; siren: boolean };
   hotkeysEditable: boolean;
   startWithWindows: boolean | null;
   alert: { seq: number; names: string[] };
@@ -166,6 +167,13 @@ timeout, the CLI's JSON error, Node's own `NODE_MODULE_VERSION` crash text) to t
 
 Checks: CI runs `npm run hero:install` (which ends with the sidecar's selftest: Hero and `better-sqlite3` load, a database
 opens) and then `node tools/build-hero-runtime.mjs check release/<platform>-unpacked/resources/hero` on the **packaged** copy.
+
+### csst.at HTML parser (`src/main/csst-parse.ts`)
+
+Pure JS function that parses csst.at's HTMX HTML response into a `LeetifyProfile`. No native or Electron dependencies —
+it runs in both the app (renderer) and inside the Hero sidecar (which may use any Node version). Extracts aim, utility,
+rating, preaim, reaction time, headshot accuracy, spray accuracy, counter-strafing ratio, and total games from the HTML
+by matching element IDs like `leetify-aim-{steamId}`.
 
 ### Scoring System
 
@@ -269,6 +277,16 @@ TypeScript → Vite (renderer) + tsc (main) → Electron
 The release workflow also runs `npm run hero:install` before packaging and checks the packaged sidecar afterwards
 (`tools/build-hero-runtime.mjs check`). The sidecar adds the bundled Node 22 (about 120 MB unpacked) and Hero to every build.
 
+### Package Verification
+
+```bash
+npm run check:package    # verify a packaged app's asar contains expected files
+```
+
+Runs `electron-builder --linux dir --x64` to create a dir output, then `tools/check-package.mjs` inspects the
+`app.asar` to ensure critical files are present and nothing unexpected is included. Useful for catching packaging
+regressions before publishing.
+
 ### Release Tags
 
 Push a tag to trigger the GitHub Actions workflow:
@@ -290,7 +308,14 @@ npm test      # Run vitest tests
 npm run typecheck  # TypeScript type checking
 ```
 
+**Test setup**: `test/setup.ts` runs before every test file. It disables the hero sidecar by setting
+`CS2CLEAN_HERO_DIR` to `/nonexistent/...` so tests that reach the fallback get a fast "no-runtime" status instead of
+spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_HERO_DIR` to a stub of their own.
+
 **Test coverage**: 9 test files, 95 tests covering controller, assess, reputation, leetify, hotkeys, lobby, and more.
+
+**Hero sidecar tests**: `test/hero-sidecar.test.ts` (316 lines) covers `classifyHeroFailure` and all failure modes
+(abi-mismatch, native-load, module-missing, browser-missing, spawn errors, timeouts, crashes...).
 
 **Replay fixture**: `fixtures/premier-mirage.jsonl` — hand-written test data for replay mode without CS2.
 

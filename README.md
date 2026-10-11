@@ -154,6 +154,25 @@ npx electron . --replay=recordings/your-recording.jsonl
 | "csst.at fallback unavailable" | The window gives the reason. Nothing else stops working: only players Leetify has no profile for can't be looked up on csst.at. The full error is in `hero.log` in the app's data folder (`%APPDATA%\CS2Clean` on Windows, `~/.config/CS2Clean` on Linux). From a source checkout the usual fix is `npm run hero:install`. |
 | "Setting up the csst.at fallback: downloading Chrome" | One-time download (a few hundred MB; Chrome is 370 MB on disk) into the app's data folder, the first time a player isn't on Leetify. Lookups carry on meanwhile and the fallback works from the next one after it. |
 
+## UI Development
+
+Preview UI states in a browser without running the full app:
+
+```bash
+npm run dev:ui
+```
+
+Then open `http://localhost:5173` with query params:
+- `?screen=lobby|detail|player|nokey|waiting|problem` — which screen to show (default: lobby)
+- `?fallback=off` — preview the window with the csst.at fallback unavailable
+
+## Debug Scripts
+
+```bash
+npm run leetify:probe    # test the Leetify API client directly
+npm run coplay           # run the Steam coplay reader standalone
+```
+
 ## Checks
 
 ```bash
@@ -161,6 +180,7 @@ npm test
 npm run build
 npm run hero:check                                   # the sidecar's selftest, from a source checkout
 npm run hero:check -- release/linux-unpacked/resources/hero   # ...or on a packaged build
+npm run check:package                                # verify a packaged app's asar contains expected files
 ```
 
 ## Credits
