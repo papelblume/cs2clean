@@ -48,6 +48,7 @@ kbd { font: 600 0.8rem var(--display); letter-spacing: 0.04em; padding: 1px 6px;
 .wordmark { font-family: var(--display); font-weight: 700; font-size: 1.3rem; letter-spacing: 0.03em; color: var(--text); }
 .wordmark-tld { color: var(--accent); }
 .wordmark-accent { color: var(--accent); }
+.status-dots { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px 16px; }
 .server-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); }
 .server-dot .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .server-ok .dot { background: var(--normal); }

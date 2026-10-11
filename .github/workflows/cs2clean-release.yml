@@ -4,6 +4,11 @@ name: cs2clean-release
 #   Actions > cs2clean-release > Run workflow, version e.g. 0.2.0   (creates the tag cs2clean-v0.2.0)
 #   or push a tag: git tag cs2clean-v0.2.0, git push origin cs2clean-v0.2.0
 # The version is set at build time; package.json in the repo isn't changed.
+#
+# Test run (nothing published): Run workflow, pick the branch under test, a throwaway version such as 0.0.1 and
+# untick "Create the GitHub release". It builds, runs the sidecar selftests and uploads the installers as workflow
+# artifacts (download them from the run's summary page); no tag and no release are created. Never reuse the number
+# of a published release for a test run with the box ticked: the release's files would be replaced.
 on:
   push:
     tags: ["cs2clean-v*"]
@@ -12,6 +17,10 @@ on:
       version:
         description: "Version, e.g. 0.2.0"
         required: true
+      publish:
+        description: "Create the GitHub release (untick for a build-only test run)"
+        type: boolean
+        default: true
 concurrency:
   group: cs2clean-release
   cancel-in-progress: false
@@ -29,7 +38,9 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            hero-runtime/package-lock.json
 
       - name: Version
         id: version
@@ -45,24 +56,37 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
-      - run: npm rebuild better-sqlite3
+      # The csst.at fallback runs in a sidecar (hero-runtime/) with its own Node 22 and its own better-sqlite3, shipped
+      # outside app.asar as extraResources. This installs it with the Node 22 above, copies that Node next to it,
+      # bundles its CLI and runs its selftest, so the binary that gets packaged is the one that was just tested.
+      - name: Hero sidecar (Node 22 and its own better-sqlite3)
+        run: npm run hero:install
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run dist
       - run: npx electron-builder --win portable --x64
       - run: ls -l release
+      # The selftest again, on the copy inside the package: its Node starts, Hero and better-sqlite3 load from there.
+      - name: Check the packaged sidecar
+        run: node tools/build-hero-runtime.mjs check release/win-unpacked/resources/hero
 
       - uses: actions/upload-artifact@v4
         with:
           name: cs2clean-${{ steps.version.outputs.version }}-win
           path: release/*.exe
+          # No installer is a failed build, not an empty upload.
+          if-no-files-found: error
 
+      # A tag push always publishes; a manual run publishes unless "Create the GitHub release" was unticked.
       - name: GitHub release
+        if: ${{ github.event_name == 'push' || inputs.publish }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: cs2clean-v${{ steps.version.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: CS2Clean ${{ steps.version.outputs.version }}
+          # Without this, a pattern that matches nothing publishes a release that is missing that file.
+          fail_on_unmatched_files: true
           files: |
             release/*.exe
 
@@ -77,7 +101,9 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            hero-runtime/package-lock.json
 
       - name: Version
         id: version
@@ -93,12 +119,18 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
-      - run: npm rebuild better-sqlite3
+      # The csst.at fallback runs in a sidecar (hero-runtime/) with its own Node 22 and its own better-sqlite3, shipped
+      # outside app.asar as extraResources. This installs it with the Node 22 above, copies that Node next to it,
+      # bundles its CLI and runs its selftest, so the binary that gets packaged is the one that was just tested.
+      - name: Hero sidecar (Node 22 and its own better-sqlite3)
+        run: npm run hero:install
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run build
       - run: npx electron-builder --linux --x64
       - run: ls -l release
+      - name: Check the packaged sidecar
+        run: node tools/build-hero-runtime.mjs check release/linux-unpacked/resources/hero
 
       - uses: actions/upload-artifact@v4
         with:
@@ -106,13 +138,16 @@ jobs:
           path: |
             release/*.AppImage
             release/*.tar.gz
+          if-no-files-found: error
 
       - name: GitHub release
+        if: ${{ github.event_name == 'push' || inputs.publish }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: cs2clean-v${{ steps.version.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: CS2Clean ${{ steps.version.outputs.version }}
+          fail_on_unmatched_files: true
           files: |
             release/*.AppImage
             release/*.tar.gz

@@ -21,5 +21,6 @@ export default defineConfig({
   test: {
     root: __dirname,
     include: ["test/**/*.test.ts"],
+    setupFiles: [resolve(__dirname, "test/setup.ts")],
   },
 } as any);

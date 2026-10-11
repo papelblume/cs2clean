@@ -111,6 +111,11 @@ export interface AppState {
     hasKey: boolean;
     /** null until the first lookup; false when Leetify couldn't be reached. */
     reachable: boolean | null;
+    /**
+     * The csst.at fallback for players Leetify has no profile for (main/leetify-hero.ts). `working` is null until
+     * it has been checked; false when it can't be used, with `reason` in plain words for the window.
+     */
+    fallback: { working: boolean | null; reason: string | null };
   };
   /** Shown once, e.g. "Leetify rejected the API key". */
   notice: string | null;

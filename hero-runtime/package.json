@@ -1,0 +1,12 @@
+{
+  "name": "cs2clean-hero-runtime",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Self-contained sidecar for CS2Clean's csst.at fallback: Ulixee Hero and its native modules, installed with Node 22 and run by a bundled Node 22. Not part of the Electron app's own dependencies on purpose (see docs/DESIGN.md).",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "dependencies": {
+    "@ulixee/hero-playground": "2.0.0-alpha.34"
+  }
+}

@@ -81,9 +81,17 @@ const TRUSTED: PlayerReputation = { score: 100, tier: "TRUSTED", confidence: 1, 
 function simulated(): Bridge {
   const screen = new URLSearchParams(location.search).get("screen") ?? "lobby";
   const inGame = screen === "lobby" || screen === "detail" || screen === "player";
+  // ?fallback=off previews the window with the csst.at fallback unavailable.
+  const fallbackOff = new URLSearchParams(location.search).get("fallback") === "off";
   let state: AppState = {
     version: "0.1.0",
-    leetify: { hasKey: screen !== "nokey", reachable: true },
+    leetify: {
+      hasKey: screen !== "nokey",
+      reachable: true,
+      fallback: fallbackOff
+        ? { working: false, reason: "A native module was built for a different Node version (module ABI 127; the Node that runs it needs 137). Reinstall the sidecar with Node 22 (npm run hero:install)." }
+        : { working: true, reason: null },
+    },
     notice: null,
     game: {
       source: "steam",

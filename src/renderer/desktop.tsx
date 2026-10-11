@@ -16,10 +16,11 @@ function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand"><Logo size={26} /><Wordmark /></div>
-        <LeetifyDot s={s} />
+        <div className="status-dots"><LeetifyDot s={s} /><FallbackDot s={s} /></div>
       </header>
       <main className="content">
         {s.notice && <p className="notice">{s.notice}</p>}
+        <FallbackNotice s={s} />
         <KeyCard s={s} />
         <MatchCard s={s} />
       </main>
@@ -34,6 +35,27 @@ function App() {
         <SettingsPanel s={s} />
       </footer>
     </div>
+  );
+}
+
+/** The csst.at fallback (players Leetify has no profile for) can't be used: say so, and why. Silent while it works. */
+function FallbackDot({ s }: { s: AppState }) {
+  if (s.leetify.fallback.working !== false) return null;
+  return (
+    <span className="server-dot server-bad" title={s.leetify.fallback.reason ?? undefined}>
+      <span className="dot" />csst.at fallback unavailable
+    </span>
+  );
+}
+
+function FallbackNotice({ s }: { s: AppState }) {
+  const f = s.leetify.fallback;
+  if (f.working !== false) return null;
+  return (
+    <p className="notice">
+      <strong>csst.at fallback unavailable.</strong> Players Leetify has no profile for can't be looked up there.
+      {f.reason && <> {f.reason}</>}
+    </p>
   );
 }
 

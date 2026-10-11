@@ -152,6 +152,23 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("shows when the csst.at fallback can't be used, why, and when it recovers", () => {
+    const { c } = setup();
+    const seen: unknown[] = [];
+    c.on("state", (s) => seen.push(s.leetify.fallback));
+    expect(c.state.leetify.fallback).toEqual({ working: null, reason: null }); // not checked yet: no accusation
+
+    c.setFallback({ state: "unavailable", reason: "Couldn't start Node 22: the file isn't there (ENOENT)." });
+    expect(c.state.leetify.fallback).toEqual({ working: false, reason: "Couldn't start Node 22: the file isn't there (ENOENT)." });
+
+    const n = seen.length;
+    c.setFallback({ state: "unavailable", reason: "Couldn't start Node 22: the file isn't there (ENOENT)." });
+    expect(seen).toHaveLength(n); // same status again: the window isn't told twice
+
+    c.setFallback({ state: "ready", reason: null });
+    expect(c.state.leetify.fallback).toEqual({ working: true, reason: null });
+  });
+
   it("builds Leetify profile links only for Steam IDs", async () => {
     const { c } = setup();
     expect(c.playerUrl("76561198000000002")).toBe("https://leetify.com/app/profile/76561198000000002");
