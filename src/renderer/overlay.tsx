@@ -10,18 +10,9 @@ import type { AppState, AxisLevel, LobbyRow } from "../shared/types";
 import { ClassBadge, Logo, mapName, SideEmblem, TIER_LABELS, Wordmark } from "./brand";
 import { ago, clutchDisplay, cspLevel, flagged, hsAccuracyLevel, PlayerClass, ratingDisplay, show, sprayAccuracyLevel, spottedAccuracyLevel, ttdLevel, winrateDisplay } from "./parts";
 import { playSiren } from "./siren";
+import { groupColor } from "./group-color";
 import { useAppState } from "./useAppState";
 import "./style.css";
-
-/** Deterministic color for a friendship group based on groupId hash. */
-function groupColor(groupId: string): string {
-  let hash = 0;
-  for (let i = 0; i < groupId.length; i++) {
-    hash = groupId.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 65%, 55%)`;
-}
 
 function Overlay() {
   const s = useAppState();

@@ -134,9 +134,6 @@ input:focus { border-color: var(--accent); outline: none; }
 .leetify-badge {
   margin-left: auto;
 }
-.update-banner:hover {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-}
 .settings summary { cursor: pointer; color: var(--text); font-weight: 600; margin-top: 4px; }
 .settings label.check { flex-direction: row; align-items: center; gap: 8px; margin: 8px 0; flex: 1; }
 .settings label.check input { flex: none; }
