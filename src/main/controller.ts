@@ -141,16 +141,18 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.settings = { ...this.settings, steamApiKey: key };
     this.deps.store.save(this.settings);
     // Rebuild lobby service with the new key so it picks it up.
+    this.lobby.dispose();
     this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: key });
-    this.state = { ...this.state, steam: { hasKey: true } };
+    this.update({ steam: { hasKey: true } });
     return true;
   }
 
   clearSteamApiKey(): void {
     this.settings = { ...this.settings, steamApiKey: null };
     this.deps.store.save(this.settings);
+    this.lobby.dispose();
     this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: null });
-    this.state = { ...this.state, steam: { hasKey: false } };
+    this.update({ steam: { hasKey: false } });
   }
 
   private useKey(key: string | null): void {
