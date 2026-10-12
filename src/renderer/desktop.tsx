@@ -293,7 +293,7 @@ function SettingsPanel({ s }: { s: AppState }) {
       )}
       <p className="muted small">
         Version {s.version}.{" "}
-        <button className="button quiet small-button" onClick={() => bridge.updateCheck()}>Check for updates</button>
+        <button className="button quiet small-button" onClick={async () => { const result = await bridge.updateCheck(); if (!result) { alert("You’re already on the latest version."); } }}>Check for updates</button>
       </p>
     </details>
   );

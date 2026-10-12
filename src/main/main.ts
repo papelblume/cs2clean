@@ -22,6 +22,7 @@ import type { AppState } from "../shared/types";
 import { Controller, type Settings, type SettingsStore } from "./controller";
 import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
 import { checkForUpdate, OWNER, REPO } from "./update-checker";
+import type { UpdateResult } from "./update-checker";
 import { OverwolfSource, type OverwolfPackages } from "./game/overwolf";
 import { record } from "./game/recorder";
 import { ReplaySource } from "./game/replay";
@@ -320,7 +321,7 @@ const startup = {
 };
 
 /** Check for updates at most once per day (stored in settings.json). */
-function checkUpdate(ctrl: Controller): void {
+async function checkUpdate(ctrl: Controller, force = false): Promise<UpdateResult | null> {
   const settingsFile = join(app.getPath("userData"), "settings.json");
   let lastCheck: number | null = null;
   try {
@@ -328,8 +329,8 @@ function checkUpdate(ctrl: Controller): void {
     if (typeof raw.lastUpdateCheck === "number") lastCheck = raw.lastUpdateCheck;
   } catch { /* first start */ }
   const COOLDOWN_MS = 24 * 60 * 60 * 1000;
-  if (lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return;
-  void checkForUpdate(ctrl.state.version).then((result) => {
+  if (!force && lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return null;
+  const result = await checkForUpdate(ctrl.state.version);
     ctrl.setUpdateAvailable(result);
     try {
       let raw: Record<string, unknown>;
@@ -341,7 +342,7 @@ function checkUpdate(ctrl: Controller): void {
       raw.lastUpdateCheck = Date.now();
       writeFileSync(settingsFile, JSON.stringify(raw));
     } catch { /* ignore */ }
-  });
+return result;
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -414,7 +415,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle("steam:open-developer", () => {
       void shell.openExternal("https://steamcommunity.com/dev/apikey");
     });
-    ipcMain.handle("update:check", () => checkUpdate(controller));
+    ipcMain.handle("update:check", () => checkUpdate(controller, true));
     ipcMain.handle("update:open-releases", () => {
       void shell.openExternal(`https://github.com/${OWNER}/${REPO}/releases`);
     });

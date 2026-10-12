@@ -71,6 +71,8 @@ export interface LobbyOptions {
   steamApiKey?: string | null;
   /** Called when friendship grouping encounters transient errors (rate limit, network); absent in tests. */
   onFriendshipError?: (count: number) => void;
+  /** Called when the Steam API key is invalid (403); absent in tests. */
+  onFriendshipKeyError?: (message: string) => void;
   now?: () => number;
 }
 
@@ -306,8 +308,14 @@ export class LobbyService {
       if (result.errors.length > 0 && this.opts.onFriendshipError) {
         this.opts.onFriendshipError(result.errors.length);
       }
-    } catch {
-      // Friendship grouping failed silently; the app still works without it.
+    } catch (e) {
+      // A thrown error (e.g. 403 invalid key) is surfaced if a callback is registered.
+      if (this.opts.onFriendshipKeyError) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("Steam API key invalid")) {
+          this.opts.onFriendshipKeyError(msg);
+        }
+      }
     }
     this.onChange();
   }

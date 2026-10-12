@@ -8,6 +8,7 @@ import type { AppState, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
 import { LobbyService, type LobbyOptions } from "./lobby";
+import { validateSteamKey } from "./steam/friends";
 
 export interface Settings {
   /** The user's Leetify API key (https://leetify.com/app/developer). */
@@ -63,7 +64,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const key = this.settings.leetifyKey || deps.envKey || null;
     this.leetify = new LeetifyClient(key, deps.fetchImpl);
     const steamKey = this.settings.steamApiKey || deps.steamApiKey || null;
-    const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }) };
+    const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) };
     this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), lobbyOpts);
     this.state = {
       version: deps.version,
@@ -134,15 +135,19 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.useKey(null);
   }
 
-  /** Checks the Steam key is non-empty and saves it. No server validation. */
+  /** Checks the Steam key is non-empty, validates it, and saves it. */
   async setSteamApiKey(raw: string): Promise<boolean> {
     const key = raw.trim();
     if (!key) return false;
+    if (!(await validateSteamKey(key))) {
+      this.update({ notice: "Your Steam Web API key is invalid or missing." });
+      return false;
+    }
     this.settings = { ...this.settings, steamApiKey: key };
     this.deps.store.save(this.settings);
     // Rebuild lobby service with the new key so it picks it up.
     this.lobby.dispose();
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: key, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }) });
+    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: key, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) });
     this.update({ steam: { hasKey: true } });
     return true;
   }
@@ -151,7 +156,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.settings = { ...this.settings, steamApiKey: null };
     this.deps.store.save(this.settings);
     this.lobby.dispose();
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: null, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }) });
+    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: null, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) });
     this.update({ steam: { hasKey: false } });
   }
 

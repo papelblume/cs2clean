@@ -1,6 +1,7 @@
 // State shared by the main process and the windows (desktop window and in-game overlay).
 
 import type { PlayerReputation } from "./reputation-types";
+import type { UpdateResult } from "../main/update-checker";
 
 /**
  * Classes from a player's public Leetify data: the more severe of how far above average they perform
@@ -200,7 +201,7 @@ export interface Bridge {
   /** Removes the saved Steam Web API key. */
   clearSteamApiKey(): Promise<void>;
   /** Checks for a newer release version (respects cooldown). */
-  updateCheck(): Promise<void>;
+  updateCheck(): Promise<UpdateResult | null>;
   /** Opens the GitHub releases page. */
   openReleases(): Promise<void>;
 }

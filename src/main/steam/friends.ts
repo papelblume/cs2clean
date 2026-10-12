@@ -12,6 +12,9 @@ const BASE = "https://api.steampowered.com";
 const ENDPOINT = "/ISteamUser/GetFriendList/v0001/";
 const DELAY_MS = 200;
 
+/** Steam ID with a private friends list, used to validate the API key without exposing data. */
+const KEY_TEST_ID = "76561197960287930";
+
 export interface FriendsResult {
   /** Each connected component of friends within the lobby. Largest first, solos last. */
   groups: string[][];
@@ -132,4 +135,12 @@ export async function groupPlayers(lobbyIds: string[], apiKey: string): Promise<
   }
 
   return { groups: uf.groups(), private: private_, errors };
+}
+
+/** Check whether a Steam Web API key is valid by fetching one private profile. Returns false on 403 or non-JSON. */
+export async function validateSteamKey(key: string): Promise<boolean> {
+  const url = `${BASE}${ENDPOINT}?key=${encodeURIComponent(key)}&steamid=${KEY_TEST_ID}&relationship=friend`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  const text = await res.text().catch(() => "");
+  return text.startsWith("{") && text.endsWith("}");
 }
