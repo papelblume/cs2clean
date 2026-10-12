@@ -69,6 +69,8 @@ export interface LobbyOptions {
   localSteamId?: string | null;
   /** Steam Web API key for fetching friends lists (optional). */
   steamApiKey?: string | null;
+  /** Called when friendship grouping encounters transient errors (rate limit, network); absent in tests. */
+  onFriendshipError?: (count: number) => void;
   now?: () => number;
 }
 
@@ -300,6 +302,9 @@ export class LobbyService {
       }
       for (const sid of result.private) {
         this.privatePlayers.add(sid);
+      }
+      if (result.errors.length > 0 && this.opts.onFriendshipError) {
+        this.opts.onFriendshipError(result.errors.length);
       }
     } catch {
       // Friendship grouping failed silently; the app still works without it.

@@ -63,7 +63,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const key = this.settings.leetifyKey || deps.envKey || null;
     this.leetify = new LeetifyClient(key, deps.fetchImpl);
     const steamKey = this.settings.steamApiKey || deps.steamApiKey || null;
-    const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey };
+    const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }) };
     this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), lobbyOpts);
     this.state = {
       version: deps.version,
@@ -142,7 +142,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.deps.store.save(this.settings);
     // Rebuild lobby service with the new key so it picks it up.
     this.lobby.dispose();
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: key });
+    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: key, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }) });
     this.update({ steam: { hasKey: true } });
     return true;
   }
@@ -151,7 +151,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.settings = { ...this.settings, steamApiKey: null };
     this.deps.store.save(this.settings);
     this.lobby.dispose();
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: null });
+    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: null, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }) });
     this.update({ steam: { hasKey: false } });
   }
 

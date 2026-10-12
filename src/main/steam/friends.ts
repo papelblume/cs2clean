@@ -6,7 +6,6 @@
 // Privacy: a 401 means the player's list is private. The edge may still be found if
 // the other player's list is public. When both are private, no edge is detected.
 
-import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const BASE = "https://api.steampowered.com";
@@ -18,18 +17,20 @@ export interface FriendsResult {
   groups: string[][];
   /** Players whose friends list was private (401). */
   private: string[];
-  /** Players that had transient errors (rate limit, network). */
+  /** Players that had transient errors (rate limit, network, timeout). */
   errors: string[];
 }
 
-/** Fetch one player's friends list. Returns null when private, Set<steamid> otherwise. */
-async function fetchFriends(steamId: string, key: string): Promise<Set<string> | null> {
+type FetchResult = { kind: "ok"; friends: Set<string> } | { kind: "private" } | { kind: "error" };
+
+/** Fetch one player's friends list. Distinguishes private profiles from transient errors. */
+async function fetchFriends(steamId: string, key: string): Promise<FetchResult> {
   const url = `${BASE}${ENDPOINT}?key=${encodeURIComponent(key)}&steamid=${encodeURIComponent(steamId)}&relationship=friend`;
   const maxRetries = 3;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-      if (res.status === 401) return null; // private
+      if (res.status === 401) return { kind: "private" };
       if (res.status === 403) {
         const body = await res.text().catch(() => "");
         throw new Error(`Steam API key invalid or missing: ${body.slice(0, 200)}`);
@@ -38,10 +39,10 @@ async function fetchFriends(steamId: string, key: string): Promise<Set<string> |
         await sleep(1000 * 2 ** attempt);
         continue;
       }
-      if (!res.ok) return null;
+      if (!res.ok) return { kind: "error" };
       const data = await res.json() as { friendslist?: { friends?: { steamid: string }[] } };
       const friends = data.friendslist?.friends ?? [];
-      return new Set(friends.map((f) => f.steamid));
+      return { kind: "ok", friends: new Set(friends.map((f) => f.steamid)) };
     } catch (e) {
       if (e instanceof Error && e.name === "TimeoutError") {
         await sleep(1000 * 2 ** attempt);
@@ -52,10 +53,10 @@ async function fetchFriends(steamId: string, key: string): Promise<Set<string> |
         await sleep(1000 * 2 ** attempt);
         continue;
       }
-      return null;
+      return { kind: "error" };
     }
   }
-  return null;
+  return { kind: "error" };
 }
 
 /** Union-Find data structure for connected components. */
@@ -113,13 +114,17 @@ export async function groupPlayers(lobbyIds: string[], apiKey: string): Promise<
   const errors: string[] = [];
 
   for (const id of deduped) {
-    const friends = await fetchFriends(id, apiKey);
+    const result = await fetchFriends(id, apiKey);
     await sleep(DELAY_MS);
-    if (friends === null) {
+    if (result.kind === "private") {
       private_.push(id);
       continue;
     }
-    for (const fid of friends) {
+    if (result.kind === "error") {
+      errors.push(id);
+      continue;
+    }
+    for (const fid of result.friends) {
       if (lobbySet.has(fid)) {
         uf.union(id, fid);
       }
