@@ -104,11 +104,12 @@ export class LobbyService {
     const prevKey = this.matchKey;
     this.match = match;
     this.matchKey = match ? this.matchSig(match) : null;
-    // New match: reset the queue.
-    if (prevKey !== this.matchKey) {
+    // New match: reset per-match state.
+    if (match !== null) {
       this.queue = [];
       this.queueSent = 0;
       this.localPlayerDoneFor = null;
+      this.friendshipComputedFor = null;
     }
     this.schedule();
     this.onChange();
@@ -303,6 +304,7 @@ export class LobbyService {
     } catch {
       // Friendship grouping failed silently; the app still works without it.
     }
+    this.onChange();
   }
 
   dispose(): void {
