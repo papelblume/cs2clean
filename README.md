@@ -17,6 +17,7 @@ A desktop companion and in-game overlay for CS2 that automatically checks player
 - **Siren alert** — plays an audible alert when a High or Very high player is detected
 - **Player cards** — detailed view for each player: performance score, reputation tier, reasons for flags, and (for public profiles) recent match history
 - **Two scores, different questions** — the performance class measures how far above average a player performs; the reputation score measures how implausible their stats look for their rank. One strong number alone never flags a player. A ban on record is the only hard evidence.
+- **Friend badges (optional)** — with a Steam Web API key, lobby players who are linked by Steam friendships share a colored bar and an "N friends" badge, in the window and in the overlay. A link can run through a third player (A–B and B–C make a group of three), so the badge tells you who is connected, not that all of them are friends with each other
 - **Configurable hotkeys** — all overlay keys can be changed in Settings
 - **Start with Windows** — optional auto-start, minimized to the taskbar (Windows only)
 - **Siren toggle** — turn the alert sound on or off in Settings
@@ -32,8 +33,10 @@ The app checks for updates on startup (at most once per day). You can also trigg
 | **Steam's coplay list** | Who is in your match (Steam > View > Players). CS2 reports the roster to Steam when the match loads. |
 | **CS2 Game State Integration (GSI)** | When warm-up starts, when the match goes live, the map name, and your own Steam ID. The app writes a config file into CS2's `cfg` folder and listens on `127.0.0.1:37215`. |
 | **Leetify Public API** | Player ratings, stats, and match history. Two scores are computed from this data: a performance class and a 0–100 reputation score. |
+| **Steam Web API** *(optional)* | Each lobby player's friends list, to mark who is friends with whom. Needs your own Steam Web API key. |
+| **GitHub** | The number of the latest release, for the update banner. |
 
-**Privacy note:** The Leetify API key is encrypted with your OS keychain (Windows DPAPI, Linux desktop keyring) and stored in the app's settings file. If no keychain is available, it is stored as plain text.
+**Privacy note:** The Leetify and Steam Web API keys are each encrypted with your OS keychain (Windows DPAPI, Linux desktop keyring) and stored in the app's settings file. If no keychain is available, they are stored as plain text. Besides Leetify, the app contacts `api.steampowered.com` (only if you saved a Steam key; it sends that key and the SteamIDs of the players in your lobby), `csst.at` (only for players Leetify doesn't know; the first time, the Chrome that the helper drives is also downloaded from `github.com/ulixee/chrome-versions`) and `api.github.com` (the update check).
 
 ## Keyboard shortcuts
 

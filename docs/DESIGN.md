@@ -171,7 +171,8 @@ opens) and then `node tools/build-hero-runtime.mjs check release/<platform>-unpa
 ### csst.at HTML parser (`src/main/csst-parse.ts`)
 
 Pure JS function that parses csst.at's HTMX HTML response into a `LeetifyProfile`. No native or Electron dependencies —
-it runs in both the app (renderer) and inside the Hero sidecar (which may use any Node version). Extracts aim, utility,
+its only caller is the Hero sidecar's CLI (`leetify-hero-cli.ts`), which is bundled into `cli.js` and runs under a
+different Node. The main process just re-exports it from `leetify-hero.ts` (that is how the tests import it). Extracts aim, utility,
 rating, preaim, reaction time, headshot accuracy, spray accuracy, counter-strafing ratio, and total games from the HTML
 by matching element IDs like `leetify-aim-{steamId}`.
 
