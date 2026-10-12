@@ -319,8 +319,8 @@ const startup = {
   set: (on: boolean) => app.setLoginItemSettings({ openAtLogin: on, args: STARTUP_ARGS }),
 };
 
-/** Check for updates at most once per day (stored in settings.json). Set force=true to bypass cooldown. */
-function checkUpdate(ctrl: Controller, force = false): void {
+/** Check for updates at most once per day (stored in settings.json). */
+function checkUpdate(ctrl: Controller): void {
   const settingsFile = join(app.getPath("userData"), "settings.json");
   let lastCheck: number | null = null;
   try {
@@ -328,16 +328,19 @@ function checkUpdate(ctrl: Controller, force = false): void {
     if (typeof raw.lastUpdateCheck === "number") lastCheck = raw.lastUpdateCheck;
   } catch { /* first start */ }
   const COOLDOWN_MS = 24 * 60 * 60 * 1000;
-  if (!force && lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return;
+  if (lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return;
   void checkForUpdate(ctrl.state.version).then((result) => {
     ctrl.setUpdateAvailable(result);
-    if (result) {
+    try {
+      let raw: Record<string, unknown>;
       try {
-        const raw = JSON.parse(readFileSync(settingsFile, "utf8"));
-        raw.lastUpdateCheck = Date.now();
-        writeFileSync(settingsFile, JSON.stringify(raw));
-      } catch { /* ignore */ }
-    }
+        raw = JSON.parse(readFileSync(settingsFile, "utf8"));
+      } catch {
+        raw = {};
+      }
+      raw.lastUpdateCheck = Date.now();
+      writeFileSync(settingsFile, JSON.stringify(raw));
+    } catch { /* ignore */ }
   });
 }
 
@@ -411,7 +414,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle("steam:open-developer", () => {
       void shell.openExternal("https://steamcommunity.com/dev/apikey");
     });
-    ipcMain.handle("update:check", () => checkUpdate(controller, true));
+    ipcMain.handle("update:check", () => checkUpdate(controller));
     ipcMain.handle("update:open-releases", () => {
       void shell.openExternal(`https://github.com/${OWNER}/${REPO}/releases`);
     });
