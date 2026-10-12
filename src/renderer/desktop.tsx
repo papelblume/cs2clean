@@ -6,17 +6,29 @@ import { bridge } from "./bridge";
 import { DISCLAIMER, Logo, mapName, SideEmblem, Wordmark } from "./brand";
 import leetifyBadge from "../../assets/Leetify-Badge-White-Small.png";
 import { PlayerClass } from "./parts";
+import { groupColor } from "./group-color";
 import { useAppState } from "./useAppState";
 import "./style.css";
 
-/** Deterministic color for a friendship group based on groupId hash. */
-function groupColor(groupId: string): string {
-  let hash = 0;
-  for (let i = 0; i < groupId.length; i++) {
-    hash = groupId.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 65%, 55%)`;
+/** The csst.at fallback (players Leetify has no profile for) can't be used: say so, and why. Silent while it works. */
+function FallbackDot({ s }: { s: AppState }) {
+  if (s.leetify.fallback.working !== false) return null;
+  return (
+    <span className="server-dot server-bad" title={s.leetify.fallback.reason ?? undefined}>
+      <span className="dot" />csst.at fallback unavailable
+    </span>
+  );
+}
+
+function FallbackNotice({ s }: { s: AppState }) {
+  const f = s.leetify.fallback;
+  if (f.working !== false) return null;
+  return (
+    <p className="notice">
+      <strong>csst.at fallback unavailable.</strong> Players Leetify has no profile for can't be looked up there.
+      {f.reason && <> {f.reason}</>}
+    </p>
+  );
 }
 
 function App() {
@@ -26,10 +38,11 @@ function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand"><Logo size={26} /><Wordmark /></div>
-        <LeetifyDot s={s} />
+        <div className="status-dots"><LeetifyDot s={s} /><FallbackDot s={s} /></div>
       </header>
       <main className="content">
         {s.notice && <p className="notice">{s.notice}</p>}
+        <FallbackNotice s={s} />
         <ApiKeysCard s={s} />
         <MatchCard s={s} />
       </main>
