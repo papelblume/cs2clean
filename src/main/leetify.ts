@@ -8,7 +8,7 @@ import type { EvidenceClass } from "../shared/types";
 import { assessProfile } from "./assess";
 import type { LobbyAnswer } from "./lobby";
 import { assessReputation, toEvidenceClass, toPlayerReputation, type Reputation } from "./reputation";
-import { scrapeCsstAtProfiles, type HeroProblem, type HeroScrape } from "./leetify-hero";
+import { scrapeCsstAtProfiles, unexpectedHeroFailure, type HeroProblem, type HeroScrape } from "./leetify-hero";
 import { debug } from "./logger";
 
 export const LEETIFY_BASE = "https://api-public.cs-prod.leetify.com";
@@ -206,7 +206,8 @@ const FALLBACK_RETRY_MS = 60_000;
 /**
  * Looks up every player and turns each profile into an answer for the lobby. A player without a public
  * profile is an answer ("no data"); a rate limit or a network problem is a transient one the lobby retries.
- * A rejected API key stops the whole lookup, since every later request would fail the same way.
+ * A rejected API key stops the whole lookup, since every later request would fail the same way. Nothing else does:
+ * a profile the analysis can't read, or an error nobody planned for, costs that one player their answer.
  */
 export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: LookupOptions = {}): Promise<LobbyAnswer[]> {
   const out: LobbyAnswer[] = new Array(steamIds.length);
@@ -216,15 +217,31 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
 
   debug("leetify", "lookupLobby:", steamIds.join(", "));
 
+  /** The answer for a profile, or null when the analysis can't make sense of it (a field of the wrong shape, say). */
+  const analyse = (steamId: string, profile: LeetifyProfile, fallbackNote?: string): LobbyAnswer | null => {
+    try {
+      return answerFromProfile(steamId, profile, fallbackNote);
+    } catch (e) {
+      debug("leetify", "Couldn't read the profile of", steamId, e);
+      return null;
+    }
+  };
+  // Settled, not transient: the same data would fail the same way on the next try, and a retry waits for the whole lobby.
+  const unreadable = (steamId: string, from: string): LobbyAnswer =>
+    ({ steamId, classification: "INSUFFICIENT_DATA", totalMatches: 0, note: `${from} sent a profile the app couldn't read` });
+
   const one = async (steamId: string): Promise<LobbyAnswer> => {
+    let profile: LeetifyProfile;
     try {
       debug("leetify", "Fetching profile:", steamId);
-      const profile = await client.profile(steamId);
+      profile = await client.profile(steamId);
       o.onReach?.(true);
-      o.onSource?.(steamId, "api");
-      return answerFromProfile(steamId, profile);
     } catch (e) {
-      if (!(e instanceof LeetifyError)) throw e;
+      if (!(e instanceof LeetifyError)) {
+        // Not a failure the client knows. Ask again later, but only about this player.
+        debug("leetify", "Unexpected error while fetching", steamId, e);
+        return { steamId, classification: null, totalMatches: 0, note: `Leetify lookup failed unexpectedly: ${e instanceof Error ? e.message : String(e)}`, transient: true };
+      }
       o.onReach?.(e.kind !== "network" && e.kind !== "timeout");
       if (e.kind === "invalid-key") {
         fatal = e;
@@ -240,6 +257,9 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
         return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true, retryAfterMs: e.retryAfterMs ?? undefined };
       return { steamId, classification: null, totalMatches: 0, note: e.message, transient: true, retryAfterMs: e.retryAfterMs ?? undefined };
     }
+    const answer = analyse(steamId, profile);
+    o.onSource?.(steamId, answer ? "api" : null);
+    return answer ?? unreadable(steamId, "Leetify");
   };
 
   const worker = async () => {
@@ -255,14 +275,22 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
   if (notFound.length > 0) {
     const idsToScrape = notFound.map((i) => steamIds[i]);
     debug("leetify", "Hero fallback for:", idsToScrape.join(", "));
-    const { profiles: heroProfiles, status } = await (o.scrape ?? scrapeCsstAtProfiles)(idsToScrape, 500);
+    let scraped: HeroScrape;
+    try {
+      scraped = await (o.scrape ?? scrapeCsstAtProfiles)(idsToScrape, 500);
+    } catch (e) {
+      // scrapeCsstAtProfiles never throws, but a stand-in or a bug might: that is a broken fallback, not a failed lobby.
+      scraped = { profiles: new Map(), status: unexpectedHeroFailure(e) };
+    }
+    const { profiles: heroProfiles, status } = scraped;
     debug("leetify", "Hero returned:", heroProfiles.size, "profiles; fallback", status.state, status.reason ?? "");
     for (const idx of notFound) {
       const steamId = steamIds[idx];
       const profile = heroProfiles.get(steamId);
       if (profile) {
-        o.onSource?.(steamId, "scrape");
-        out[idx] = answerFromProfile(steamId, profile, "Data from csst.at (Leetify API returned not found)");
+        const answer = analyse(steamId, profile, "Data from csst.at (Leetify API returned not found)");
+        o.onSource?.(steamId, answer ? "scrape" : null);
+        out[idx] = answer ?? unreadable(steamId, "csst.at");
         debug("leetify", "Hero profile for", steamId, "→", out[idx].classification, "(", out[idx].totalMatches, "matches)",
           "reputation:", out[idx].reputation?.tier, out[idx].reputation?.score);
       } else if (status.state === "unavailable" && status.problem && FALLBACK_RETRYABLE.includes(status.problem)) {

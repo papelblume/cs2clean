@@ -163,6 +163,18 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("shows one unreadable profile as that player's answer, without failing the lobby or asking again and again", async () => {
+    const source = new FakeSource();
+    const { c, server } = setup({}, source);
+    server.s.profiles[P(1).steamId] = { ...AVERAGE(), bans: "none" } as unknown as LeetifyProfile; // bans has to be a list
+    c.start();
+    source.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(60_000); // four of the 15 s retries the lobby used to make
+    expect(c.state.lobby.rows.map((r) => [r.status, r.classification])).toEqual([["ok", "NORMAL"], ["ok", "INSUFFICIENT_DATA"], ["ok", "NORMAL"]]);
+    expect(server.s.lookups).toHaveLength(3); // each player once
+    c.stop();
+  });
+
   it("tells the user the Steam key is invalid when Steam answers 403 to the friend lists", async () => {
     const real = await vi.importActual<typeof import("../src/main/steam/friends")>("../src/main/steam/friends");
     steam.groupPlayers.mockImplementationOnce((ids, key) => real.groupPlayers(ids, key)); // the real thing, over a stubbed network

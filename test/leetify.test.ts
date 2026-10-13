@@ -165,6 +165,49 @@ describe("lookupLobby", () => {
     });
   });
 
+  describe("one player's data can't break the others", () => {
+    const unreadable = { ...AVERAGE(), bans: "none" } as unknown as LeetifyProfile; // bans has to be a list
+
+    it("gives a profile the analysis can't read its own answer, and the others keep theirs", async () => {
+      const seen: [string, string | null][] = [];
+      const f = fake({ [ID(1)]: HIGH(), [ID(2)]: unreadable, [ID(3)]: AVERAGE() });
+      const out = await lookupLobby(new LeetifyClient("k", f.fetchImpl), [ID(1), ID(2), ID(3)], { onSource: (id, source) => seen.push([id, source]) });
+      expect(out.map((a) => [a.steamId, a.classification])).toEqual([[ID(1), "HIGH"], [ID(2), "INSUFFICIENT_DATA"], [ID(3), "NORMAL"]]);
+      expect(out[1].note).toBe("Leetify sent a profile the app couldn't read");
+      expect(out[1].transient).toBeUndefined(); // settled: the same data would fail the same way in 15 s
+      expect(seen).toContainEqual([ID(2), null]);
+      expect(seen).not.toContainEqual([ID(2), "api"]);
+    });
+
+    it("does the same for a scraped profile", async () => {
+      const sc = scraper({ [ID(2)]: unreadable, [ID(3)]: HIGH() });
+      const out = await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: AVERAGE() }).fetchImpl), [ID(1), ID(2), ID(3)], { scrape: sc.scrape });
+      expect(out.map((a) => a.classification)).toEqual(["NORMAL", "INSUFFICIENT_DATA", "HIGH"]);
+      expect(out[1].note).toBe("csst.at sent a profile the app couldn't read");
+      expect(out[1].transient).toBeUndefined();
+    });
+
+    it("keeps the others' answers when the fallback itself throws", async () => {
+      const scrape = async (): Promise<HeroScrape> => { throw new Error("boom"); };
+      const out = await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1), ID(2)], { scrape });
+      expect(out[0].classification).toBe("HIGH");
+      expect(out[1]).toMatchObject({ classification: "INSUFFICIENT_DATA" });
+      expect(out[1].note).toContain("The csst.at fallback couldn't check");
+      expect(out[1].note).toContain("boom");
+      expect(out[1].transient).toBeUndefined();
+    });
+
+    it("makes an unexpected error while fetching one profile that player's temporary failure", async () => {
+      const client = new LeetifyClient("k", fake({ [ID(1)]: HIGH(), [ID(2)]: AVERAGE() }).fetchImpl);
+      const real = client.profile.bind(client);
+      client.profile = async (id: string) => { if (id === ID(2)) throw new TypeError("boom"); return real(id); };
+      const out = await lookupLobby(client, [ID(1), ID(2)]);
+      expect(out[0].classification).toBe("HIGH");
+      expect(out[1]).toMatchObject({ classification: null, transient: true });
+      expect(out[1].note).toContain("boom");
+    });
+  });
+
   it("reports whether Leetify could be reached", async () => {
     const seen: boolean[] = [];
     const down = (async () => { throw new TypeError("fetch failed"); }) as typeof fetch;
