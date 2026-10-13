@@ -132,6 +132,7 @@ else if (command === "scrape") {
   console.log("Automatically shutting down Hero Core");
   if (mode === "nav-error") out({ type: "scrape", data: Object.fromEntries(ids.map((i) => [i, null])), navigationError: "net::ERR_NAME_NOT_RESOLVED at https://csst.at/" });
   else if (mode === "all-errors") out({ type: "scrape", data: Object.fromEntries(ids.map((i) => [i, null])), errors: Object.fromEntries(ids.map((i) => [i, "HTTP 503"])) });
+  else if (mode === "some-errors") out({ type: "scrape", data: Object.fromEntries(ids.map((i, n) => [i, n === 0 ? { steam64_id: i, name: null, privacy_mode: "private", total_matches: 12, winrate: null, ranks: { leetify: 1 }, rating: {}, stats: {} } : null])), errors: { [ids[1]]: "HTTP 503" } });
   else out({ type: "scrape", data: Object.fromEntries(ids.map((i, n) => [i, n === 0 ? { steam64_id: i, name: null, privacy_mode: "private", total_matches: 12, winrate: null, ranks: { leetify: 1 }, rating: {}, stats: {} } : null])) });
 }
 else out({ error: "Unknown command: " + command }, 2);
@@ -175,6 +176,16 @@ describe("the sidecar", () => {
     expect(r.status).toEqual(HERO_READY);
     expect([...r.profiles.keys()]).toEqual([ID]);
     expect(r.profiles.get(ID)?.total_matches).toBe(12);
+    expect(r.failed?.size).toBe(0);
+  });
+
+  it("names the players csst.at failed for while it works for the rest, and not the ones it has nothing on", async () => {
+    setEnv("STUB_MODE", "some-errors");
+    const failing = "76561198000000002", empty = "76561198000000003";
+    const r = await scrapeCsstAtProfiles([ID, failing, empty], 0);
+    expect(r.status).toEqual(HERO_READY); // the fallback works; it is one player's request that failed
+    expect([...r.profiles.keys()]).toEqual([ID]);
+    expect([...(r.failed ?? [])]).toEqual([[failing, "HTTP 503"]]);
   });
 
   it("finds the result among the lines Hero Core prints itself", async () => {

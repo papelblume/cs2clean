@@ -74,6 +74,11 @@ function unavailable(problem: HeroProblem, reason: string, detail: string | null
 export interface HeroScrape {
   profiles: Map<string, LeetifyProfile>;
   status: HeroStatus;
+  /**
+   * Players csst.at failed to answer for (a request that threw, or an HTTP error other than "not found") while it did
+   * answer for others, with what went wrong. Not the same as having no data on them: they are worth asking again.
+   */
+  failed?: ReadonlyMap<string, string>;
 }
 
 /** The fallback failed in a way nobody planned for (a bug here). Still a status, never an exception. */
@@ -567,7 +572,9 @@ export async function scrapeCsstAtProfiles(steamIds: string[], delayMs = 1000): 
         return { profiles, status: reported(unavailable("site-unreachable", `The fallback couldn't load csst.at: ${firstLine(res.navigationError)}`, res.navigationError)) };
       if (errors.length > 0 && errors.length === steamIds.length)
         return { profiles, status: reported(unavailable("site-unreachable", `csst.at didn't answer: ${firstLine(errors[0][1])}`, errors.map(([id, m]) => `${id}: ${m}`).join("\n"))) };
-      return { profiles, status: reported(HERO_READY) };
+      // Some players failed while others got through: the fallback works, but those players have no answer yet.
+      const failed = new Map(errors.filter(([id]) => !profiles.has(id)));
+      return { profiles, status: reported(HERO_READY), failed };
     }
 
     // The selftest passed earlier, so something changed (or this run hit its own problem): check again next time.

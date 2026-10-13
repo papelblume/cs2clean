@@ -33,11 +33,15 @@ function fake(answers: Record<string, unknown>, o: { key?: string; delayMs?: num
 const ID = (n: number) => String(76561198000000000n + BigInt(n));
 
 /** A stand-in for the csst.at fallback: `found` are the profiles it returns, `status` how the fallback itself fared. */
-function scraper(found: Record<string, LeetifyProfile>, status: HeroStatus = HERO_READY) {
+function scraper(found: Record<string, LeetifyProfile>, status: HeroStatus = HERO_READY, failed: Record<string, string> = {}) {
   const calls: string[][] = [];
   const scrape = async (ids: string[]): Promise<HeroScrape> => {
     calls.push(ids);
-    return { profiles: new Map(Object.entries(found).filter(([id]) => ids.includes(id))), status };
+    return {
+      profiles: new Map(Object.entries(found).filter(([id]) => ids.includes(id))),
+      status,
+      failed: new Map(Object.entries(failed).filter(([id]) => ids.includes(id))),
+    };
   };
   return { scrape, calls };
 }
@@ -149,7 +153,17 @@ describe("lookupLobby", () => {
       expect(out[0].note).toContain("The csst.at fallback couldn't check");
       expect(out[0].note).toContain(reason);
       expect(out[0].transient).toBeUndefined(); // settled: asking again in a minute wouldn't change a build problem
+      expect(out[0].recheckAfterMs).toBe(5 * 60_000); // but not for the cache's six hours either: a fix made meanwhile is noticed
     });
+
+    it.each<HeroProblem>(["crashed", "bad-output"])(
+      "settles the answer but looks again in five minutes when the fallback broke without saying why (%s)", async (problem) => {
+        const sc = scraper({}, broken(problem, "stopped unexpectedly"));
+        const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: sc.scrape });
+        expect(out[0]).toMatchObject({ classification: "INSUFFICIENT_DATA", recheckAfterMs: 5 * 60_000 });
+        expect(out[0].transient).toBeUndefined(); // a transient answer would hold the rest of the lobby back
+        expect(out[0].note).toContain("stopped unexpectedly");
+      });
 
     it.each<HeroProblem>(["browser-missing", "site-unreachable", "timeout"])(
       "asks again later when the problem can clear up by itself (%s)", async (problem) => {
@@ -162,6 +176,16 @@ describe("lookupLobby", () => {
     it("keeps the plain answer when the fallback works and csst.at has nothing on the player", async () => {
       const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: scraper({}).scrape });
       expect(out[0].note).toBe("Not on Leetify, or the profile isn't public");
+      expect(out[0].recheckAfterMs).toBeUndefined(); // a real "nothing there" keeps the usual cache time
+    });
+
+    it("asks again soon about a player csst.at failed for, not about the ones it has nothing on", async () => {
+      const sc = scraper({ [ID(2)]: AVERAGE() }, HERO_READY, { [ID(3)]: "HTTP 503\n    at somewhere" });
+      const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1), ID(2), ID(3)], { scrape: sc.scrape });
+      expect(out[0]).toMatchObject({ classification: "INSUFFICIENT_DATA", note: "Not on Leetify, or the profile isn't public" });
+      expect(out[1].classification).toBe("NORMAL");
+      expect(out[2]).toMatchObject({ classification: null, transient: true, retryAfterMs: 60_000 });
+      expect(out[2].note).toBe("Not on Leetify, and csst.at couldn't answer for this player: HTTP 503");
     });
   });
 

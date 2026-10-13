@@ -262,6 +262,38 @@ describe("LobbyService", () => {
     });
   });
 
+  describe("an answer that may change soon", () => {
+    it("is asked again after its own, shorter time; settled answers keep the usual one", async () => {
+      let broken = true;
+      const lookup = vi.fn(async (ids: string[]) => ids.map((steamId) => steamId === B && broken
+        ? { steamId, classification: "INSUFFICIENT_DATA" as const, totalMatches: 0, note: "the fallback was broken", recheckAfterMs: 5 * 60_000 }
+        : ok(steamId)));
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10 });
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(20);
+      expect(lookup).toHaveBeenCalledTimes(1);
+      expect(lobby.rows()[1]).toMatchObject({ status: "ok", classification: "INSUFFICIENT_DATA" });
+
+      broken = false;
+      await vi.advanceTimersByTimeAsync(4 * 60_000);
+      lobby.setMatch(matchOn("de_dust2", A, B)); // the game announces the same match again, inside the five minutes
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(lookup).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(61_000);
+      lobby.setMatch(matchOn("de_dust2", A, B)); // ...and again after them
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(lookup).toHaveBeenCalledTimes(2);
+      expect(lookup.mock.calls[1][0]).toEqual([B]); // only the provisional answer is asked again
+      expect(lobby.rows()[1]).toMatchObject({ classification: "NORMAL" });
+
+      await vi.advanceTimersByTimeAsync(60 * 60_000);
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(lookup).toHaveBeenCalledTimes(2); // B's new answer is a settled one: the usual six hours apply
+    });
+  });
+
   describe("a disposed service", () => {
     it("does nothing more: no timers, no lookups, no changes, also for a lookup that was already out", async () => {
       type Answers = ReturnType<typeof limited>[];

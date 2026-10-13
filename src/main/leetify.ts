@@ -202,6 +202,13 @@ export interface LookupOptions {
 /** Fallback problems that can clear up by themselves: the lobby asks again later instead of settling on "no data". */
 const FALLBACK_RETRYABLE: readonly HeroProblem[] = ["browser-missing", "site-unreachable", "timeout"];
 const FALLBACK_RETRY_MS = 60_000;
+/**
+ * Every other fallback problem (the sidecar crashed, wouldn't start, was built for another Node...) settles the answer
+ * as "no data", but not for the cache's six hours: a one-off crash or a fix made meanwhile would go unnoticed for the
+ * whole session. The player is looked at again after this. Long enough that a broken fallback isn't started over and
+ * over, and that the lobby's other players aren't held up by it (a transient answer would hold them).
+ */
+const FALLBACK_RECHECK_MS = 5 * 60_000;
 
 /**
  * Looks up every player and turns each profile into an answer for the lobby. A player without a public
@@ -293,6 +300,18 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
         out[idx] = answer ?? unreadable(steamId, "csst.at");
         debug("leetify", "Hero profile for", steamId, "→", out[idx].classification, "(", out[idx].totalMatches, "matches)",
           "reputation:", out[idx].reputation?.tier, out[idx].reputation?.score);
+      } else if (scraped.failed?.has(steamId)) {
+        // csst.at answered for other players but not for this one: that is not "no data", so ask again soon.
+        const why = (scraped.failed.get(steamId) ?? "").split(/\r?\n/)[0].slice(0, 200);
+        debug("leetify", "Hero couldn't answer for", steamId, "(will retry):", why);
+        out[idx] = {
+          steamId,
+          classification: null,
+          totalMatches: 0,
+          note: `Not on Leetify, and csst.at couldn't answer for this player${why ? `: ${why}` : ""}`,
+          transient: true,
+          retryAfterMs: FALLBACK_RETRY_MS,
+        };
       } else if (status.state === "unavailable" && status.problem && FALLBACK_RETRYABLE.includes(status.problem)) {
         // The fallback couldn't look (yet): not an answer. Keep what was known and ask again later.
         debug("leetify", "Hero unavailable for", steamId, "(will retry):", status.reason);
@@ -315,6 +334,8 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
           note: status.state === "unavailable"
             ? `Not on Leetify, or the profile isn't public. The csst.at fallback couldn't check: ${status.reason}`
             : "Not on Leetify, or the profile isn't public",
+          // Only a real "csst.at has nothing" is remembered for good; a broken fallback is looked at again.
+          ...(status.state === "unavailable" ? { recheckAfterMs: FALLBACK_RECHECK_MS } : {}),
         };
       }
     }

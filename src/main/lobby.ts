@@ -27,6 +27,11 @@ export interface LobbyAnswer {
   transient?: boolean;
   /** For a transient answer: don't ask again before this long (ms). */
   retryAfterMs?: number;
+  /**
+   * For a settled answer that may well change soon (a data source that was broken when it was asked): ask again after
+   * this long instead of after the usual cache time (ms). Ignored for a transient answer.
+   */
+  recheckAfterMs?: number;
 }
 
 export type Lookup = (steamIds: string[]) => Promise<LobbyAnswer[]>;
@@ -39,6 +44,8 @@ interface Cached {
   reputation: PlayerReputation | null;
   note: string | null;
   at: number;
+  /** Replaces the cache time for this entry; see LobbyAnswer.recheckAfterMs. */
+  recheckAfterMs: number | null;
 }
 
 const UNKNOWN_NAME = "Unknown player";
@@ -236,7 +243,7 @@ export class LobbyService {
         continue;
       }
       const c = this.cache.get(p.steamId);
-      if (!c || this.now - c.at > ttl) {
+      if (!c || this.now - c.at > (c.recheckAfterMs ?? ttl)) {
         ids.push(p.steamId);
       }
     }
@@ -317,7 +324,8 @@ export class LobbyService {
           continue;
         }
         this.cache.set(a.steamId, { classification: a.classification, totalMatches: a.totalMatches,
-                                    name: a.name ?? null, detail: a.detail ?? null, reputation: a.reputation ?? null, note: a.note ?? null, at });
+                                    name: a.name ?? null, detail: a.detail ?? null, reputation: a.reputation ?? null, note: a.note ?? null, at,
+                                    recheckAfterMs: a.recheckAfterMs ?? null });
         this.failed.delete(a.steamId);
         if (a.steamId === this.opts.localSteamId) localAnswered = true;
       }
