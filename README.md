@@ -191,9 +191,9 @@ npm run check:package                                # verify a packaged app's a
 
 ## Credits
 
-CS2Clean is a fork of [cheatscanner.eu](https://github.com/EspectroDK/cheatscanner.eu).
+CS2Clean is a fork of [cheatscanner.eu](https://github.com/EspectroDK/cheatscanner.eu)'s companion app.
 
 Player data is provided by [Leetify](https://leetify.com). CS2Clean does not look at demos and makes no accusations — treat a flag as "worth a closer look", not as proof of cheating.
 
-This project have been developed using AI tools - Claude Opus 5.5, Sonnet 5.5, and Qwen3.6-35B.
+This project have been developed using AI tools - Claude Opus 5.5, Sonnet 5.5, Qwen3.6-35B, and gpt-oss-20b.
 
