@@ -163,6 +163,25 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("tells the user the Steam key is invalid when Steam answers 403 to the friend lists", async () => {
+    const real = await vi.importActual<typeof import("../src/main/steam/friends")>("../src/main/steam/friends");
+    steam.groupPlayers.mockImplementationOnce((ids, key) => real.groupPlayers(ids, key)); // the real thing, over a stubbed network
+    const steamApi = vi.fn(async () => new Response("<html><body>Forbidden</body></html>", { status: 403 }));
+    vi.stubGlobal("fetch", steamApi);
+    try {
+      const source = new FakeSource();
+      const { c } = setup({ steamApiKey: "bad-key" }, source);
+      c.start();
+      source.send({ players: [P(0), P(1)] });
+      await vi.advanceTimersByTimeAsync(20_000); // longer than any retrying could take for two players
+      expect(c.state.notice).toBe("Your Steam Web API key is invalid or missing.");
+      expect(steamApi).toHaveBeenCalledTimes(1);
+      c.stop();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("clears the Steam key notice when a valid Steam key is saved, whichever way the notice came up", async () => {
     // A key that fails the check on saving.
     const a = setup();

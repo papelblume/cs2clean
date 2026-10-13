@@ -24,7 +24,12 @@ export interface FriendsResult {
   errors: string[];
 }
 
-type FetchResult = { kind: "ok"; friends: Set<string> } | { kind: "private" } | { kind: "error" };
+type FetchResult =
+  | { kind: "ok"; friends: Set<string> }
+  | { kind: "private" }
+  /** Steam turned the API key down (403). Retrying, or asking about other players, will not help. */
+  | { kind: "badKey"; detail: string }
+  | { kind: "error" };
 
 /** Fetch one player's friends list. Distinguishes private profiles from transient errors. */
 async function fetchFriends(steamId: string, key: string): Promise<FetchResult> {
@@ -35,8 +40,9 @@ async function fetchFriends(steamId: string, key: string): Promise<FetchResult> 
       const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
       if (res.status === 401) return { kind: "private" };
       if (res.status === 403) {
+        // Returned, not thrown: the catch below would take it for a network error and retry it.
         const body = await res.text().catch(() => "");
-        throw new Error(`Steam API key invalid or missing: ${body.slice(0, 200)}`);
+        return { kind: "badKey", detail: body.slice(0, 200) };
       }
       if (res.status === 429 || res.status >= 500) {
         await sleep(1000 * 2 ** attempt);
@@ -108,7 +114,11 @@ class UnionFind {
   }
 }
 
-/** Group lobby players by Steam friendship. */
+/**
+ * Group lobby players by Steam friendship.
+ * Throws "Steam API key invalid or missing: ..." as soon as Steam answers 403, because the key is the same for every
+ * player; lobby.ts recognises the message and reports it. Other failures are counted in `errors`.
+ */
 export async function groupPlayers(lobbyIds: string[], apiKey: string): Promise<FriendsResult> {
   const lobbySet = new Set(lobbyIds);
   const deduped = [...new Set(lobbyIds)];
@@ -118,6 +128,7 @@ export async function groupPlayers(lobbyIds: string[], apiKey: string): Promise<
 
   for (const id of deduped) {
     const result = await fetchFriends(id, apiKey);
+    if (result.kind === "badKey") throw new Error(`Steam API key invalid or missing: ${result.detail}`);
     await sleep(DELAY_MS);
     if (result.kind === "private") {
       private_.push(id);
