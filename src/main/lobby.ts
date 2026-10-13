@@ -67,7 +67,7 @@ export interface LobbyOptions {
   maxPlayers?: number;
   /** The local player's Steam ID; always re-looked up when a new match starts. */
   localSteamId?: string | null;
-  /** Steam Web API key for fetching friends lists (optional). */
+  /** Steam Web API key for fetching friends lists (optional). Change it later with setSteamApiKey. */
   steamApiKey?: string | null;
   /** Called when friendship grouping encounters transient errors (rate limit, network); absent in tests. */
   onFriendshipError?: (count: number) => void;
@@ -102,6 +102,9 @@ export class LobbyService {
   private privatePlayers = new Set<string>();
   /** The roster (sorted Steam IDs) friendship grouping last ran for; grouping runs again when a player joins. */
   private friendshipComputedFor: string | null = null;
+  /** Bumped whenever a grouping that is still out should be ignored: a newer pass, a new match, a new key, clear, dispose. */
+  private friendshipPass = 0;
+  private disposed = false;
 
   constructor(private lookup: Lookup, private onChange: () => void, private opts: LobbyOptions = {}) {}
 
@@ -115,6 +118,7 @@ export class LobbyService {
    * woken when the roster changed or nothing is armed (so an expired cache entry is still picked up).
    */
   setMatch(match: MatchState | null): void {
+    if (this.disposed) return;
     const prev = this.match;
     this.match = match;
     const fresh = match !== null && this.isNewMatch(prev, match);
@@ -124,6 +128,7 @@ export class LobbyService {
       this.queueSent = 0;
       this.localPlayerDoneFor = null;
       this.friendshipComputedFor = null;
+      this.friendshipPass++;
     }
     const roster = match ? this.rosterSig(match) : null;
     const rosterChanged = roster !== this.lastRoster;
@@ -156,8 +161,22 @@ export class LobbyService {
     this.opts.localSteamId = steamId;
   }
 
+  /** A new Steam Web API key (null: none). The lobby and its lookups stay; only the friendship groups are redone. */
+  setSteamApiKey(key: string | null): void {
+    if (this.disposed || key === (this.opts.steamApiKey ?? null)) return;
+    this.opts.steamApiKey = key;
+    // Whatever an earlier pass found, or is still finding, was found with the old key.
+    this.friendshipPass++;
+    this.friendshipComputedFor = null;
+    this.friendshipGroups.clear();
+    this.privatePlayers.clear();
+    void this.computeFriendshipGroups(); // does nothing without a key, a match or two players
+    this.onChange();
+  }
+
   /** Forget everything (e.g. after unlinking or a server change). */
   clear(): void {
+    if (this.disposed) return;
     this.cache.clear();
     this.failed.clear();
     this.error = null;
@@ -168,6 +187,7 @@ export class LobbyService {
     this.friendshipGroups.clear();
     this.privatePlayers.clear();
     this.friendshipComputedFor = null;
+    this.friendshipPass++;
     this.backingOff = false;
     this.schedule();
     this.onChange();
@@ -235,7 +255,7 @@ export class LobbyService {
   }
 
   private schedule(delay = this.opts.debounceMs ?? 800): void {
-    if (this.backingOff) return; // a retry is waiting; a roster change or a new match must not shorten it
+    if (this.disposed || this.backingOff) return; // a retry is waiting; a roster change or a new match must not shorten it
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     if (this.pendingIds().length === 0) return;
@@ -244,6 +264,7 @@ export class LobbyService {
 
   /** Ask again after a Leetify Retry-After or a failed lookup; schedule() leaves this timer alone until it fires. */
   private scheduleRetry(delayMs: number): void {
+    if (this.disposed) return;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.backingOff = false;
@@ -255,6 +276,7 @@ export class LobbyService {
   private async run(): Promise<void> {
     this.timer = null;
     this.backingOff = false;
+    if (this.disposed) return;
     if (this.inFlight) return this.schedule();
     const ids = this.pendingIds();
     if (ids.length === 0) return;
@@ -282,6 +304,7 @@ export class LobbyService {
     let retryIn: number | null = null;
     try {
       const answers = await this.lookup(batch);
+      if (this.disposed) { this.inFlight = false; return; } // stopped while the lookup was out: its answer is dropped
       const at = this.now;
       let problem: string | null = null;
       let localAnswered = false;
@@ -303,6 +326,7 @@ export class LobbyService {
       // The local player is looked up once per match, but only an answer counts: a refused lookup is asked again.
       if (localAnswered) this.localPlayerDoneFor = epoch;
     } catch (e) {
+      if (this.disposed) { this.inFlight = false; return; }
       for (const id of batch) this.failed.set(id, null);
       this.error = e instanceof Error ? e.message : String(e);
       this.inFlight = false;
@@ -323,7 +347,7 @@ export class LobbyService {
   /** Fetch friends lists for all lobby players and compute connected components. */
   private async computeFriendshipGroups(): Promise<void> {
     const key = this.opts.steamApiKey;
-    if (!key) return;
+    if (!key || this.disposed) return;
 
     // Gather unique Steam IDs from the current match.
     const ids = new Set<string>();
@@ -339,11 +363,12 @@ export class LobbyService {
     const roster = [...idList].sort().join(",");
     if (roster === this.friendshipComputedFor) return;
     this.friendshipComputedFor = roster;
+    const pass = ++this.friendshipPass;
 
     try {
       const result = await groupPlayers(idList, key);
-      // The roster changed or a new match began while Steam was answering: the newer pass owns the groups.
-      if (this.friendshipComputedFor !== roster) return;
+      // The roster, the match or the key changed while Steam was answering: a newer pass owns the groups.
+      if (pass !== this.friendshipPass) return;
       // Map each player to their group.
       for (const group of result.groups) {
         const groupId = group.length > 1 ? group.join(":") : null;
@@ -359,6 +384,7 @@ export class LobbyService {
         this.opts.onFriendshipError(result.errors.length);
       }
     } catch (e) {
+      if (pass !== this.friendshipPass) return;
       // A thrown error (e.g. 403 invalid key) is surfaced if a callback is registered.
       if (this.opts.onFriendshipKeyError) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -370,7 +396,11 @@ export class LobbyService {
     this.onChange();
   }
 
+  /** Stops for good: nothing is scheduled again, and a lookup or grouping still out is answered into the void. */
   dispose(): void {
+    this.disposed = true;
+    this.friendshipPass++;
     if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
   }
 }

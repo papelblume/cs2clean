@@ -7,6 +7,15 @@ const groupPlayers = vi.hoisted(() =>
   vi.fn(async (ids: string[], _key: string) => ({ groups: ids.map((id) => [id]), private: [] as string[], errors: [] as string[] })));
 vi.mock("../src/main/steam/friends", () => ({ groupPlayers }));
 
+type Grouping = { groups: string[][]; private: string[]; errors: string[] };
+/** The next `n` calls of groupPlayers stay open until the test settles them. */
+function holdGrouping(n: number) {
+  const open: { resolve: (r: Grouping) => void; reject: (e: Error) => void }[] = [];
+  for (let i = 0; i < n; i++)
+    groupPlayers.mockImplementationOnce(() => new Promise<Grouping>((resolve, reject) => { open.push({ resolve, reject }); }));
+  return open;
+}
+
 const player = (slot: number, steamId: string | null) => ({ slot, name: `p${slot}`, steamId, side: "CT" as const, isLocal: false });
 const match = (...ids: (string | null)[]): MatchState => ({ map: null, mode: null, localSteamId: null, players: ids.map((id, i) => player(i, id)) });
 const matchOn = (map: string, ...ids: string[]): MatchState => ({ ...match(...ids), map, mode: "competitive" });
@@ -192,21 +201,91 @@ describe("LobbyService", () => {
 
     it("drops a friendship result that arrives after the roster has moved on", async () => {
       const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
-      const pending: ((r: { groups: string[][]; private: string[]; errors: string[] }) => void)[] = [];
-      groupPlayers.mockImplementation(() => new Promise((resolve) => { pending.push(resolve); }));
+      const open = holdGrouping(2);
       const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: A, steamApiKey: "key" });
       lobby.setMatch(matchOn("de_dust2", A, B));
       await vi.advanceTimersByTimeAsync(50); // pass 1 for [A, B] is in flight
       lobby.setMatch(matchOn("de_dust2", A, B, C));
       await vi.advanceTimersByTimeAsync(50); // pass 2 for [A, B, C]
-      expect(pending).toHaveLength(2);
+      expect(open).toHaveLength(2);
 
-      pending[1]({ groups: [[A, B, C]], private: [], errors: [] });
+      open[1].resolve({ groups: [[A, B, C]], private: [], errors: [] });
       await vi.advanceTimersByTimeAsync(0);
-      pending[0]({ groups: [[A], [B]], private: [], errors: [] }); // the old, partial answer comes last
+      open[0].resolve({ groups: [[A], [B]], private: [], errors: [] }); // the old, partial answer comes last
       await vi.advanceTimersByTimeAsync(0);
       expect(lobby.rows().map((r) => r.groupName)).toEqual(["3 friends", "3 friends", "3 friends"]);
-      groupPlayers.mockImplementation(async (ids: string[]) => ({ groups: ids.map((id) => [id]), private: [], errors: [] }));
+    });
+  });
+  describe("the Steam key changes while a match is on", () => {
+    beforeEach(() => { groupPlayers.mockClear(); });
+    const grouped = (ids: string[]) => ({ groups: [ids], private: [] as string[], errors: [] as string[] });
+
+    it("groups the current lobby right away with a new key, and drops the groups when the key is removed", async () => {
+      const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: A });
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(50);
+      expect(groupPlayers).not.toHaveBeenCalled();
+
+      groupPlayers.mockImplementationOnce(async (ids) => grouped(ids));
+      lobby.setSteamApiKey("key");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(groupPlayers).toHaveBeenCalledTimes(1);
+      expect(lobby.rows().map((r) => r.groupName)).toEqual(["2 friends", "2 friends"]);
+
+      lobby.setSteamApiKey(null);
+      expect(lobby.rows().map((r) => r.groupName)).toEqual([null, null]);
+      expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "ok"]); // the lookups are kept
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(lookup).toHaveBeenCalledTimes(1);
+      expect(groupPlayers).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores a pass that started with the old key, and its complaint about it", async () => {
+      const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
+      const open = holdGrouping(2);
+      const onFriendshipKeyError = vi.fn();
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: A, steamApiKey: "old", onFriendshipKeyError });
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(50); // pass 1, old key, in flight
+      lobby.setSteamApiKey("new");
+      await vi.advanceTimersByTimeAsync(0); // pass 2, new key
+      expect(open).toHaveLength(2);
+      expect(groupPlayers.mock.calls.map((c) => c[1])).toEqual(["old", "new"]);
+
+      open[1].resolve(grouped([A, B]));
+      await vi.advanceTimersByTimeAsync(0);
+      open[0].reject(new Error("Steam API key invalid or missing: forbidden"));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onFriendshipKeyError).not.toHaveBeenCalled();
+      expect(lobby.rows().map((r) => r.groupName)).toEqual(["2 friends", "2 friends"]);
+    });
+  });
+
+  describe("a disposed service", () => {
+    it("does nothing more: no timers, no lookups, no changes, also for a lookup that was already out", async () => {
+      type Answers = ReturnType<typeof limited>[];
+      let release: (a: Answers) => void = () => {};
+      let held = true;
+      const lookup = vi.fn((ids: string[]) =>
+        held ? new Promise<Answers>((resolve) => { release = resolve; }) : Promise.resolve(ids.map((id) => limited(id, 100))));
+      const onChange = vi.fn();
+      const lobby = new LobbyService(lookup, onChange, { debounceMs: 10, retryMs: 100, localSteamId: A });
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(20);
+      expect(lookup).toHaveBeenCalledTimes(1); // in flight
+
+      lobby.dispose();
+      held = false;
+      const changes = onChange.mock.calls.length;
+      release([A, B].map((id) => limited(id, 100))); // it answers "ask again in 100 ms" after the dispose
+      await vi.advanceTimersByTimeAsync(10_000);
+      lobby.setMatch(matchOn("de_dust2", A, B, C));
+      lobby.clear();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(lookup).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledTimes(changes);
+      expect(vi.getTimerCount()).toBe(0);
     });
   });
 });
