@@ -2,7 +2,7 @@
   "name": "cs2clean",
   "productName": "CS2Clean",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CS2Clean companion app and in-game overlay for CS2. Shows the evidence class of the players in your match.",
   "author": "CS2Clean",
   "homepage": "https://github.com/papelblume/cs2clean",
