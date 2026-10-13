@@ -6,6 +6,13 @@ import type { LeetifyProfile } from "../src/main/leetify";
 import type { MatchState } from "../src/shared/types";
 import { AVERAGE, ELEVATED, HIGH, VERY_HIGH } from "./profiles";
 
+// The two Steam Web API calls behind the Steam key: checking a key, and the friendship groups.
+const steam = vi.hoisted(() => ({
+  validateSteamKey: vi.fn(async (_key: string) => true),
+  groupPlayers: vi.fn(async (ids: string[], _key: string) => ({ groups: [ids], private: [] as string[], errors: [] as string[] })),
+}));
+vi.mock("../src/main/steam/friends", () => steam);
+
 /** A fake Leetify public API: profiles by SteamID64 (default: an average player), and the one key it accepts. */
 function fakeLeetify() {
   const s = { lookups: [] as string[], keys: [] as (string | null)[], goodKey: "good-key" as string | null, requireKey: false,
@@ -130,12 +137,76 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("keeps the lobby, with its lookups, when the Steam key is saved or removed in the middle of a match", async () => {
+    const source = new FakeSource();
+    const { c, server, saved } = setup({}, source);
+    c.start();
+    source.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["NORMAL", "NORMAL", "NORMAL"]);
+    const lookups = server.s.lookups.length;
+
+    expect(await c.setSteamApiKey("steam-key")).toBe(true);
+    expect(saved().steamApiKey).toBe("steam-key");
+    expect(c.state.match).not.toBeNull();
+    expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["NORMAL", "NORMAL", "NORMAL"]);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.lobby.rows.map((r) => r.groupName)).toEqual(["3 friends", "3 friends", "3 friends"]); // grouped without a new match event
+
+    c.clearSteamApiKey();
+    expect(saved().steamApiKey).toBeNull();
+    expect(c.state.lobby.rows).toHaveLength(3);
+    expect(c.state.lobby.rows.map((r) => r.groupName)).toEqual([null, null, null]);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(server.s.lookups).toHaveLength(lookups); // Leetify wasn't asked again
+    c.stop();
+  });
+
+  it("clears the Steam key notice when a valid Steam key is saved, whichever way the notice came up", async () => {
+    // A key that fails the check on saving.
+    const a = setup();
+    steam.validateSteamKey.mockResolvedValueOnce(false);
+    expect(await a.c.setSteamApiKey("bad")).toBe(false);
+    expect(a.c.state.notice).toMatch(/Steam Web API key is invalid/);
+    expect(await a.c.setSteamApiKey("good")).toBe(true);
+    expect(a.c.state.notice).toBeNull();
+
+    // A saved key that Steam turns down in the middle of a match.
+    const source = new FakeSource();
+    const b = setup({ steamApiKey: "stale" }, source);
+    steam.groupPlayers.mockRejectedValueOnce(new Error("Steam API key invalid or missing: forbidden"));
+    b.c.start();
+    source.send({ players: [P(0), P(1)] });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(b.c.state.notice).toMatch(/Steam Web API key is invalid/);
+    expect(await b.c.setSteamApiKey("fresh")).toBe(true);
+    expect(b.c.state.notice).toBeNull();
+    await vi.advanceTimersByTimeAsync(50); // the lobby groups with the new key, without a new complaint
+    expect(b.c.state.notice).toBeNull();
+    expect(b.c.state.lobby.rows.map((r) => r.groupName)).toEqual(["2 friends", "2 friends"]);
+    b.c.stop();
+  });
+
   it("doesn't save a key when Leetify can't be reached to check it", async () => {
     const { c, server, saved } = setup();
     server.s.down = true;
     expect(await c.setApiKey("good-key")).toBe(false);
     expect(c.state.notice).toMatch(/Couldn't check the key/);
     expect(saved().leetifyKey).toBeUndefined();
+  });
+
+  it("doesn't save a Steam key when Steam can't be reached to check it, and says so", async () => {
+    const { c, saved } = setup();
+    steam.validateSteamKey.mockRejectedValueOnce(new Error("fetch failed"));
+    expect(await c.setSteamApiKey("steam-key")).toBe(false);
+    expect(c.state.notice).toMatch(/Couldn't check the key with Steam: fetch failed/);
+    expect(saved().steamApiKey).toBeUndefined();
+    expect(c.state.steam.hasKey).toBe(false);
+
+    expect(await c.setSteamApiKey("steam-key")).toBe(true); // Steam is back
+    expect(saved().steamApiKey).toBe("steam-key");
+    expect(c.state.notice).toBeNull();
   });
 
   it("shows when Leetify can't be reached, and recovers", async () => {
