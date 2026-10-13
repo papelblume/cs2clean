@@ -139,24 +139,27 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   async setSteamApiKey(raw: string): Promise<boolean> {
     const key = raw.trim();
     if (!key) return false;
-    if (!(await validateSteamKey(key))) {
-      this.update({ notice: "Your Steam Web API key is invalid or missing." });
+    try {
+      if (!(await validateSteamKey(key))) {
+        this.update({ notice: "Your Steam Web API key is invalid or missing." });
+        return false;
+      }
+    } catch (e) {
+      this.update({ notice: `Couldn't check the key with Steam: ${message(e)}` });
       return false;
     }
     this.settings = { ...this.settings, steamApiKey: key };
     this.deps.store.save(this.settings);
-    // Rebuild lobby service with the new key so it picks it up.
-    this.lobby.dispose();
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: key, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) });
-    this.update({ steam: { hasKey: true } });
+    // The running lobby keeps its match and its lookups; it only groups friends with the new key.
+    this.lobby.setSteamApiKey(key);
+    this.update({ steam: { hasKey: true }, notice: null }); // like setApiKey: an old complaint about the key is settled
     return true;
   }
 
   clearSteamApiKey(): void {
     this.settings = { ...this.settings, steamApiKey: null };
     this.deps.store.save(this.settings);
-    this.lobby.dispose();
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), { ...this.deps.lobby, steamApiKey: null, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) });
+    this.lobby.setSteamApiKey(null);
     this.update({ steam: { hasKey: false } });
   }
 
