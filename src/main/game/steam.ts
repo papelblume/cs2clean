@@ -76,14 +76,23 @@ export class SteamSource extends GameSource {
 
   private onGameState(s: GameState): void {
     const prevMap = this.game?.map ?? null;
+    const firstPost = this.gsiAt === 0;
     this.gsiAt = this.now;
     this.game = s;
     if (!this.running) this.setGameRunning(true);
     if (s.map !== prevMap) {
-      // A new map (or back to the menu): forget the previous match's players.
-      this.matchStart = s.map ? this.now : null;
-      this.players = [];
-      this.groupStart = null;
+      if (firstPost && s.map && this.players.length > 0) {
+        // The first post of the feed already names a map: the app started in the middle of a match, and its players
+        // were read from Steam before the game said anything. They are this match's, so keep them. Forgetting them
+        // would also look for them again from "now" (matchStart), which leaves out everyone Steam reported more than
+        // three minutes ago; the start of this match is unknown, so the plain recency window stays in charge.
+        this.matchStart = null;
+      } else {
+        // A new map (or back to the menu): forget the previous match's players.
+        this.matchStart = s.map ? this.now : null;
+        this.players = [];
+        this.groupStart = null;
+      }
       if (s.map) this.schedule(1_500);
     }
     this.scheduleMatch();

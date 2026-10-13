@@ -5,6 +5,7 @@
 // For large lobbies (Casual/Deathmatch/Arms Race/Retakes: up to 20): lookups are queued —
 // a burst of ~10, then ~1 request every 1–2 seconds — so the Leetify rate limit isn't hit.
 
+import { isSameMatch } from "../shared/match-identity";
 import type { PlayerReputation } from "../shared/reputation-types";
 import type { EvidenceClass, LobbyRow, MatchState, PlayerDetail } from "../shared/types";
 import { expectedOthers } from "./steam/pick";
@@ -144,18 +145,13 @@ export class LobbyService {
     this.onChange();
   }
 
-  /** The same match announced again is not a new match, but another map or mode, or a different lobby, is. */
+  /**
+   * The same match announced again is not a new match, but another map or mode, or a different lobby, is (see
+   * isSameMatch: a map name that arrives after the roster does not make a new match). No previous match: the first
+   * one, or the game left the lobby in between.
+   */
   private isNewMatch(prev: MatchState | null, next: MatchState): boolean {
-    if (!prev) return true; // first match, or the game left the lobby in between
-    if (this.matchSig(prev) !== this.matchSig(next)) return true;
-    // Same map and mode, e.g. two games in a row: new when none of the old opponents is left.
-    const before = this.opponents(prev), after = this.opponents(next);
-    return before.size > 0 && after.size > 0 && ![...after].some((id) => before.has(id));
-  }
-
-  private opponents(m: MatchState): Set<string> {
-    const local = this.opts.localSteamId ?? m.localSteamId;
-    return new Set(m.players.flatMap((p) => (p.steamId && !p.isLocal && p.steamId !== local ? [p.steamId] : [])));
+    return !prev || !isSameMatch(prev, next, this.opts.localSteamId);
   }
 
   /** The IDs that get looked up, order-insensitive: a team switch or a reorder is not a roster change. */
@@ -255,10 +251,6 @@ export class LobbyService {
       }
     }
     return ids;
-  }
-
-  private matchSig(m: MatchState): string {
-    return `${m.map ?? ""}:${m.mode ?? ""}`;
   }
 
   private schedule(delay = this.opts.debounceMs ?? 800): void {

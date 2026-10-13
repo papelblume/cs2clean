@@ -4,6 +4,7 @@
 import { EventEmitter } from "node:events";
 import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyProblem, type HotkeyName, type Hotkeys } from "../shared/hotkeys";
 import { listOrder, visibleOrder } from "../shared/lobby-order";
+import { isSameMatch } from "../shared/match-identity";
 import type { AppState, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
@@ -55,7 +56,8 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   private alerted = new Set<string>();
   /** Where each player's data in the current match came from; players without data have no entry. */
   private sources = new Map<string, DataSource>();
-  private matchKey: string | null = null;
+  /** The lobby as last announced (null: none); told apart from a new match by isSameMatch. */
+  private lastMatch: MatchState | null = null;
   state: AppState;
 
   constructor(private deps: ControllerDeps) {
@@ -304,14 +306,15 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   private onMatch(m: MatchState): void {
     const inMatch = m.players.length > 0;
     const prev = this.state.match;
-    const key = inMatch ? `${m.map ?? ""}` : null;
-    if (key !== this.matchKey) {
-      // Another match (or none): the siren may go off again for the new lobby.
-      this.matchKey = key;
+    const current = inMatch ? m : null;
+    if (!isSameMatch(this.lastMatch, current)) {
+      // Another match (or none): the siren may go off again for the new lobby. The same match announced again, say
+      // with its map name arriving after its roster, keeps what it had.
       this.alerted.clear();
       this.sources.clear();
       this.state.overlay = { ...this.state.overlay, focusSlot: null };
     }
+    this.lastMatch = current; // always the newest announcement: it knows the most (the map, the players found since)
     this.state.match = inMatch ? { map: m.map, mode: m.mode, phase: m.phase } : null;
     const o = this.state.overlay;
     if (inMatch && !prev && m.phase !== "live") {

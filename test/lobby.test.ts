@@ -102,6 +102,20 @@ describe("LobbyService", () => {
       expect(lookup.mock.calls[0][0]).toEqual([A, B]);
     });
 
+    it("is still the same match when its map name arrives after its roster", async () => {
+      const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: A, steamApiKey: "key" });
+      lobby.setMatch(match(A, B)); // found in Steam's list before the game said which map this is
+      await vi.advanceTimersByTimeAsync(50);
+      expect(lookup).toHaveBeenCalledTimes(1);
+      expect(groupPlayers).toHaveBeenCalledTimes(1);
+
+      lobby.setMatch(matchOn("de_mirage", A, B));
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(lookup).toHaveBeenCalledTimes(1); // the local player isn't looked up again for a "new" match
+      expect(groupPlayers).toHaveBeenCalledTimes(1);
+    });
+
     it("groups friends once for an unchanged roster, and again when a player joins", async () => {
       const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
       const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: A, steamApiKey: "key" });

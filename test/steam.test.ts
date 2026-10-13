@@ -167,6 +167,25 @@ describe("SteamSource", () => {
     src.stop();
   });
 
+  it("keeps the players it found before the feed's first post, which already names a map", async () => {
+    // The app started in the middle of a match: Steam's list was read before CS2's first heartbeat arrived.
+    const t = () => Math.floor(Date.now() / 1000);
+    const { src, push, matches } = make(() => [1, 2, 3].map((n) => E(n, t() - 400))); // reported almost seven minutes ago
+    src.start();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p1", "p2", "p3"]);
+
+    push({ map: "de_dust2", mode: "competitive", phase: "live" });
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p1", "p2", "p3"]);
+
+    // A later change of map is still a fresh start.
+    push({ map: "de_nuke", mode: "competitive", phase: "warmup" });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(matches.at(-1)!.players).toEqual([]);
+    src.stop();
+  });
+
   it("adds a friend in the match that Steam's players list leaves out", async () => {
     const t = () => Math.floor(Date.now() / 1000);
     const { src, push, matches } = make(

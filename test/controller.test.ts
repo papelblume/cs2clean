@@ -333,6 +333,45 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("doesn't start a new match, or sound the siren again, when the map name arrives after the roster", async () => {
+    const src = new FakeSource();
+    const { c, server } = setup({}, src);
+    server.s.profiles[P(2).steamId] = HIGH();
+    c.start();
+    await vi.advanceTimersByTimeAsync(20);
+
+    // The players are found in Steam's list before the game-state feed has said which map this is.
+    src.send({ map: null, mode: null, players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(900);
+    expect(c.state.alert).toEqual({ seq: 1, names: ["p2"] });
+    c.cyclePlayer();
+    const shown = c.state.overlay.focusSlot;
+    expect(shown).not.toBeNull();
+
+    src.send({ map: "de_mirage", mode: "competitive", players: [P(0), P(1), P(2)] }); // the same match, now with a map
+    await vi.advanceTimersByTimeAsync(900);
+    expect(c.state.alert.seq).toBe(1);
+    expect(c.state.overlay.focusSlot).toBe(shown);
+    c.stop();
+  });
+
+  it("starts a new match when another lobby fills the same map", async () => {
+    const src = new FakeSource();
+    const { c } = setup({}, src);
+    c.start();
+    await vi.advanceTimersByTimeAsync(20);
+    src.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(900);
+    c.cyclePlayer();
+    expect(c.state.overlay.focusSlot).not.toBeNull();
+
+    src.send({ players: [P(0), P(1), P(2), P(3)] }); // the same lobby gains a player: still this match
+    expect(c.state.overlay.focusSlot).not.toBeNull();
+    src.send({ players: [P(0), P(5), P(6)] });       // same map and mode, nobody from before: the next game
+    expect(c.state.overlay.focusSlot).toBeNull();
+    c.stop();
+  });
+
   it("changes the overlay hotkeys, and keeps the old ones when a new one can't be used", () => {
     const applied: string[] = [];
     const taken = new Set(["Ctrl+F9"]);
