@@ -79,23 +79,28 @@ export interface LobbyOptions {
 export class LobbyService {
   private cache = new Map<string, Cached>();
   private match: MatchState | null = null;
-  private matchKey: string | null = null;
+  /** Counts the matches seen. A new match is told apart from the same match announced again (see isNewMatch). */
+  private matchEpoch = 0;
+  /** Lobby roster (the IDs that get looked up) as of the last setMatch; a change re-arms the debounce. */
+  private lastRoster: string | null = null;
   private timer: NodeJS.Timeout | null = null;
+  /** True while a Retry-After or failure retry is waiting. Nothing may pull that timer forward. */
+  private backingOff = false;
   private inFlight = false;
   private failed = new Map<string, string | null>();
   /** Queue of Steam IDs waiting to be looked up (for large lobbies). */
   private queue: string[] = [];
   /** How many items from the queue have been sent to Leetify. */
   private queueSent = 0;
-  /** Match key for which the local player has already been looked up. */
-  private localPlayerDoneFor: string | null = null;
+  /** Epoch of the match in which the local player has already been looked up. */
+  private localPlayerDoneFor: number | null = null;
   error: string | null = null;
   updatedAt: string | null = null;
   /** Friendship groups for the current match, keyed by player SteamID. */
   private friendshipGroups = new Map<string, { groupId: string | null; groupName: string | null }>();
   /** Steam IDs that are private in the current match. */
   private privatePlayers = new Set<string>();
-  /** Whether friendship grouping has been attempted for the current match. */
+  /** The roster (sorted Steam IDs) friendship grouping last ran for; grouping runs again when a player joins. */
   private friendshipComputedFor: string | null = null;
 
   constructor(private lookup: Lookup, private onChange: () => void, private opts: LobbyOptions = {}) {}
@@ -104,19 +109,46 @@ export class LobbyService {
     return (this.opts.now ?? Date.now)();
   }
 
+  /**
+   * The source announces the match again on every game-state post and every scan, so this is called every few
+   * seconds with the same lobby. Per-match state is reset only when a new match begins, and the scheduler is only
+   * woken when the roster changed or nothing is armed (so an expired cache entry is still picked up).
+   */
   setMatch(match: MatchState | null): void {
-    const prevKey = this.matchKey;
+    const prev = this.match;
     this.match = match;
-    this.matchKey = match ? this.matchSig(match) : null;
-    // New match: reset per-match state.
-    if (match !== null) {
+    const fresh = match !== null && this.isNewMatch(prev, match);
+    if (fresh) {
+      this.matchEpoch++;
       this.queue = [];
       this.queueSent = 0;
       this.localPlayerDoneFor = null;
       this.friendshipComputedFor = null;
     }
-    this.schedule();
+    const roster = match ? this.rosterSig(match) : null;
+    const rosterChanged = roster !== this.lastRoster;
+    this.lastRoster = roster;
+    if (fresh || rosterChanged || (!this.timer && !this.inFlight)) this.schedule();
     this.onChange();
+  }
+
+  /** The same match announced again is not a new match, but another map or mode, or a different lobby, is. */
+  private isNewMatch(prev: MatchState | null, next: MatchState): boolean {
+    if (!prev) return true; // first match, or the game left the lobby in between
+    if (this.matchSig(prev) !== this.matchSig(next)) return true;
+    // Same map and mode, e.g. two games in a row: new when none of the old opponents is left.
+    const before = this.opponents(prev), after = this.opponents(next);
+    return before.size > 0 && after.size > 0 && ![...after].some((id) => before.has(id));
+  }
+
+  private opponents(m: MatchState): Set<string> {
+    const local = this.opts.localSteamId ?? m.localSteamId;
+    return new Set(m.players.flatMap((p) => (p.steamId && !p.isLocal && p.steamId !== local ? [p.steamId] : [])));
+  }
+
+  /** The IDs that get looked up, order-insensitive: a team switch or a reorder is not a roster change. */
+  private rosterSig(m: MatchState): string {
+    return m.players.slice(0, this.limit).map((p) => p.steamId ?? "").sort().join(",");
   }
 
   /** Update the local player's Steam ID (called when a match starts). */
@@ -136,6 +168,7 @@ export class LobbyService {
     this.friendshipGroups.clear();
     this.privatePlayers.clear();
     this.friendshipComputedFor = null;
+    this.backingOff = false;
     this.schedule();
     this.onChange();
   }
@@ -178,7 +211,7 @@ export class LobbyService {
       if (seen.has(p.steamId)) continue;
       seen.add(p.steamId);
       // Always re-lookup the local player when a new match starts.
-      if (p.steamId === this.opts.localSteamId && this.matchKey !== this.localPlayerDoneFor) {
+      if (p.steamId === this.opts.localSteamId && this.localPlayerDoneFor !== this.matchEpoch) {
         ids.push(p.steamId);
         continue;
       }
@@ -202,18 +235,31 @@ export class LobbyService {
   }
 
   private schedule(delay = this.opts.debounceMs ?? 800): void {
+    if (this.backingOff) return; // a retry is waiting; a roster change or a new match must not shorten it
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     if (this.pendingIds().length === 0) return;
     this.timer = setTimeout(() => void this.run(), delay);
   }
 
+  /** Ask again after a Leetify Retry-After or a failed lookup; schedule() leaves this timer alone until it fires. */
+  private scheduleRetry(delayMs: number): void {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.backingOff = false;
+    if (this.pendingIds().length === 0) return;
+    this.backingOff = true;
+    this.timer = setTimeout(() => void this.run(), delayMs);
+  }
+
   private async run(): Promise<void> {
     this.timer = null;
+    this.backingOff = false;
     if (this.inFlight) return this.schedule();
     const ids = this.pendingIds();
     if (ids.length === 0) return;
     this.inFlight = true;
+    const epoch = this.matchEpoch; // a match that begins while this lookup is out must not count as done
 
     // For large queues, process in batches.
     const isQueued = this.queue.length > BURST_SIZE;
@@ -238,6 +284,7 @@ export class LobbyService {
       const answers = await this.lookup(batch);
       const at = this.now;
       let problem: string | null = null;
+      let localAnswered = false;
       for (const a of answers) {
         if (!a.steamId) continue;
         if (a.transient) {
@@ -249,37 +296,34 @@ export class LobbyService {
         this.cache.set(a.steamId, { classification: a.classification, totalMatches: a.totalMatches,
                                     name: a.name ?? null, detail: a.detail ?? null, reputation: a.reputation ?? null, note: a.note ?? null, at });
         this.failed.delete(a.steamId);
+        if (a.steamId === this.opts.localSteamId) localAnswered = true;
       }
       this.error = problem;
       this.updatedAt = new Date(at).toISOString();
-      // Mark local player as done for this match.
-      if (this.opts.localSteamId) {
-        this.localPlayerDoneFor = this.matchKey;
-      }
+      // The local player is looked up once per match, but only an answer counts: a refused lookup is asked again.
+      if (localAnswered) this.localPlayerDoneFor = epoch;
     } catch (e) {
       for (const id of batch) this.failed.set(id, null);
       this.error = e instanceof Error ? e.message : String(e);
       this.inFlight = false;
       this.onChange();
-      this.schedule(this.opts.retryMs ?? 15_000);
+      this.scheduleRetry(this.opts.retryMs ?? 15_000);
       return;
     }
     this.inFlight = false;
     this.onChange();
-    // Compute friendship groups after successful lookups (once per match).
+    // Compute friendship groups after successful lookups (once for each roster).
     if (retryIn === null) {
       void this.computeFriendshipGroups();
     }
-    this.schedule(retryIn ?? undefined);
+    if (retryIn !== null) this.scheduleRetry(retryIn);
+    else this.schedule();
   }
 
   /** Fetch friends lists for all lobby players and compute connected components. */
   private async computeFriendshipGroups(): Promise<void> {
     const key = this.opts.steamApiKey;
     if (!key) return;
-    const matchKey = this.matchKey;
-    if (!matchKey || matchKey === this.friendshipComputedFor) return;
-    this.friendshipComputedFor = matchKey;
 
     // Gather unique Steam IDs from the current match.
     const ids = new Set<string>();
@@ -291,9 +335,15 @@ export class LobbyService {
       // Nothing to group with a single player.
       return;
     }
+    // Once for each roster: a repeated announcement costs nothing, a player who joins late is grouped too.
+    const roster = [...idList].sort().join(",");
+    if (roster === this.friendshipComputedFor) return;
+    this.friendshipComputedFor = roster;
 
     try {
       const result = await groupPlayers(idList, key);
+      // The roster changed or a new match began while Steam was answering: the newer pass owns the groups.
+      if (this.friendshipComputedFor !== roster) return;
       // Map each player to their group.
       for (const group of result.groups) {
         const groupId = group.length > 1 ? group.join(":") : null;
