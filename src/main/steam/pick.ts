@@ -4,6 +4,7 @@
 // scoreboard were listed with one shared time, plus 2 newer entries ("Now") that were NOT in the match.
 // So the newest entries aren't enough: the match is the biggest group of players reported together.
 
+import { MAX_LOOKUPS } from "../../shared/lobby-size";
 import { CS2_APP_ID, type CoplayEntry, type FriendInGame } from "./coplay";
 
 export interface PickOptions {
@@ -13,7 +14,7 @@ export interface PickOptions {
   localSteamId?: string | null;
   /** Unix seconds when the current map loaded (from the game's state feed). Unknown: null. */
   matchStart?: number | null;
-  /** Other players in this mode (9 in Competitive/Premier, 3 in Wingman). */
+  /** Other players to look for (see othersToFind: 9 in Competitive/Premier, 3 in Wingman). Unknown mode: 9. */
   expectedOthers?: number;
   /** Entries reported this close together (s) count as one group. */
   groupGapS?: number;
@@ -28,7 +29,7 @@ export interface PickResult {
 }
 
 export function pickMatchPlayers(entries: CoplayEntry[], o: PickOptions): PickResult {
-  const expected = o.expectedOthers ?? 9;
+  const expected = o.expectedOthers ?? othersToFind(null);
   const gap = o.groupGapS ?? 20;
   // Steam can report players a little before the game-state feed tells us the map loaded.
   const since = o.matchStart != null ? o.matchStart - 180 : o.now - (o.recentS ?? 15 * 60);
@@ -64,12 +65,21 @@ export function pickMatchPlayers(entries: CoplayEntry[], o: PickOptions): PickRe
   return { players, others: recent.filter((e) => !picked.has(e.steamId)) };
 }
 
-/** Other players in a mode, from the game-state feed's map.mode. */
+/** Other players in a mode, from the game-state feed's map.mode. Unknown: as many as in Competitive. */
 export function expectedOthers(mode: string | null | undefined): number {
   const m = (mode ?? "").toLowerCase();
   if (m.includes("wingman") || m.includes("scrimcomp2v2")) return 3;
   if (m.includes("casual") || m.includes("deathmatch") || m.includes("armsrace")) return 19;
   return 9;
+}
+
+/**
+ * How many other players to look for in a mode: all of its, but no more than the lobby looks up (MAX_LOOKUPS players,
+ * ourselves among them). So 9 in Competitive, Premier and the big modes, and 3 in Wingman: looking for 9 there would
+ * add players who aren't in the match.
+ */
+export function othersToFind(mode: string | null | undefined): number {
+  return Math.min(expectedOthers(mode), MAX_LOOKUPS - 1);
 }
 
 export interface FriendPickOptions {

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SteamSource } from "../src/main/game/steam";
 import type { CoplayEntry, CoplayResult, FriendInGame } from "../src/main/steam/coplay";
 import { gsiConfig, libraryPaths, parseGsi, startGsiServer, type GameState } from "../src/main/steam/gsi";
-import { expectedOthers, pickFriends, pickMatchPlayers } from "../src/main/steam/pick";
+import { expectedOthers, othersToFind, pickFriends, pickMatchPlayers } from "../src/main/steam/pick";
 import type { MatchState } from "../src/shared/types";
 import { ago, flagged } from "../src/renderer/parts";
 
@@ -48,6 +48,15 @@ describe("picking the match from Steam's players list", () => {
     expect(expectedOthers("scrimcomp2v2")).toBe(3);
     expect(expectedOthers("competitive")).toBe(9);
     expect(pickMatchPlayers([], { now }).players).toEqual([]);
+  });
+
+  it("looks for a mode's other players, but never more than the lobby looks up", () => {
+    expect(othersToFind("competitive")).toBe(9);   // also Premier
+    expect(othersToFind("scrimcomp2v2")).toBe(3);  // Wingman
+    expect(othersToFind("casual")).toBe(9);        // 19 others, but only 10 players are looked up
+    expect(othersToFind("deathmatch")).toBe(9);
+    expect(othersToFind(null)).toBe(9);            // until the game says which mode it is
+    expect(othersToFind(undefined)).toBe(9);
   });
 });
 
@@ -198,6 +207,72 @@ describe("SteamSource", () => {
     push({ map: "de_mirage", mode: "competitive", phase: "warmup" });
     await vi.advanceTimersByTimeAsync(2_000);
     expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "buddy"]);
+    src.stop();
+  });
+
+  describe("in a mode with fewer than 10 players", () => {
+    const WINGMAN = { map: "de_inferno", mode: "scrimcomp2v2", phase: "warmup" } as const;
+    const secs = () => Math.floor(Date.now() / 1000); // read inside a test, after the fake clock is set
+
+    it("lists a Wingman match's three other players, not recent entries that aren't in it", async () => {
+      const t0 = secs();
+      const { src, push, matches } = make(() => [
+        ...[1, 2, 3].map((n) => E(n, t0 - 60)),   // the 4 on the scoreboard (me and these 3), reported together
+        E(20, t0 - 5), E(21, t0 - 4),             // "Now", not in the match
+      ]);
+      src.start();
+      push(WINGMAN);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p1", "p2", "p3"]);
+      src.stop();
+    });
+
+    it("doesn't top a full Wingman lobby up with friends who are on the same map in another match", async () => {
+      const t0 = secs();
+      const { src, push, matches } = make(
+        () => [1, 2, 3].map((n) => E(n, t0 - 60)),
+        () => [{ steamId: id(50), name: "buddy", presence: { "game:map": "de_inferno" } }],
+      );
+      src.start();
+      push(WINGMAN);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p1", "p2", "p3"]);
+      src.stop();
+    });
+
+    it("still tops a short Wingman lobby up with a friend in the match", async () => {
+      const t0 = secs();
+      const { src, push, matches } = make(
+        () => [1, 2].map((n) => E(n, t0 - 60)),
+        () => [{ steamId: id(50), name: "buddy", presence: { "game:map": "de_inferno" } }],
+      );
+      src.start();
+      push(WINGMAN);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p1", "p2", "buddy"]);
+      src.stop();
+    });
+
+    it("stops scanning often once the Wingman lobby is complete", async () => {
+      const t0 = secs();
+      const { src, push, scans } = make(() => [1, 2, 3].map((n) => E(n, t0 - 60)));
+      src.start();
+      push(WINGMAN);
+      await vi.advanceTimersByTimeAsync(2_000);
+      const n = scans.length;
+      await vi.advanceTimersByTimeAsync(5_000);   // the slow interval (10 s in this test) applies, not the fast one (1 s)
+      expect(scans.length).toBe(n);
+      src.stop();
+    });
+  });
+
+  it("still lists at most 9 other players in a mode with more, since only 10 players are looked up", async () => {
+    const t0 = Math.floor(Date.now() / 1000);
+    const { src, push, matches } = make(() => Array.from({ length: 14 }, (_, i) => E(i + 1, t0 - 30)));
+    src.start();
+    push({ map: "de_dust2", mode: "casual", phase: "warmup" });
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", ...Array.from({ length: 9 }, (_, i) => `p${i + 1}`)]);
     src.stop();
   });
 

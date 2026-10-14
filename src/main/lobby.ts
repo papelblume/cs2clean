@@ -5,10 +5,10 @@
 // For large lobbies (Casual/Deathmatch/Arms Race/Retakes: up to 20): lookups are queued —
 // a burst of ~10, then ~1 request every 1–2 seconds — so the Leetify rate limit isn't hit.
 
+import { MAX_LOOKUPS } from "../shared/lobby-size";
 import { isSameMatch } from "../shared/match-identity";
 import type { PlayerReputation } from "../shared/reputation-types";
 import type { EvidenceClass, LobbyRow, MatchState, PlayerDetail } from "../shared/types";
-import { expectedOthers } from "./steam/pick";
 import { groupPlayers } from "./steam/friends";
 
 /** What a lookup says about one player. */
@@ -50,12 +50,6 @@ interface Cached {
 }
 
 const UNKNOWN_NAME = "Unknown player";
-
-/** Only the first this-many players of a lobby are looked up; the rest are shown as not checked. */
-export const MAX_LOOKUPS = 10;
-
-/** Default max players for unknown modes (Competitive/Premier). */
-const DEFAULT_MAX_PLAYERS = 10;
 
 /** How many lookups to send in the initial burst for large lobbies. */
 const BURST_SIZE = 10;
@@ -197,9 +191,7 @@ export class LobbyService {
   }
 
   private get limit(): number {
-    if (this.opts.maxPlayers !== undefined) return this.opts.maxPlayers;
-    // Cap at 10 players in all modes.
-    return Math.min(10, DEFAULT_MAX_PLAYERS);
+    return this.opts.maxPlayers ?? MAX_LOOKUPS;
   }
 
   rows(): LobbyRow[] {

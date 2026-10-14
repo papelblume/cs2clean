@@ -3,7 +3,7 @@
 // Optional: your SteamID64 as an argument (`npm run coplay -- 7656...`) to also print your own rich presence.
 
 import { CS2_APP_ID, readCoplay } from "./coplay";
-import { pickFriends, pickMatchPlayers } from "./pick";
+import { othersToFind, pickFriends, pickMatchPlayers } from "./pick";
 
 const now = Math.floor(Date.now() / 1000);
 try {
@@ -25,7 +25,7 @@ try {
   console.log(`\nFriends playing CS2 now: ${friends.length}`);
   for (const f of friends) console.log(`  ${f.steamId}  ${f.name ?? "(name unknown)"}\n      ${show(f.presence)}`);
   const map = localPresence?.["game:map"] ?? null;
-  const extra = pickFriends(friends, { map, localPresence, exclude: new Set(pick.players.map((p) => p.steamId)), max: 9 - pick.players.length });
+  const extra = pickFriends(friends, { map, localPresence, exclude: new Set(pick.players.map((p) => p.steamId)), max: othersToFind(null) - pick.players.length }); // the mode isn't known here: as many as in Competitive
   if (extra.length) console.log(`\nFriends the app would add to your match: ${extra.map((f) => f.name ?? f.steamId).join(", ")}`);
 } catch (e) {
   console.error(e instanceof Error ? e.message : e);

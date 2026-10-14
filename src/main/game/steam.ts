@@ -8,7 +8,7 @@
 import type { MatchState, RosterPlayer } from "../../shared/types";
 import type { CoplayResult } from "../steam/coplay";
 import type { GameState } from "../steam/gsi";
-import { pickFriends, pickMatchPlayers } from "../steam/pick";
+import { othersToFind, pickFriends, pickMatchPlayers } from "../steam/pick";
 import { GameSource } from "./source";
 
 export interface SteamSourceDeps {
@@ -120,6 +120,11 @@ export class SteamSource extends GameSource {
     this.emit("problem", p);
   }
 
+  /** How many other players to look for: the mode's (from the game-state feed; Competitive's until it says), up to the cap. */
+  private get others(): number {
+    return othersToFind(this.game?.mode);
+  }
+
   /** In a map by the game's own report; without the game-state feed, assume yes and rely on recency. */
   private get inMap(): boolean {
     return this.gsiLive ? !!this.game?.map : this.gsiAt === 0;
@@ -133,8 +138,7 @@ export class SteamSource extends GameSource {
   private nextDelay(): number {
     const fast = this.deps.fastMs ?? 8_000, slow = this.deps.slowMs ?? 60_000;
     if (!this.inMap) return slow;
-    // Cap at 10 players total (9 others + local).
-    const complete = this.players.length >= 9;
+    const complete = this.players.length >= this.others;
     if (!this.gsiLive) return 20_000;
     return complete ? slow : fast;
   }
@@ -145,6 +149,7 @@ export class SteamSource extends GameSource {
     if (!this.inMap) return this.schedule(this.nextDelay());
     this.scanning = true;
     try {
+      const others = this.others; // the mode could change while Steam is read; one answer for the whole scan
       const local = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
       const res = await this.deps.scan(local);
       this.localName = res.localName;
@@ -152,7 +157,7 @@ export class SteamSource extends GameSource {
         now: Math.floor(this.now / 1000),
         localSteamId: local,
         matchStart: this.matchStart != null ? Math.floor(this.matchStart / 1000) : null,
-        expectedOthers: 9, // cap at 10 total players
+        expectedOthers: others,
       });
       if (this.inMap) {
         // Detect a new match group: significant time gap from the previous group, or all current players
@@ -173,15 +178,13 @@ export class SteamSource extends GameSource {
         for (const e of picked.players)
           byId.set(e.steamId, { slot: 0, name: e.name ?? byId.get(e.steamId)?.name ?? "Unknown player", steamId: e.steamId, side: null, isLocal: false });
         // Steam leaves friends out of its players list: top up a short list with friends in this match.
-        // Cap at 10 total players (9 others + local).
-        const maxOthers = 9;
         const friends = pickFriends(res.friends ?? [], {
           map: this.game?.map ?? null, localPresence: res.localPresence,
-          exclude: new Set([...byId.keys(), local].filter((x): x is string => !!x)), max: maxOthers - byId.size,
+          exclude: new Set([...byId.keys(), local].filter((x): x is string => !!x)), max: others - byId.size,
         });
         for (const f of friends)
           byId.set(f.steamId, { slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false });
-        this.players = [...byId.values()].slice(0, maxOthers).map((p, i) => ({ ...p, slot: i + 1 }));
+        this.players = [...byId.values()].slice(0, others).map((p, i) => ({ ...p, slot: i + 1 }));
       }
       // Players found but CS2 never sent game state: it was most likely started before the cfg existed.
       const noGsi = this.gsiAt === 0 && this.players.length > 0
