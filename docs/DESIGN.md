@@ -68,7 +68,7 @@ interface AppState {
   notice: string | null;
   game: { source: GameKind; running: boolean; problem: string | null };
   match: { map: string | null; mode: string | null; phase: MatchPhase | null } | null;
-  lobby: { rows: LobbyRow[]; updatedAt: string | null; error: string | null };
+  lobby: { rows: LobbyRow[]; updatedAt: string | null; error: string | null; cycle: number[] };
   overlay: { hotkey: string; detailHotkey: string; cycleHotkey: string; previousHotkey: string; mode: OverlayMode; visible: boolean; view: ViewKind; focusSlot: number | null; siren: boolean };
   hotkeysEditable: boolean;
   startWithWindows: boolean | null;

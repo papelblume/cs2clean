@@ -5,7 +5,7 @@
 
 import { StrictMode, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { listOrder, visibleOrder } from "../shared/lobby-order";
+import { cycleHints } from "../shared/lobby-order";
 import type { AppState, AxisLevel, LobbyRow } from "../shared/types";
 import { ClassBadge, Logo, mapName, SideEmblem, TIER_LABELS, Wordmark } from "./brand";
 import { ago, clutchDisplay, cspLevel, flagged, hsAccuracyLevel, PlayerClass, ratingDisplay, show, sprayAccuracyLevel, spottedAccuracyLevel, ttdLevel, winrateDisplay } from "./parts";
@@ -19,16 +19,14 @@ function Overlay() {
   useSiren(s);
   if (!s) return null;
   const o = s.overlay;
-  const order = listOrder(s.lobby.rows);
-  const cycle = visibleOrder(s.lobby.rows);
-  const at = cycle.findIndex((r) => r.slot === o.focusSlot);
+  const hints = cycleHints(s.lobby.cycle, o.focusSlot); // from the walk the keys make, not from the list on screen
   return (
     <div className="ov">
       <header className="ov-head">
         <Logo size={18} />
         <strong>{mapName(s.match?.map) ?? "Lobby"}</strong>
         <span className="ov-count">
-          {o.view === "detail" ? "Flagged players" : o.view === "player" ? (at >= 0 ? `Player ${at + 1} of ${cycle.length}` : "Players") : countLine(s)}
+          {o.view === "detail" ? "Flagged players" : o.view === "player" ? (hints.position !== null ? `Player ${hints.position} of ${hints.total}` : "Players") : countLine(s)}
         </span>
       </header>
       {o.view === "detail" ? <Detail s={s} /> : o.view === "player" ? <PlayerView s={s} /> : <Body s={s} />}
@@ -37,7 +35,7 @@ function Overlay() {
           {o.view === "detail"
             ? <><kbd>{o.detailHotkey}</kbd> hide · <kbd>{o.hotkey}</kbd> list · <kbd>{o.cycleHotkey}</kbd> players</>
             : o.view === "player"
-              ? <><kbd>{o.previousHotkey}</kbd> {at > 0 ? "back" : "hide"} · <kbd>{o.cycleHotkey}</kbd> {at >= 0 && at < order.length - 1 ? "next" : "hide"} · <kbd>{o.hotkey}</kbd> list</>
+              ? <><kbd>{o.previousHotkey}</kbd> {hints.previous} · <kbd>{o.cycleHotkey}</kbd> {hints.next} · <kbd>{o.hotkey}</kbd> list</>
               : <><kbd>{o.hotkey}</kbd> hide · <kbd>{o.detailHotkey}</kbd> flagged · <kbd>{o.cycleHotkey}</kbd> players</>}
         </span>
         <Wordmark />
@@ -103,9 +101,10 @@ function Detail({ s }: { s: AppState }) {
 
 /** F6: one player at a time, flagged or not. */
 function PlayerView({ s }: { s: AppState }) {
-  const cycle = visibleOrder(s.lobby.rows);
+  const { cycle, rows } = s.lobby;
   if (cycle.length === 0) return <p className="ov-msg">The players appear here when the match loads.</p>;
-  const r = cycle.find((p) => p.slot === s.overlay.focusSlot);
+  const slot = s.overlay.focusSlot;
+  const r = slot !== null && cycle.includes(slot) ? rows.find((p) => p.slot === slot) : undefined;
   return r ? <div className="ov-cards"><Card r={r} /></div> : <p className="ov-msg">Press the key again to start with the first player.</p>;
 }
 

@@ -139,6 +139,8 @@ export interface AppState {
     rows: LobbyRow[];
     updatedAt: string | null;
     error: string | null;
+    /** The slots of the players F6 and Shift+F6 step through, in the order they do (see shared/lobby-order.ts). */
+    cycle: number[];
   };
   overlay: {
     hotkey: string;

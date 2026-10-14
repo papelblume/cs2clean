@@ -3,6 +3,8 @@ import { Controller, type ControllerDeps, type Settings } from "../src/main/cont
 import { ReplaySource } from "../src/main/game/replay";
 import { GameSource, type RecordedLine } from "../src/main/game/source";
 import type { LeetifyProfile } from "../src/main/leetify";
+import { HERO_READY, type HeroScrape } from "../src/main/leetify-hero";
+import { cycleHints, listOrder } from "../src/shared/lobby-order";
 import type { MatchState } from "../src/shared/types";
 import { AVERAGE, ELEVATED, HIGH, VERY_HIGH } from "./profiles";
 
@@ -16,7 +18,7 @@ vi.mock("../src/main/steam/friends", () => steam);
 /** A fake Leetify public API: profiles by SteamID64 (default: an average player), and the one key it accepts. */
 function fakeLeetify() {
   const s = { lookups: [] as string[], keys: [] as (string | null)[], goodKey: "good-key" as string | null, requireKey: false,
-              profiles: {} as Record<string, LeetifyProfile>, down: false };
+              profiles: {} as Record<string, LeetifyProfile>, missing: new Set<string>(), down: false };
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
   const fetchImpl = (async (url: string, init?: RequestInit) => {
     if (s.down) throw new TypeError("fetch failed");
@@ -27,6 +29,7 @@ function fakeLeetify() {
     const id = u.searchParams.get("steam64_id") ?? "";
     s.lookups.push(id);
     s.keys.push(key);
+    if (s.missing.has(id)) return json(404, { error: "not found" });
     return json(200, s.profiles[id] ?? AVERAGE());
   }) as typeof fetch;
   return { s, fetchImpl };
@@ -497,6 +500,82 @@ describe("Controller", () => {
     c.previousPlayer();
     expect(c.state.overlay.visible).toBe(false);
     c.stop();
+  });
+
+  describe("the walk of F6 and Shift+F6, and what the overlay says about it", () => {
+    /**
+     * Slots 0 (me, CT) and 3 (side unknown) are found on csst.at, 1 (T), 2 (CT) and 4 (T) on Leetify, and 5 (T) on
+     * neither. On screen the list goes 0, 2, 1, 4, 5, 3, but the keys walk the Leetify players first: 2, 1, 4, 0, 3.
+     */
+    async function mixedLobby() {
+      const src = new FakeSource();
+      const scrape = async (ids: string[]): Promise<HeroScrape> => ({
+        profiles: new Map(ids.filter((id) => id !== P(5).steamId).map((id) => [id, AVERAGE()])), status: HERO_READY, failed: new Map(),
+      });
+      const { c, server } = setup({}, src, { scrape });
+      for (const n of [0, 3, 5]) server.s.missing.add(P(n).steamId);
+      c.start();
+      await vi.advanceTimersByTimeAsync(20);
+      src.send({ phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }, { ...P(2), side: "CT" }, P(3), { ...P(4), side: "T" }, { ...P(5), side: "T" }] });
+      await vi.advanceTimersByTimeAsync(3000);
+      return { c, src };
+    }
+    const WALK = [2, 1, 4, 0, 3];
+    const shown = (c: Controller) => (c.state.overlay.visible ? `${c.state.overlay.view}:${c.state.overlay.focusSlot}` : "hidden");
+    /** Brings the overlay up on the i-th player of the walk (0-based), the way a person would: F6 from the first. */
+    const goTo = (c: Controller, i: number) => {
+      c.toggleDetail(); // another view: F6 then starts again from the first player
+      for (let k = 0; k <= i; k++) c.cyclePlayer();
+    };
+
+    it("publishes the walk: players from Leetify, then from csst.at, and not the one with nothing to show", async () => {
+      const { c } = await mixedLobby();
+      expect(c.state.lobby.cycle).toEqual(WALK);
+      expect(listOrder(c.state.lobby.rows).map((r) => r.slot)).toEqual([0, 2, 1, 4, 5, 3]); // the list on screen is another order, with 5 in it
+      const seen: string[] = [];
+      for (let i = 0; i < 6; i++) {
+        c.cyclePlayer();
+        seen.push(shown(c));
+      }
+      expect(seen).toEqual(["player:2", "player:1", "player:4", "player:0", "player:3", "hidden"]);
+      c.stop();
+    });
+
+    it("tells the position and what each key does from every card of the walk, as the keys do it", async () => {
+      const { c } = await mixedLobby();
+      for (let i = 0; i < WALK.length; i++) {
+        goTo(c, i);
+        const hints = cycleHints(c.state.lobby.cycle, c.state.overlay.focusSlot);
+        expect(hints).toEqual({ position: i + 1, total: 5, previous: i > 0 ? "back" : "hide", next: i < 4 ? "next" : "hide" });
+
+        c.previousPlayer();
+        expect(shown(c)).toBe(hints.previous === "hide" ? "hidden" : `player:${WALK[i - 1]}`);
+        goTo(c, i);
+        c.cyclePlayer();
+        expect(shown(c)).toBe(hints.next === "hide" ? "hidden" : `player:${WALK[i + 1]}`);
+      }
+      c.stop();
+    });
+
+    it("tells where a key jumps when the card shown has left the walk", async () => {
+      const { c, src } = await mixedLobby();
+      goTo(c, 4); // slot 3, the last
+      src.send({ phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }, { ...P(2), side: "CT" }] }); // 3 leaves; the same match
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.overlay).toMatchObject({ visible: true, view: "player", focusSlot: 3 });
+      const walk = c.state.lobby.cycle;
+      expect(walk).toEqual([2, 1, 0]);
+      expect(cycleHints(walk, c.state.overlay.focusSlot)).toEqual({ position: null, total: 3, previous: "last", next: "first" });
+
+      c.previousPlayer();
+      expect(shown(c)).toBe("player:0"); // the last
+      goTo(c, 1);
+      c.toggleDetail();
+      src.send({ phase: "live", players: [{ ...P(0), side: "CT" }, { ...P(1), side: "T" }, { ...P(2), side: "CT" }] });
+      c.cyclePlayer();
+      expect(shown(c)).toBe("player:2"); // the first
+      c.stop();
+    });
   });
 
   it("looks up only the first 10 players of a 12-player lobby", async () => {

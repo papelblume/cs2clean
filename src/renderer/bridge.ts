@@ -3,7 +3,7 @@
 // Pick a screen with ?screen=nokey | lobby | detail | player | waiting | problem (default: lobby).
 
 import { DEFAULT_HOTKEYS, hotkeyProblem } from "../shared/hotkeys";
-import { listOrder } from "../shared/lobby-order";
+import { cycleStep, visibleOrder } from "../shared/lobby-order";
 import type { PlayerReputation } from "../shared/reputation-types";
 import type { AppState, Bridge, LobbyRow, MatchSummary, PlayerDetail, PlayerMetrics } from "../shared/types";
 
@@ -92,6 +92,16 @@ function simulated(): Bridge {
   const inGame = screen === "lobby" || screen === "detail" || screen === "player";
   // ?fallback=off previews the window with the csst.at fallback unavailable.
   const fallbackOff = new URLSearchParams(location.search).get("fallback") === "off";
+  const rows: LobbyRow[] = inGame ? ROSTER.map(([name, side, classification, totalMatches, status], slot) => ({
+    slot, name, side, classification, totalMatches, status, isLocal: slot === 0,
+    detail: DETAIL[name] ?? (totalMatches >= 20 ? ordinary() : null),
+    reputation: REPUTATION[name] ?? (totalMatches >= 20 ? TRUSTED : null),
+    note: status === "skipped" ? "Not checked: only the first 10 players of a lobby are looked up"
+      : classification === "INSUFFICIENT_DATA" ? "Only 3 Leetify matches" : name === "n0va" ? "Ban on record (faceit) since 2026-08-14" : null,
+    steamId: status === "no-steam-id" ? null : String(76561198000000001n + BigInt(slot)),
+    groupId: FAKE_GROUPS[slot]?.groupId ?? null,
+    groupName: FAKE_GROUPS[slot]?.groupName ?? null,
+  })) : [];
   let state: AppState = {
     version: "1.0.0",
     leetify: {
@@ -112,18 +122,10 @@ function simulated(): Bridge {
     },
     match: inGame ? { map: "de_mirage", mode: "premier", phase: "warmup" } : null,
     lobby: {
-      rows: inGame ? ROSTER.map(([name, side, classification, totalMatches, status], slot) => ({
-        slot, name, side, classification, totalMatches, status, isLocal: slot === 0,
-        detail: DETAIL[name] ?? (totalMatches >= 20 ? ordinary() : null),
-        reputation: REPUTATION[name] ?? (totalMatches >= 20 ? TRUSTED : null),
-        note: status === "skipped" ? "Not checked: only the first 10 players of a lobby are looked up"
-          : classification === "INSUFFICIENT_DATA" ? "Only 3 Leetify matches" : name === "n0va" ? "Ban on record (faceit) since 2026-08-14" : null,
-        steamId: status === "no-steam-id" ? null : String(76561198000000001n + BigInt(slot)),
-        groupId: FAKE_GROUPS[slot]?.groupId ?? null,
-        groupName: FAKE_GROUPS[slot]?.groupName ?? null,
-      })) : [],
+      rows,
       updatedAt: inGame ? new Date().toISOString() : null,
       error: null,
+      cycle: visibleOrder(rows).map((r) => r.slot), // the real app also puts API players before scraped ones
     },
     overlay: {
       hotkey: DEFAULT_HOTKEYS.lobby, detailHotkey: DEFAULT_HOTKEYS.detail, cycleHotkey: DEFAULT_HOTKEYS.cycle, previousHotkey: DEFAULT_HOTKEYS.previous, mode: "window", visible: false,
@@ -141,12 +143,9 @@ function simulated(): Bridge {
   };
   /** The same walk through the players as the real controller's F6 / F5. */
   const step = (dir: 1 | -1) => {
-    const o = state.overlay, order = listOrder(state.lobby.rows);
-    const running = o.visible && o.view === "player";
-    const at = running && o.focusSlot !== null ? order.findIndex((r) => r.slot === o.focusSlot) : -1;
-    const next = at < 0 ? (dir === 1 ? 0 : order.length - 1) : at + dir;
-    if (running && (next < 0 || next >= order.length) && (at >= 0 || order.length === 0)) set({ overlay: { ...o, visible: false, focusSlot: null } });
-    else set({ overlay: { ...o, visible: true, view: "player", focusSlot: order[next]?.slot ?? null } });
+    const o = state.overlay;
+    const next = cycleStep(state.lobby.cycle, o.focusSlot, dir, o.visible && o.view === "player");
+    set({ overlay: next.hide ? { ...o, visible: false, focusSlot: null } : { ...o, visible: true, view: "player", focusSlot: next.slot } });
   };
   return {
     getState: async () => state,

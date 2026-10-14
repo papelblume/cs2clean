@@ -3,9 +3,9 @@
 
 import { EventEmitter } from "node:events";
 import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyProblem, type HotkeyName, type Hotkeys } from "../shared/hotkeys";
-import { listOrder, visibleOrder } from "../shared/lobby-order";
+import { cycleStep, listOrder, visibleOrder } from "../shared/lobby-order";
 import { isSameMatch } from "../shared/match-identity";
-import type { AppState, MatchState } from "../shared/types";
+import type { AppState, LobbyRow, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
 import { LobbyService, type LobbyOptions } from "./lobby";
@@ -76,7 +76,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       notice: null,
       game: { source: deps.source.kind, running: false, problem: null },
       match: null,
-      lobby: { rows: [], updatedAt: null, error: null },
+      lobby: { rows: [], updatedAt: null, error: null, cycle: [] },
       overlay: { ...deps.overlay, siren: this.settings.siren ?? true },
       hotkeysEditable: !!deps.applyHotkeys,
       startWithWindows: deps.startup ? deps.startup.get() : null,
@@ -248,8 +248,9 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
 
   /**
    * Cycle hotkey (F6): the card of the first player, then the next one on each press, and the overlay hides
-   * again after the last. Every player, flagged or not, yourself included. The order is cycleOrder(): API
-   * players first, then scraped ones.
+   * again after the last. Every player with something to show, flagged or not, yourself included. The order is
+   * cycleOrder(): API players first, then scraped ones. It is published as lobby.cycle, and the overlay's hints
+   * come from the same walk.
    */
   cyclePlayer(): void {
     this.stepPlayer(1);
@@ -268,8 +269,8 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
    * then players without any data. Inside each group the list order stays (CT, then T). Only the walk is
    * grouped; the list in the overlay keeps its own order.
    */
-  private cycleOrder() {
-    const rows = visibleOrder(this.state.lobby.rows);
+  private cycleOrder(all: LobbyRow[]) {
+    const rows = visibleOrder(all);
     const group = (r: (typeof rows)[number]): number => {
       const source = r.steamId ? this.sources.get(r.steamId) : undefined;
       return source === "api" ? 0 : source === "scrape" ? 1 : 2;
@@ -278,18 +279,12 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     return [...rows].sort((a, b) => group(a) - group(b));
   }
 
+  /** One press of F6 or Shift+F6, on the walk the overlay was last told about (so it is what its hints say). */
   private stepPlayer(dir: 1 | -1): void {
     const o = this.state.overlay;
-    const order = this.cycleOrder();
     const running = o.visible && o.view === "player";
-    // Where the walk is; -1 when it isn't running (or its player left), so it starts at the first or last player.
-    const at = running && o.focusSlot !== null ? order.findIndex((r) => r.slot === o.focusSlot) : -1;
-    const next = at < 0 ? (dir === 1 ? 0 : order.length - 1) : at + dir;
-    if (running && (next < 0 || next >= order.length) && (at >= 0 || order.length === 0)) {
-      this.update({ overlay: { ...o, visible: false, focusSlot: null } });
-      return;
-    }
-    this.update({ overlay: { ...o, visible: true, view: "player", focusSlot: order[next]?.slot ?? null } });
+    const step = cycleStep(this.state.lobby.cycle, o.focusSlot, dir, running);
+    this.update({ overlay: step.hide ? { ...o, visible: false, focusSlot: null } : { ...o, visible: true, view: "player", focusSlot: step.slot } });
   }
 
   setStartWithWindows(on: boolean): void {
@@ -380,7 +375,8 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   }
 
   private publish(): void {
-    this.state.lobby = { rows: this.lobby.rows(), updatedAt: this.lobby.updatedAt, error: this.lobby.error };
+    const rows = this.lobby.rows();
+    this.state.lobby = { rows, updatedAt: this.lobby.updatedAt, error: this.lobby.error, cycle: this.cycleOrder(rows).map((r) => r.slot) };
     this.checkAlerts();
     this.emit("state", this.state);
   }
