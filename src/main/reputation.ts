@@ -54,6 +54,12 @@ export const REPUTATION = {
   mechanics: {
     preaim: [8, 6], reaction: [560, 480], headAcc: [25, 30], sprayAcc: [40, 50],
     spottedAcc: [42, 50], opening: [55, 70], stopping: [90, 99],
+    /**
+     * Headshot KILLS (the share of kills that were headshots, csst.at's "HS kills"): a different metric from headAcc
+     * (the share of shots that hit the head). Starts at the card's HIGH cut like the rest. csst.at data has no rank
+     * band, so there is nothing to shift it by.
+     */
+    headKills: [58, 70],
   },
   coherence: {
     /** Only a high aim rating can be lopsided in a way that matters... */
@@ -75,7 +81,7 @@ export const REPUTATION = {
   },
   /** How much each signal's value counts inside its family (0..1). */
   weights: {
-    preaim: 1, reaction: 1, headAcc: 1, sprayAcc: 0.7, spottedAcc: 0.7, opening: 0.5, stopping: 0.5,
+    preaim: 1, reaction: 1, headAcc: 1, headKills: 1, sprayAcc: 0.7, spottedAcc: 0.7, opening: 0.5, stopping: 0.5,
     lopsided: 1, moving: 1,
     step: 0.8, floor: 1, spread: 0.6, divergence: 0.8,
   },
@@ -242,6 +248,8 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   const preaim = stat(st.preaim, ms.map((m) => m.preaim));
   const reaction = stat(st.reaction_time_ms, ms.map((m) => m.reaction), msS);
   const head = stat(st.accuracy_head, ms.map((m) => m.head), headS);
+  // Always a percentage (csst.at only, parsed from "52.4%"), so no scale to guess; there are no per-match values.
+  const headKills = num(st.headshot_kill_percentage) ? st.headshot_kill_percentage : null;
   const spray = stat(st.spray_accuracy, ms.map((m) => m.spray), sprayS);
   const spotted = stat(st.accuracy_enemy_spotted, ms.map((m) => m.spotted), spottedS);
   const stopping = num(st.counter_strafing_good_shots_ratio) ? st.counter_strafing_good_shots_ratio * stopS : null;
@@ -266,6 +274,8 @@ export function assessReputation(p: LeetifyProfile): Reputation {
     add("reaction", "mechanics", ramp(reaction, move(M_.reaction, -band * T.band.reactionMs)), `Reaction time of ${Math.round(reaction)} ms is unusually fast${forBand}`);
   if (head !== null)
     add("headAcc", "mechanics", ramp(head, move(M_.headAcc, band * T.band.accuracyPts)), `Headshot accuracy of ${f1(head)}% is unusually high${forBand}`);
+  if (headKills !== null)
+    add("headKills", "mechanics", ramp(headKills, M_.headKills), `Headshot kills of ${f1(headKills)}% is unusually high`);
   if (spray !== null)
     add("sprayAcc", "mechanics", ramp(spray, move(M_.sprayAcc, band * T.band.accuracyPts)), `Spray accuracy of ${f1(spray)}% is unusually high${forBand}`);
   if (spotted !== null)

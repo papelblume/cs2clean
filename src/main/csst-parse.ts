@@ -80,7 +80,9 @@ export function parseCsstAtHtml(html: string, steamId: string): LeetifyProfile |
     stats: {
       preaim,
       reaction_time_ms: reactionTime,
-      accuracy_head: headshots,
+      // csst.at's "HS kills" is the share of kills that were headshots, not Leetify's accuracy_head (the share of
+      // shots that hit the head). Stored apart, so it is neither shown nor scored as headshot accuracy.
+      headshot_kill_percentage: headshots,
       spray_accuracy: accuracy,
       counter_strafing_good_shots_ratio: counterStrafing,
     },

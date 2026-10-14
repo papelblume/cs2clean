@@ -173,8 +173,9 @@ opens) and then `node tools/build-hero-runtime.mjs check release/<platform>-unpa
 Pure JS function that parses csst.at's HTMX HTML response into a `LeetifyProfile`. No native or Electron dependencies —
 its only caller is the Hero sidecar's CLI (`leetify-hero-cli.ts`), which is bundled into `cli.js` and runs under a
 different Node. The main process just re-exports it from `leetify-hero.ts` (that is how the tests import it). Extracts aim, utility,
-rating, preaim, reaction time, headshot accuracy, spray accuracy, counter-strafing ratio, and total games from the HTML
-by matching element IDs like `leetify-aim-{steamId}`.
+rating, preaim, reaction time, headshot kills (csst.at's "HS kills", the share of kills that were headshots: not the
+API's headshot accuracy, so it goes into `stats.headshot_kill_percentage`, is shown as "Headshot kills" and scored on its own range),
+spray accuracy, counter-strafing ratio, and total games from the HTML by matching element IDs like `leetify-aim-{steamId}`.
 
 ### Scoring System
 
@@ -202,7 +203,7 @@ Two independent scores computed from the same Leetify profile:
 **Question**: "How implausible do the numbers look, given the player's skill and rank?"
 
 **Signal families**:
-- **Mechanics**: extreme values for rank (preaim, reaction time, headshot accuracy, spray accuracy, opening duels)
+- **Mechanics**: extreme values for rank (preaim, reaction time, headshot accuracy, headshot kills (csst.at data only), spray accuracy, opening duels)
 - **Coherence**: stats that contradict each other (high aim but low positioning/utility, high headshot accuracy but low stopping)
 - **Trajectory**: sudden improvements, unnaturally steady reaction times, FACEIT vs non-FACEIT divergence
 

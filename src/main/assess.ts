@@ -96,7 +96,7 @@ export function metricsOf(p: LeetifyProfile): PlayerMetrics {
     aim: opt(p.rating?.aim), positioning: opt(p.rating?.positioning), utility: opt(p.rating?.utility),
     clutch: opt(p.rating?.clutch), opening: opt(p.rating?.opening),
     preaim: opt(st.preaim), reactionMs: opt(st.reaction_time_ms),
-    headAccuracy: opt(st.accuracy_head), sprayAccuracy: opt(st.spray_accuracy),
+    headAccuracy: opt(st.accuracy_head), headshotKills: opt(st.headshot_kill_percentage), sprayAccuracy: opt(st.spray_accuracy),
     spottedAccuracy: opt(st.accuracy_enemy_spotted),
     counterStrafing: opt(st.counter_strafing_good_shots_ratio),
     ctOpeningDuel: opt(st.ct_opening_duel_success_percentage), tOpeningDuel: opt(st.t_opening_duel_success_percentage),

@@ -113,10 +113,11 @@ describe("parseCsstAtHtml", () => {
     expect(profile?.stats?.reaction_time_ms).toBe(685);
   });
 
-  it("extracts headshot percentage", () => {
+  it("extracts the share of kills that were headshots (csst.at's \"HS kills\"), not as headshot accuracy", () => {
     const profile = parseCsstAtHtml(EXAMPLE_HTML, STEAM_ID);
-    // API expects percent (0-100), not fraction
-    expect(profile?.stats?.accuracy_head).toBe(31.8);
+    // Percent (0-100), not fraction. stats.accuracy_head is the share of SHOTS that hit the head: a different metric.
+    expect(profile?.stats?.headshot_kill_percentage).toBe(31.8);
+    expect(profile?.stats?.accuracy_head ?? null).toBeNull();
   });
 
   it("extracts accuracy percentage", () => {

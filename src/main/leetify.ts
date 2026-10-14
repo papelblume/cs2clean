@@ -43,7 +43,14 @@ export interface LeetifyBan {
 
 export interface LeetifyStats {
   accuracy_enemy_spotted?: number | null;
+  /** The share of SHOTS that hit the head (percent). Not the share of kills that were headshots: see below. */
   accuracy_head?: number | null;
+  /**
+   * The share of KILLS that were headshots (percent), csst.at's "HS kills". Not part of the Leetify API: only the
+   * csst.at fallback fills it. A different metric from accuracy_head, with other values and other tiers, so the two
+   * are never stored in each other's field.
+   */
+  headshot_kill_percentage?: number | null;
   counter_strafing_good_shots_ratio?: number | null;
   ct_opening_aggression_success_rate?: number | null;
   ct_opening_duel_success_percentage?: number | null;

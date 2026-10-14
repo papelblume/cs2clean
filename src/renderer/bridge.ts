@@ -40,7 +40,7 @@ const FAKE_GROUPS: Record<number, { groupId: string | null; groupName: string | 
 /** A typical player's Leetify numbers (as the API sends them), with overrides. */
 const metrics = (o: Partial<PlayerMetrics> = {}): PlayerMetrics => ({
   leetify: 0.4, aim: 48.2, positioning: 47.9, utility: 45.1, clutch: 0.02, opening: -0.01,
-  preaim: 11.8, reactionMs: 612, headAccuracy: 15.2, sprayAccuracy: 34.7,
+  preaim: 11.8, reactionMs: 612, headAccuracy: 15.2, headshotKills: null, sprayAccuracy: 34.7,
   spottedAccuracy: 38.5, counterStrafing: 68.4,
   ctOpeningDuel: 47, tOpeningDuel: 46, premier: 14800, totalMatches: 420, winrate: 0.55, ...o,
 });

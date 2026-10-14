@@ -8,7 +8,7 @@ import { createRoot } from "react-dom/client";
 import { cycleHints } from "../shared/lobby-order";
 import type { AppState, AxisLevel, LobbyRow } from "../shared/types";
 import { ClassBadge, Logo, mapName, SideEmblem, TIER_LABELS, Wordmark } from "./brand";
-import { ago, clutchDisplay, cspLevel, flagged, hsAccuracyLevel, PlayerClass, ratingDisplay, show, sprayAccuracyLevel, spottedAccuracyLevel, ttdLevel, winrateDisplay } from "./parts";
+import { ago, clutchDisplay, cspLevel, flagged, headshotFact, PlayerClass, ratingDisplay, show, sprayAccuracyLevel, spottedAccuracyLevel, ttdLevel, winrateDisplay } from "./parts";
 import { playSiren } from "./siren";
 import { groupColor } from "./group-color";
 import { useAppState } from "./useAppState";
@@ -137,7 +137,7 @@ function Fact({ label, value, level, muted }: { label: string; value: string; le
  * `compact` shows fewer rows (the F7 view can show two cards at once).
  */
 function Card({ r, compact }: { r: LobbyRow; compact?: boolean }) {
-  const d = r.detail, m = d?.metrics ?? null, matches = d?.matches ?? null;
+  const d = r.detail, m = d?.metrics ?? null, matches = d?.matches ?? null, hs = m ? headshotFact(m) : null;
   const rep = r.reputation && r.reputation.score !== null ? r.reputation : null;
   return (
     <section className={`ov-card${r.classification ? ` tone-${r.classification.toLowerCase()}` : ""}`}>
@@ -179,7 +179,7 @@ function Card({ r, compact }: { r: LobbyRow; compact?: boolean }) {
           <Fact label="Aim" value={show(m.aim)} level={d.levels.aim} />
           <Fact label="Clutch" value={clutchDisplay(m.clutch)} level={d.levels.clutch} />
           {!compact && <><Fact label="Positioning" value={show(m.positioning)} /><Fact label="Utility" value={show(m.utility)} /></>}
-          <Fact label="Headshot accuracy" value={show(m.headAccuracy, 1, "%")} level={hsAccuracyLevel(m.headAccuracy) as any} />
+          {hs && <Fact label={hs.label} value={hs.value} level={hs.level as any} />}
           <Fact label="Spray accuracy" value={show(m.sprayAccuracy, 1, "%")} level={sprayAccuracyLevel(m.sprayAccuracy) as any} />
           <Fact label="Spotted accuracy" value={show(m.spottedAccuracy, 1, "%")} level={spottedAccuracyLevel(m.spottedAccuracy) as any} />
           <Fact label="Time to damage" value={show(m.reactionMs, 0, " ms")} level={ttdLevel(m.reactionMs) as any} />

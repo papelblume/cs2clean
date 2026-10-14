@@ -1,4 +1,4 @@
-import type { LobbyRow } from "../shared/types";
+import type { LobbyRow, PlayerMetrics } from "../shared/types";
 import { ClassBadge } from "./brand";
 
 /** A player's class and reputation score, or why there is none. */
@@ -89,6 +89,24 @@ export function hsAccuracyLevel(pct: number | null | undefined): string {
   if (pct >= 25) return "HIGH";
   if (pct >= 20) return "MEDIUM";
   return "LOW";
+}
+
+/** Axis level for Headshot Kills (% of kills that were headshots, csst.at's "HS kills"): below 50 LOW, 50 to 58 MEDIUM, 58 or above HIGH. */
+export function hsKillsLevel(pct: number | null | undefined): string {
+  if (pct == null) return "";
+  if (pct >= 58) return "HIGH";
+  if (pct >= 50) return "MEDIUM";
+  return "LOW";
+}
+
+/**
+ * The headshot row of a card. Leetify's API knows the share of shots that hit the head ("Headshot accuracy"), csst.at
+ * the share of kills that were headshots ("Headshot kills"): two metrics, each with its own label and tiers.
+ */
+export function headshotFact(m: PlayerMetrics): { label: string; value: string; level: string } {
+  if (m.headAccuracy == null && m.headshotKills != null)
+    return { label: "Headshot kills", value: show(m.headshotKills, 1, "%"), level: hsKillsLevel(m.headshotKills) };
+  return { label: "Headshot accuracy", value: show(m.headAccuracy, 1, "%"), level: hsAccuracyLevel(m.headAccuracy) };
 }
 
 /** Axis level for Spray Accuracy (%). */
