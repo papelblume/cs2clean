@@ -30,6 +30,7 @@ export interface LeetifyRecentMatch {
   leetify_rating?: number | null;
   preaim?: number | null;
   reaction_time_ms?: number | null;
+  accuracy_enemy_spotted?: number | null;
   accuracy_head?: number | null;
   spray_accuracy?: number | null;
 }

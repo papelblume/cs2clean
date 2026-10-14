@@ -13,7 +13,7 @@ const EXPECTED = {
   stats: ["preaim", "reaction_time_ms", "accuracy_head", "spray_accuracy", "counter_strafing_good_shots_ratio",
     "ct_opening_duel_success_percentage", "t_opening_duel_success_percentage"],
   rating: ["aim", "positioning", "utility", "clutch"],
-  match: ["finished_at", "data_source", "leetify_rating", "preaim", "reaction_time_ms", "accuracy_head", "spray_accuracy"],
+  match: ["finished_at", "data_source", "leetify_rating", "preaim", "reaction_time_ms", "accuracy_head", "spray_accuracy", "accuracy_enemy_spotted"],
 } as const;
 
 function missingFields(p: LeetifyProfile): string[] {

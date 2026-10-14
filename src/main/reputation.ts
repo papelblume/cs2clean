@@ -52,8 +52,8 @@ export const REPUTATION = {
   band: { premierMax: 30000, preaimDeg: 3, reactionMs: 60, accuracyPts: 6, openingPts: 5 },
   /** [starts to look odd, extreme]. Preaim in degrees, reaction in ms, the rest in percent. */
   mechanics: {
-    preaim: [8, 4], reaction: [480, 330], headAcc: [25, 45], sprayAcc: [45, 65],
-    opening: [55, 70], stopping: [90, 99],
+    preaim: [8, 6], reaction: [560, 480], headAcc: [25, 30], sprayAcc: [40, 50],
+    spottedAcc: [42, 50], opening: [55, 70], stopping: [90, 99],
   },
   coherence: {
     /** Only a high aim rating can be lopsided in a way that matters... */
@@ -75,7 +75,7 @@ export const REPUTATION = {
   },
   /** How much each signal's value counts inside its family (0..1). */
   weights: {
-    preaim: 1, reaction: 1, headAcc: 1, sprayAcc: 0.7, opening: 0.5, stopping: 0.5,
+    preaim: 1, reaction: 1, headAcc: 1, sprayAcc: 0.7, spottedAcc: 0.7, opening: 0.5, stopping: 0.5,
     lopsided: 1, moving: 1,
     step: 0.8, floor: 1, spread: 0.6, divergence: 0.8,
   },
@@ -143,6 +143,7 @@ interface M {
   reaction: number | null;
   head: number | null;
   spray: number | null;
+  spotted: number | null;
   faceit: boolean;
 }
 
@@ -215,6 +216,7 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   const pctScale = (vals: unknown[]): 1 | 100 => (vals.filter(num).some((v) => v > 1) ? 1 : 100);
   const headS = pctScale([st.accuracy_head, ...rated.map((m) => m.accuracy_head)]);
   const sprayS = pctScale([st.spray_accuracy, ...rated.map((m) => m.spray_accuracy)]);
+  const spottedS = pctScale([st.accuracy_enemy_spotted, ...rated.map((m) => m.accuracy_enemy_spotted)]);
   const stopS = pctScale([st.counter_strafing_good_shots_ratio]);
   const openS = pctScale([st.ct_opening_duel_success_percentage, st.t_opening_duel_success_percentage]);
   const reactionVals = [st.reaction_time_ms, ...rated.map((m) => m.reaction_time_ms)].filter(num);
@@ -227,6 +229,7 @@ export function assessReputation(p: LeetifyProfile): Reputation {
     reaction: num(m.reaction_time_ms) ? m.reaction_time_ms * msS : null,
     head: num(m.accuracy_head) ? m.accuracy_head * headS : null,
     spray: num(m.spray_accuracy) ? m.spray_accuracy * sprayS : null,
+    spotted: num(m.accuracy_enemy_spotted) ? m.accuracy_enemy_spotted * spottedS : null,
     faceit: (m.data_source ?? "").toLowerCase() === "faceit",
   }));
 
@@ -240,6 +243,7 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   const reaction = stat(st.reaction_time_ms, ms.map((m) => m.reaction), msS);
   const head = stat(st.accuracy_head, ms.map((m) => m.head), headS);
   const spray = stat(st.spray_accuracy, ms.map((m) => m.spray), sprayS);
+  const spotted = stat(st.accuracy_enemy_spotted, ms.map((m) => m.spotted), spottedS);
   const stopping = num(st.counter_strafing_good_shots_ratio) ? st.counter_strafing_good_shots_ratio * stopS : null;
   const openCt = num(st.ct_opening_duel_success_percentage) ? st.ct_opening_duel_success_percentage * openS : null;
   const openT = num(st.t_opening_duel_success_percentage) ? st.t_opening_duel_success_percentage * openS : null;
@@ -264,6 +268,8 @@ export function assessReputation(p: LeetifyProfile): Reputation {
     add("headAcc", "mechanics", ramp(head, move(M_.headAcc, band * T.band.accuracyPts)), `Headshot accuracy of ${f1(head)}% is unusually high${forBand}`);
   if (spray !== null)
     add("sprayAcc", "mechanics", ramp(spray, move(M_.sprayAcc, band * T.band.accuracyPts)), `Spray accuracy of ${f1(spray)}% is unusually high${forBand}`);
+  if (spotted !== null)
+    add("spottedAcc", "mechanics", ramp(spotted, move(M_.spottedAcc, band * T.band.accuracyPts)), `Spotted accuracy of ${f1(spotted)}% is unusually high${forBand}`);
   if (openCt !== null && openT !== null)
     add("opening", "mechanics", ramp(Math.min(openCt, openT), move(M_.opening, band * T.band.openingPts)),
       `Wins ${f1(Math.min(openCt, openT))}% of opening duels or more on both sides${forBand}`);

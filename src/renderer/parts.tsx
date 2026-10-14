@@ -70,16 +70,16 @@ export function ratingDisplay(v: number | null | undefined, digits = 2): string 
 /** Axis level for Time to Damage (ms, lower is better). */
 export function ttdLevel(ms: number | null | undefined): string {
   if (ms == null) return "";
-  if (ms <= 380) return "HIGH";
-  if (ms <= 420) return "MEDIUM";
+  if (ms <= 560) return "HIGH";
+  if (ms <= 600) return "MEDIUM";
   return "LOW";
 }
 
 /** Axis level for Crosshair Placement (degrees, lower is tighter). */
 export function cspLevel(deg: number | null | undefined): string {
   if (deg == null) return "";
-  if (deg <= 3.0) return "HIGH";
-  if (deg <= 4.5) return "MEDIUM";
+  if (deg <= 8.0) return "HIGH";
+  if (deg <= 9.0) return "MEDIUM";
   return "LOW";
 }
 
@@ -94,8 +94,8 @@ export function hsAccuracyLevel(pct: number | null | undefined): string {
 /** Axis level for Spray Accuracy (%). */
 export function sprayAccuracyLevel(pct: number | null | undefined): string {
   if (pct == null) return "";
-  if (pct >= 43) return "HIGH";
-  if (pct >= 38) return "MEDIUM";
+  if (pct >= 40) return "HIGH";
+  if (pct >= 36) return "MEDIUM";
   return "LOW";
 }
 
