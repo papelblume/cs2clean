@@ -174,7 +174,7 @@ function simulated(): Bridge {
     openSteamDeveloper: async () => {},
     setSteamApiKey: async (key) => (key.trim() !== ""),
     clearSteamApiKey: async () => {},
-    updateCheck: async () => null,
+    updateCheck: async () => ({ status: "current" }),
     openReleases: async () => {},
   };
 }

@@ -320,18 +320,16 @@ const startup = {
   set: (on: boolean) => app.setLoginItemSettings({ openAtLogin: on, args: STARTUP_ARGS }),
 };
 
-/** Check for updates at most once per day (stored in settings.json). */
-async function checkUpdate(ctrl: Controller, force = false): Promise<UpdateResult | null> {
-  const settingsFile = join(app.getPath("userData"), "settings.json");
-  let lastCheck: number | null = null;
-  try {
-    const raw = JSON.parse(readFileSync(settingsFile, "utf8"));
-    if (typeof raw.lastUpdateCheck === "number") lastCheck = raw.lastUpdateCheck;
-  } catch { /* first start */ }
-  const COOLDOWN_MS = 24 * 60 * 60 * 1000;
-  if (!force && lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return null;
+/**
+ * Asks GitHub for a newer release now and tells the window what it found. Only an answer from GitHub (a newer release,
+ * or none) is noted in settings.json for the once-a-day limit: a check that failed, say with no network yet at
+ * start-up, must not hold off the next one.
+ */
+async function checkUpdate(ctrl: Controller): Promise<UpdateResult> {
   const result = await checkForUpdate(ctrl.state.version);
-    ctrl.setUpdateAvailable(result);
+  ctrl.setUpdateResult(result);
+  if (result.status !== "failed") {
+    const settingsFile = join(app.getPath("userData"), "settings.json");
     try {
       let raw: Record<string, unknown>;
       try {
@@ -342,7 +340,21 @@ async function checkUpdate(ctrl: Controller, force = false): Promise<UpdateResul
       raw.lastUpdateCheck = Date.now();
       writeFileSync(settingsFile, JSON.stringify(raw));
     } catch { /* ignore */ }
-return result;
+  }
+  return result;
+}
+
+/** The check at start-up: at most once per day (stored in settings.json). */
+async function checkUpdateOncePerDay(ctrl: Controller): Promise<void> {
+  const settingsFile = join(app.getPath("userData"), "settings.json");
+  let lastCheck: number | null = null;
+  try {
+    const raw = JSON.parse(readFileSync(settingsFile, "utf8"));
+    if (typeof raw.lastUpdateCheck === "number") lastCheck = raw.lastUpdateCheck;
+  } catch { /* first start */ }
+  const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+  if (lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return;
+  await checkUpdate(ctrl);
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -415,7 +427,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle("steam:open-developer", () => {
       void shell.openExternal("https://steamcommunity.com/dev/apikey");
     });
-    ipcMain.handle("update:check", () => checkUpdate(controller, true));
+    ipcMain.handle("update:check", () => checkUpdate(controller));
     ipcMain.handle("update:open-releases", () => {
       void shell.openExternal(`https://github.com/${OWNER}/${REPO}/releases`);
     });
@@ -426,7 +438,7 @@ if (!app.requestSingleInstanceLock()) {
     controller.start();
     void checkHeroRuntime();
     // Check for updates: only once per day (stored in settings.json).
-    void checkUpdate(controller);
+    void checkUpdateOncePerDay(controller);
   });
 
   app.on("will-quit", () => {

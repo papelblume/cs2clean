@@ -544,4 +544,35 @@ describe("Controller", () => {
     expect(on).toBe(true);
     expect(c.state.startWithWindows).toBe(true);
   });
+
+  describe("update check", () => {
+    it("starts with nothing known, and shows a newer release", () => {
+      const { c } = setup();
+      expect(c.state.update).toEqual({ available: false, remoteVersion: null, checked: false });
+      c.setUpdateResult({ status: "available", remoteVersion: "1.2.0" });
+      expect(c.state.update).toEqual({ available: true, remoteVersion: "1.2.0", checked: true });
+    });
+
+    it("counts \"up to date\" as an answer, and takes down a banner for a release that is no longer the latest", () => {
+      const { c } = setup();
+      c.setUpdateResult({ status: "current" });
+      expect(c.state.update).toEqual({ available: false, remoteVersion: null, checked: true });
+      c.setUpdateResult({ status: "available", remoteVersion: "1.2.0" });
+      c.setUpdateResult({ status: "current" });
+      expect(c.state.update).toEqual({ available: false, remoteVersion: null, checked: true });
+    });
+
+    it("doesn't count a failed check as an answer: nothing is checked, and a banner stays", () => {
+      const { c } = setup();
+      let published = 0;
+      c.on("state", () => published++);
+      c.setUpdateResult({ status: "failed", reason: "can't reach GitHub (fetch failed)" });
+      expect(c.state.update).toEqual({ available: false, remoteVersion: null, checked: false });
+      expect(published).toBe(0);
+
+      c.setUpdateResult({ status: "available", remoteVersion: "1.2.0" });
+      c.setUpdateResult({ status: "failed", reason: "GitHub answered HTTP 403" });
+      expect(c.state.update).toEqual({ available: true, remoteVersion: "1.2.0", checked: true });
+    });
+  });
 });

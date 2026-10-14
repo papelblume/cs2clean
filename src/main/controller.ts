@@ -10,6 +10,7 @@ import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
 import { LobbyService, type LobbyOptions } from "./lobby";
 import { validateSteamKey } from "./steam/friends";
+import type { UpdateResult } from "./update-checker";
 
 export interface Settings {
   /** The user's Leetify API key (https://leetify.com/app/developer). */
@@ -106,10 +107,16 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.update({ leetify: { ...this.state.leetify, fallback: next } });
   }
 
-  /** Update available: shows a banner with the remote version and a link to the releases page. */
-  setUpdateAvailable(result: { available: boolean; remoteVersion: string | null } | null): void {
-    if (!result) return;
-    this.update({ update: { available: result.available, remoteVersion: result.remoteVersion, checked: true } });
+  /**
+   * What an update check found: a newer release shows a banner with its version and a link to the releases page, and
+   * "up to date" takes a banner down. A check that failed says nothing about either, so the window keeps what it had.
+   */
+  setUpdateResult(result: UpdateResult): void {
+    if (result.status === "failed") return;
+    const update = result.status === "available"
+      ? { available: true, remoteVersion: result.remoteVersion, checked: true }
+      : { available: false, remoteVersion: null, checked: true };
+    this.update({ update });
   }
 
   // ------------------------------------------------------------------ API key
