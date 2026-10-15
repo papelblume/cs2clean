@@ -4,6 +4,7 @@
 
 import { DEFAULT_HOTKEYS, hotkeyProblem } from "../shared/hotkeys";
 import { cycleStep, visibleOrder } from "../shared/lobby-order";
+import { pressViewKey } from "../shared/overlay-keys";
 import type { PlayerReputation } from "../shared/reputation-types";
 import type { AppState, Bridge, LobbyRow, MatchSummary, PlayerDetail, PlayerMetrics } from "../shared/types";
 
@@ -161,8 +162,9 @@ function simulated(): Bridge {
     resetHotkeys: async () => (set({ overlay: { ...state.overlay, hotkey: DEFAULT_HOTKEYS.lobby, detailHotkey: DEFAULT_HOTKEYS.detail, cycleHotkey: DEFAULT_HOTKEYS.cycle, previousHotkey: DEFAULT_HOTKEYS.previous } }), true),
     pauseHotkeys: async () => {},
     setStartWithWindows: async (on) => set({ startWithWindows: on }),
-    toggleOverlay: async () => set({ overlay: { ...state.overlay, visible: !state.overlay.visible, view: "lobby" } }),
-    toggleDetail: async () => set({ overlay: { ...state.overlay, visible: true, view: state.overlay.view === "detail" ? "lobby" : "detail" } }),
+    // The same answer as the real controller's (shared/overlay-keys.ts).
+    toggleOverlay: async () => set({ overlay: pressViewKey(state.overlay, "lobby") }),
+    toggleDetail: async () => set({ overlay: pressViewKey(state.overlay, "detail") }),
     cyclePlayer: async () => step(1),
     previousPlayer: async () => step(-1),
     setSiren: async (siren) => set({ overlay: { ...state.overlay, siren } }),

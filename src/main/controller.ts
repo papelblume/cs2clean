@@ -5,6 +5,7 @@ import { EventEmitter } from "node:events";
 import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyProblem, type HotkeyName, type Hotkeys } from "../shared/hotkeys";
 import { cycleStep, listOrder, visibleOrder } from "../shared/lobby-order";
 import { isSameMatch } from "../shared/match-identity";
+import { pressViewKey } from "../shared/overlay-keys";
 import type { AppState, LobbyRow, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
@@ -233,17 +234,14 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
 
   /** Lobby hotkey: show the lobby list, or hide the overlay if the list is already showing. */
   toggleOverlay(): void {
-    const o = this.state.overlay;
-    const hide = o.visible && o.view === "lobby";
-    this.update({ overlay: { ...o, visible: !hide, view: "lobby" } });
-    if (!hide) this.deps.source.refresh();
+    const overlay = pressViewKey(this.state.overlay, "lobby");
+    this.update({ overlay });
+    if (overlay.visible) this.deps.source.refresh();
   }
 
   /** Detail hotkey (F7): show the extended card of the flagged players, or hide it again. */
   toggleDetail(): void {
-    const o = this.state.overlay;
-    const hide = o.visible && o.view === "detail";
-    this.update({ overlay: { ...o, visible: !hide, view: "detail" } });
+    this.update({ overlay: pressViewKey(this.state.overlay, "detail") });
   }
 
   /**

@@ -305,6 +305,30 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("Shift+F2 switches an open F6 or F7 card to the list, and hides the overlay only when the list itself is showing", async () => {
+    const src = new FakeSource();
+    const { c } = setup({}, src);
+    c.start();
+    src.send({ phase: "live", players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(3000);
+    const shown = () => (c.state.overlay.visible ? c.state.overlay.view : "hidden");
+
+    c.cyclePlayer(); // F6
+    expect(shown()).toBe("player");
+    c.toggleOverlay(); // Shift+F2: the list, not a closed overlay
+    expect(shown()).toBe("lobby");
+    c.toggleDetail(); // F7
+    expect(shown()).toBe("detail");
+    c.toggleOverlay();
+    expect(shown()).toBe("lobby");
+    c.toggleOverlay(); // the list itself was showing: now it hides
+    expect(shown()).toBe("hidden");
+    c.toggleOverlay(); // nothing open: it opens
+    expect(shown()).toBe("lobby");
+    expect(src.refreshed).toBe(3); // each time the list came up
+    c.stop();
+  });
+
   it("raises the siren once per HIGH or VERY_HIGH player per match, unless turned off", async () => {
     const src = new FakeSource();
     const { c, server, saved } = setup({}, src);
