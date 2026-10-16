@@ -30,6 +30,7 @@ import { CS2_GAME_ID, type GameSource } from "./game/source";
 import { SteamSource } from "./game/steam";
 import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
+import { DEFAULT_DEBUG_PORT, readFriendUi } from "./steam/steam-ui";
 
 // Overwolf's overlay keeps the default hotkeys (none is bound in CS2 by default); the app's own overlay
 // window uses the ones chosen in Settings.
@@ -125,6 +126,8 @@ function steamSource(): SteamSource {
   }
   return new SteamSource({
     scan: scanCoplay,
+    // Friends in the same match are found through Steam's friends list when Steam was started with -cef-enable-debugging.
+    uiStatus: () => readFriendUi(Number(process.env.CS2CLEAN_DEBUG_PORT) || DEFAULT_DEBUG_PORT),
     listen: (onState) => {
       const server = startGsiServer(token, onState);
       return () => server.close();

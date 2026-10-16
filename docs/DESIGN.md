@@ -96,7 +96,7 @@ interface GameSource extends EventEmitter {
 - Reads players from Steam's "recently played with" list via native coplay API
 - Uses CS2 Game State Integration (GSI) for match phases, map name, local Steam ID
 - Does NOT provide team information (Steam's API doesn't include it)
-- Fills missing players with Steam friends on the same map or in the same party
+- Fills missing players with Steam friends on the same map or in the same party, and with friends whose friends-list status line equals yours (see "Steam friends fill-in")
 
 **Overwolf** (`overwolf.ts`):
 - Uses Overwolf's Game Events Provider (GEP) for CS2 game events
@@ -329,7 +329,7 @@ spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_H
 
 3. **Signal agreement**: One strong number alone never flags a player. The worst tiers require two active signal families.
 
-4. **Steam friends fill-in**: When the coplay list is short, the app tops it up with Steam friends playing on the same map or in the same party.
+4. **Steam friends fill-in**: The coplay list leaves out your friends, and the Steam client interface gives no rich presence for CS2 (tried, including `RequestFriendRichPresence`). The friends list window does show it: "Competitive - Office [ 5 : 0 ]" is mode, map and score. When Steam runs with `-cef-enable-debugging`, `steam/steam-ui.ts` reads that window over the local DevTools port (read-only), joins the rows to the Steam client's list of friends in CS2 by persona name, and adds friends whose line equals yours to the free slots. Friends found this way are re-checked on every scan: they stay while they remain in your mode and map (the score of two players can differ for a moment around a round end) and drop out when they leave. A failed read keeps what was found before; with no debug port the app works as before. The older rules (same party, same map from presence) still run but only fire when presence is available.
 
 5. **csst.at fallback in a sidecar**: When Leetify's API returns "not found", the app fetches profiles from csst.at through Hero, which runs in a separate folder with its own Node 22 and its own `better-sqlite3` (see "Hero sidecar"). When it can't, the window says so and why.
 

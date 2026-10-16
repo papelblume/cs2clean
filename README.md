@@ -31,6 +31,7 @@ The app checks for updates on startup (at most once per day). You can also trigg
 | Data source | What it provides |
 |-------------|-----------------|
 | **Steam's coplay list** | Who is in your match (Steam > View > Players). CS2 reports the roster to Steam when the match loads. |
+| **Steam's friends list** *(optional)* | Steam's players list leaves out people who are already your friends. With Steam started with `-cef-enable-debugging` and the friends list window open, the app reads the status line the friends list shows ("Competitive - Office [ 5 : 0 ]", read-only, over Steam's local debug port) and adds friends whose line equals yours, score included. |
 | **CS2 Game State Integration (GSI)** | When warm-up starts, when the match goes live, the map name, and your own Steam ID. The app writes a config file into CS2's `cfg` folder and listens on `127.0.0.1:37215`. |
 | **Leetify Public API** | Player ratings, stats, and match history. Two scores are computed from this data: a performance class and a 0–100 reputation score. |
 | **Steam Web API** *(optional)* | Each lobby player's friends list, to mark who is friends with whom. Needs your own Steam Web API key. |
@@ -152,6 +153,7 @@ npx electron . --replay=recordings/your-recording.jsonl
 | Problem | Fix |
 |---------|-----|
 | "Steam didn't answer" | Make sure Steam is running and you're signed in |
+| A friend in your match is missing | Quit Steam fully and start it with `-cef-enable-debugging` (or create an empty file named `.cef-enable-remote-debugging` in Steam's folder), and keep the friends list window open. `npm run friends-ui` shows what the app can read. The debug port (8080, or `CS2CLEAN_DEBUG_PORT`) lets any program on this PC control Steam, so leave it off when you don't need it. |
 | "Couldn't find CS2's folder" | The app can still read Steam's players list; GSI won't detect match phases. Install CS2 in a standard location. |
 | "CS2 is running as administrator" | Start CS2Clean as administrator too, or start CS2 without admin rights |
 | Overlay not visible in CS2 | Make sure CS2 is in **Fullscreen Windowed** mode, not plain Fullscreen |
@@ -177,6 +179,7 @@ Then open `http://localhost:5173` with query params:
 ```bash
 npm run leetify:probe    # test the Leetify API client directly
 npm run coplay           # run the Steam coplay reader standalone
+npm run friends-ui       # show the friends list status lines and which friends would be added
 ```
 
 ## Checks

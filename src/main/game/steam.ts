@@ -6,9 +6,10 @@
 // Nothing here opens, reads or changes the CS2 process.
 
 import type { MatchState, RosterPlayer } from "../../shared/types";
-import type { CoplayResult } from "../steam/coplay";
+import type { CoplayResult, FriendInGame } from "../steam/coplay";
 import type { GameState } from "../steam/gsi";
 import { othersToFind, pickFriends, pickMatchPlayers } from "../steam/pick";
+import { matchFriends, type FriendMatch, type UiResult } from "../steam/steam-ui";
 import { GameSource } from "./source";
 
 export interface SteamSourceDeps {
@@ -16,6 +17,9 @@ export interface SteamSourceDeps {
   scan: (localSteamId: string | null) => Promise<CoplayResult>;
   /** Starts the game-state listener; returns a stop function. */
   listen: (onState: (s: GameState) => void) => () => void;
+  /** Reads Steam's friends list window over the debug port (steam/steam-ui.ts). Optional: without it, or when Steam
+   * wasn't started with -cef-enable-debugging, friends are only added by the presence rules in pickFriends. */
+  uiStatus?: () => Promise<UiResult>;
   /** Why game-state data may be missing (e.g. CS2's folder wasn't found), or null. */
   gsiProblem?: string | null;
   /** Our Steam ID from the linked account, used until the game reports it. */
@@ -34,6 +38,10 @@ export class SteamSource extends GameSource {
   private gsiAt = 0;
   private matchStart: number | null = null;
   private players: RosterPlayer[] = [];
+  /** Friends whose friends-list status equals ours (steam-ui.ts). Kept apart from `players`: the players list is the
+   * match, these are topped up into the free slots and re-checked on every scan. */
+  private uiFriends: FriendMatch[] = [];
+  private uiWarned = false;
   /** Coplay time (s) of the current match's group; null until found. */
   private groupStart: number | null = null;
   private localName: string | null = null;
@@ -90,7 +98,7 @@ export class SteamSource extends GameSource {
       } else {
         // A new map (or back to the menu): forget the previous match's players.
         this.matchStart = s.map ? this.now : null;
-        this.players = [];
+        this.clearRoster();
         this.groupStart = null;
       }
       if (s.map) this.schedule(1_500);
@@ -98,12 +106,26 @@ export class SteamSource extends GameSource {
     this.scheduleMatch();
   }
 
+  private clearRoster(): void {
+    this.players = [];
+    this.uiFriends = [];
+  }
+
+  /** The match's players: the players list first, then friends found through the friends list, up to the mode's size. */
+  private get roster(): RosterPlayer[] {
+    const known = new Set(this.players.map((p) => p.steamId));
+    const friends: RosterPlayer[] = this.uiFriends
+      .filter((f) => !known.has(f.steamId))
+      .map((f) => ({ slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false }));
+    return [...this.players, ...friends].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
+  }
+
   private checkRunning(): void {
     if (this.running && this.gsiAt > 0 && !this.gsiLive) {
       // CS2 closed.
       this.game = null;
       this.matchStart = null;
-      this.players = [];
+      this.clearRoster();
       this.setGameRunning(false);
     }
   }
@@ -138,7 +160,7 @@ export class SteamSource extends GameSource {
   private nextDelay(): number {
     const fast = this.deps.fastMs ?? 8_000, slow = this.deps.slowMs ?? 60_000;
     if (!this.inMap) return slow;
-    const complete = this.players.length >= this.others;
+    const complete = this.roster.length >= this.others;
     if (!this.gsiLive) return 20_000;
     return complete ? slow : fast;
   }
@@ -165,12 +187,12 @@ export class SteamSource extends GameSource {
         const groupStart = picked.players.length > 0 ? Math.min(...picked.players.map((e) => e.time)) : 0;
         if (picked.players.length > 0 && this.groupStart != null && groupStart - this.groupStart > 60) {
           // New match: time gap indicates a fresh game session.
-          this.players = [];
+          this.clearRoster();
         } else if (picked.players.length > 0 && this.players.length > 0) {
           // Check if all current players have left (no overlap in Steam IDs).
           const currentIds = new Set(picked.players.map((e) => e.steamId));
           const allGone = this.players.every((p) => !p.steamId || !currentIds.has(p.steamId));
-          if (allGone) this.players = [];
+          if (allGone) this.clearRoster();
         }
         if (picked.players.length) this.groupStart = groupStart;
         // Players stay for the whole match once seen, so a later scan can't drop one.
@@ -185,6 +207,7 @@ export class SteamSource extends GameSource {
         for (const f of friends)
           byId.set(f.steamId, { slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false });
         this.players = [...byId.values()].slice(0, others).map((p, i) => ({ ...p, slot: i + 1 }));
+        await this.updateUiFriends(res.friends ?? [], local);
       }
       // Players found but CS2 never sent game state: it was most likely started before the cfg existed.
       const noGsi = this.gsiAt === 0 && this.players.length > 0
@@ -200,9 +223,36 @@ export class SteamSource extends GameSource {
     }
   }
 
+  /** Friends in our match by their status line (see steam-ui.ts). A failed read keeps what was found before. */
+  private async updateUiFriends(friends: FriendInGame[], local: string | null): Promise<void> {
+    const read = this.deps.uiStatus;
+    if (!read) return;
+    if (friends.length === 0) {
+      this.uiFriends = [];
+      return;
+    }
+    let r: UiResult;
+    try {
+      r = await read();
+    } catch {
+      return;
+    }
+    if (!r.ok) {
+      if (!this.uiWarned && r.reason !== "error") {
+        this.uiWarned = true;
+        console.warn(`[cs2clean] Friends in CS2 found, but Steam's friends list can't be read (${r.reason}). Start Steam with -cef-enable-debugging and keep the friends list window open to add friends in your match.`);
+      }
+      return;
+    }
+    this.uiWarned = false;
+    const exclude = new Set([...this.players.map((p) => p.steamId), local].filter((x): x is string => !!x));
+    this.uiFriends = matchFriends(friends, r.snapshot, { exclude, previous: this.uiFriends });
+  }
+
   protected currentMatch(): MatchState {
     const localSteamId = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
-    if (!this.inMap || this.players.length === 0)
+    const roster = this.roster;
+    if (!this.inMap || roster.length === 0)
       return { map: this.game?.map ?? null, mode: this.game?.mode ?? null, phase: this.game?.phase ?? null, localSteamId, players: [] };
     const me: RosterPlayer = { slot: 0, name: this.localName ?? "You", steamId: localSteamId, side: null, isLocal: true };
     return {
@@ -210,7 +260,7 @@ export class SteamSource extends GameSource {
       mode: this.game?.mode ?? null,
       phase: this.game?.phase ?? null,
       localSteamId,
-      players: [me, ...this.players],
+      players: [me, ...roster],
     };
   }
 }
