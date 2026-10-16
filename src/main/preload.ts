@@ -25,6 +25,7 @@ const bridge: Bridge = {
   setSiren: (on) => ipcRenderer.invoke("siren:set", on),
   testSiren: () => ipcRenderer.invoke("siren:test"),
   openPlayer: (steamId) => ipcRenderer.invoke("player:open", steamId),
+  addPlayer: (input) => ipcRenderer.invoke("player:add", input),
   openLeetify: () => ipcRenderer.invoke("leetify:open"),
   openDeveloperPage: () => ipcRenderer.invoke("leetify:developer"),
   openSteamDeveloper: () => ipcRenderer.invoke("steam:open-developer"),

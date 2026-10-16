@@ -6,11 +6,13 @@ import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyPro
 import { cycleStep, listOrder, visibleOrder } from "../shared/lobby-order";
 import { isSameMatch } from "../shared/match-identity";
 import { pressViewKey } from "../shared/overlay-keys";
+import { parseSteamInput } from "../shared/steam-id";
 import type { AppState, LobbyRow, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
 import { LobbyService, type LobbyAnswer, type LobbyOptions } from "./lobby";
 import { validateSteamKey } from "./steam/friends";
+import { resolveVanity } from "./steam/vanity";
 import type { UpdateResult } from "./update-checker";
 
 export interface Settings {
@@ -77,7 +79,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       leetify: { hasKey: !!key, reachable: null, fallback: { working: null, reason: null } },
       steam: { hasKey: !!steamKey },
       notice: null,
-      game: { source: deps.source.kind, running: false, problem: null, hint: null },
+      game: { source: deps.source.kind, running: false, problem: null, hint: null, rosterUnavailable: false },
       match: null,
       lobby: { rows: [], updatedAt: null, error: null, cycle: [] },
       overlay: { ...deps.overlay, siren: this.settings.siren ?? true },
@@ -337,8 +339,47 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       // Game closed: hide the overlay if it's still open.
       this.state.overlay = { ...o, visible: false };
     }
+    if (this.state.game.rosterUnavailable !== (m.rosterUnavailable === true))
+      this.state.game = { ...this.state.game, rosterUnavailable: m.rosterUnavailable === true };
     this.lobby.setMatch(inMatch ? m : null);
     this.lobby.setLocalSteamId(m.localSteamId);
+  }
+
+  /**
+   * Adds a player to the current match by what the person pasted: a SteamID64, SteamID2/3, or a Steam or Leetify
+   * profile link (a custom /id/ link is looked up at Steam). The lobby then checks them like any other player, siren
+   * and overlay cards included. False, with a notice saying why, when nothing was added.
+   */
+  async addPlayer(raw: string): Promise<boolean> {
+    const input = parseSteamInput(raw);
+    if (!input) {
+      this.update({ notice: "That isn't a SteamID64 or a link to a Steam or Leetify profile." });
+      return false;
+    }
+    let steamId: string;
+    if (input.kind === "id") steamId = input.steamId;
+    else {
+      const r = await resolveVanity(input.name, this.settings.steamApiKey || this.deps.steamApiKey || null, this.deps.fetchImpl);
+      if (!r.ok) {
+        this.update({ notice: r.reason === "not-found" ? `Steam has no profile called "${input.name}".`
+          : r.reason === "bad-key" ? "Your Steam Web API key is invalid or missing."
+          : "Couldn't reach Steam to look that profile name up. Try the player's SteamID64 instead." });
+        return false;
+      }
+      steamId = r.steamId;
+    }
+    const result = this.deps.source.addPlayer(steamId);
+    if (result === "added") {
+      this.update({ notice: null });
+      return true;
+    }
+    this.update({ notice: {
+      duplicate: "That player is already in the list.",
+      full: "The list is full: only the first 10 players of a match are looked up.",
+      "no-match": "Join a match first: players can only be added to a match in progress.",
+      unsupported: "This game source can't add players by hand.",
+    }[result] });
+    return false;
   }
 
   /** Siren once per HIGH player per match (the overlay plays it when alert.seq changes). */

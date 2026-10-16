@@ -22,6 +22,9 @@ export interface GameSourceEvents {
   line: [RecordedLine];
 }
 
+/** What addPlayer did: "unsupported" (this source has no manual players), "no-match" (the game isn't in a map). */
+export type AddPlayerResult = "added" | "duplicate" | "full" | "no-match" | "unsupported";
+
 export abstract class GameSource extends EventEmitter<GameSourceEvents> {
   abstract readonly kind: GameSourceKind;
   protected state = new GepState();
@@ -33,6 +36,11 @@ export abstract class GameSource extends EventEmitter<GameSourceEvents> {
 
   /** Ask for fresh data now (e.g. after a hotkey). Sources that are pushed to can ignore it. */
   refresh(): void {}
+
+  /** Adds a player the roster is missing (a community server's players aren't listed anywhere). Most sources can't. */
+  addPlayer(_steamId: string): AddPlayerResult {
+    return "unsupported";
+  }
 
   protected currentMatch(): MatchState {
     return this.state.match();

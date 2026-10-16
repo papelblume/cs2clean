@@ -96,6 +96,7 @@ input:focus { border-color: var(--accent); outline: none; }
 .group-badge { font-size: 0.65rem; color: var(--muted); margin-left: 6px; padding: 1px 5px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font-weight: 600; }
 .emblem, .emblem-none { flex: none; display: inline-block; }
 .hint { margin: 12px 0 0; }
+.add-player { margin-top: 12px; }
 
 .class { display: inline-flex; align-items: center; gap: 6px; }
 .matches { font-size: 0.78rem; color: var(--muted); min-width: 2ch; text-align: right; }

@@ -56,8 +56,15 @@ function useSiren(s: AppState | null) {
   }, [seq]);
 }
 
+/** What the overlay says while there are no players: Steam doesn't list a community server's players, so say so. */
+function waitingText(s: AppState): string {
+  return s.game.rosterUnavailable
+    ? "Community server or offline match: Steam doesn't list its players. Add players in the CS2Clean window."
+    : "The players appear here when the match loads.";
+}
+
 function Body({ s }: { s: AppState }) {
-  if (s.lobby.rows.length === 0) return <p className="ov-msg">The players appear here when the match loads.</p>;
+  if (s.lobby.rows.length === 0) return <p className="ov-msg">{waitingText(s)}</p>;
   const ct = s.lobby.rows.filter((r) => r.side === "CT");
   const t = s.lobby.rows.filter((r) => r.side === "T");
   const other = s.lobby.rows.filter((r) => !r.side);
@@ -92,7 +99,7 @@ function Line({ r }: { r: LobbyRow }) {
 function Detail({ s }: { s: AppState }) {
   const list = flagged(s.lobby.rows);
   if (list.length === 0)
-    return <p className="ov-msg">{s.lobby.rows.length ? "No flagged players in this match." : "The players appear here when the match loads."}</p>;
+    return <p className="ov-msg">{s.lobby.rows.length ? "No flagged players in this match." : waitingText(s)}</p>;
   return (
     <div className="ov-cards">
       {list.slice(0, 2).map((r) => <Card key={r.slot} r={r} compact />)}
@@ -104,7 +111,7 @@ function Detail({ s }: { s: AppState }) {
 /** F6: one player at a time, flagged or not. */
 function PlayerView({ s }: { s: AppState }) {
   const { cycle, rows } = s.lobby;
-  if (cycle.length === 0) return <p className="ov-msg">The players appear here when the match loads.</p>;
+  if (cycle.length === 0) return <p className="ov-msg">{waitingText(s)}</p>;
   const slot = s.overlay.focusSlot;
   const r = slot !== null && cycle.includes(slot) ? rows.find((p) => p.slot === slot) : undefined;
   return r ? <div className="ov-cards"><Card r={r} /></div> : <p className="ov-msg">Press the key again to start with the first player.</p>;

@@ -35,6 +35,11 @@ export interface MatchState {
   phase: MatchPhase | null;
   localSteamId: string | null;
   players: RosterPlayer[];
+  /**
+   * The game is in a map but Steam has listed no players for it, and has had time to: a community server or an offline
+   * match, which don't report their players to Steam. Set by the Steam source only; manual players don't change it.
+   */
+  rosterUnavailable?: boolean;
 }
 
 /** "skipped": beyond the first players of a big lobby, which are the only ones looked up (see main/lobby.ts). */
@@ -141,6 +146,8 @@ export interface AppState {
     problem: string | null;
     /** A suggestion that isn't a problem, e.g. how to find friends of yours in the match; null when there is none. */
     hint: string | null;
+    /** In a map, but Steam has no players list for it (community server or offline match); see MatchState. */
+    rosterUnavailable: boolean;
   };
   match: { map: string | null; mode: string | null; phase: MatchPhase | null } | null;
   lobby: {
@@ -203,6 +210,11 @@ export interface Bridge {
   setSiren(on: boolean): Promise<void>;
   testSiren(): Promise<void>;
   openPlayer(steamId: string): Promise<void>;
+  /**
+   * Adds a player to the current match by SteamID64, SteamID2/3 or a Steam or Leetify profile link, so the lobby checks
+   * them like anyone else. False (with a notice) when the text names no player or the player can't be added.
+   */
+  addPlayer(input: string): Promise<boolean>;
   /** Opens leetify.com (the "Data Provided by Leetify" link). */
   openLeetify(): Promise<void>;
   /** Opens leetify.com/app/developer (the API key page). */

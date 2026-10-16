@@ -1,6 +1,6 @@
 // The app's API as the windows see it. Inside the app it comes from the preload script; in a plain
 // browser (`npm run dev:ui`) a simulation stands in, so every screen can be looked at without the app.
-// Pick a screen with ?screen=nokey | lobby | detail | player | waiting | problem | hint (default: lobby).
+// Pick a screen with ?screen=nokey | lobby | detail | player | waiting | community | problem | hint (default: lobby).
 
 import { DEFAULT_HOTKEYS, hotkeyProblem } from "../shared/hotkeys";
 import { cycleStep, visibleOrder } from "../shared/lobby-order";
@@ -116,7 +116,8 @@ function simulated(): Bridge {
     notice: null,
     game: {
       source: "steam",
-      running: inGame || screen === "waiting",
+      running: inGame || screen === "waiting" || screen === "community",
+      rosterUnavailable: screen === "community",
       problem: screen === "problem"
         ? "Steam isn't running (or isn't signed in). Start Steam and try again."
         : null,
@@ -175,6 +176,7 @@ function simulated(): Bridge {
     setSiren: async (siren) => set({ overlay: { ...state.overlay, siren } }),
     testSiren: async () => set({ alert: { seq: state.alert.seq + 1, names: [] } }),
     openPlayer: async () => {},
+    addPlayer: async (input) => input.trim() !== "",
     openLeetify: async () => {},
     openDeveloperPage: async () => {},
     openSteamDeveloper: async () => {},

@@ -162,6 +162,12 @@ Settings are kept in `~/.config/CS2Clean`.
 
 After joining a match warm-up, press **Shift+F2** to open the lobby list. It shows each player's name, classification, and reputation score. Click a player to open their Leetify profile.
 
+## Community servers and offline matches
+
+CS2 reports a match's players to Steam only for matchmaking matches, so on a community server (or an offline match) CS2Clean has no list of players to find. After a short wait the app says **Community server or offline match: roster unavailable**.
+
+You can still check anyone you spot: paste their **SteamID64**, **SteamID2/3** (`STEAM_0:1:123…`, `[U:1:…]`) or a **Steam or Leetify profile link** into *Check a player* in the desktop window. They are looked up like any other player, with overlay cards and the siren, and are forgotten when the map changes. Custom profile links (`steamcommunity.com/id/name`) are resolved through Steam, with your Steam Web API key if you saved one.
+
 ## Replay mode (no CS2 needed)
 
 To try the app without CS2, replay mode plays a recorded session:

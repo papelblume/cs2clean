@@ -176,6 +176,12 @@ function MatchCard({ s }: { s: AppState }) {
         {s.game.source === "replay" && <span className="tag" title="Playing a recorded session, not live data">Replay</span>}
       </div>
       {s.game.problem && <p className="problem small">{s.game.problem}</p>}
+      {s.game.rosterUnavailable && (
+        <p className="notice small">
+          <strong>Community server or offline match: roster unavailable.</strong> Steam doesn't list the players of
+          these, so CS2Clean can't find them by itself. Add the players you want to check below.
+        </p>
+      )}
       {rows.length > 0 ? (
         <>
           {s.lobby.error && <p className="error small">{s.lobby.error}</p>}
@@ -205,11 +211,40 @@ function MatchCard({ s }: { s: AppState }) {
         <div className="empty">
           <span className={s.game.running ? "pulse" : "idle"} />
           <p className="muted">
-            {s.game.running ? "CS2 is running. The players appear here when a match loads." : "Waiting for CS2 to start."}
+            {s.game.rosterUnavailable ? "No players added yet."
+              : s.game.running ? "CS2 is running. The players appear here when a match loads." : "Waiting for CS2 to start."}
           </p>
         </div>
       ) : null}
+      {s.game.source === "steam" && <AddPlayerForm />}
     </section>
+  );
+}
+
+/** Checks one more player: a SteamID64, a SteamID2/3, or a link to their Steam or Leetify profile. */
+function AddPlayerForm() {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const add = async () => {
+    setBusy(true);
+    try {
+      if (await bridge.addPlayer(text)) setText("");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="row add-player">
+      <input
+        className="key-input" type="text" autoComplete="off" spellCheck={false}
+        placeholder="Check a player: SteamID64, or a Steam or Leetify profile link"
+        value={text} onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && text.trim() && !busy && void add()}
+      />
+      <button className="button primary" disabled={!text.trim() || busy} onClick={() => void add()}>
+        {busy ? "Adding…" : "Add player"}
+      </button>
+    </div>
   );
 }
 

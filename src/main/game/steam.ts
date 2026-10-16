@@ -15,7 +15,7 @@ import type { GameState } from "../steam/gsi";
 import type { FriendsWindow } from "../steam/friends-window";
 import { othersToFind, pickFriends, pickMatchPlayers } from "../steam/pick";
 import { matchFriends, type FriendMatch, type UiResult } from "../steam/steam-ui";
-import { GameSource } from "./source";
+import { GameSource, type AddPlayerResult } from "./source";
 
 export interface SteamSourceDeps {
   /** Reads Steam's players list and friends in CS2 (in a separate process in the app). */
@@ -67,12 +67,25 @@ const HINT_EVERY_MS = 15_000; // how often the hint is worked out while it is ne
 const PROFILE_CHECK_MS = 15_000; // how often it is worked out whether the mini-profile fallback is wanted
 const MAX_PROFILE_LOOKUPS = 12; // friends whose mini-profile is read per scan
 
+// Steam's players list fills within seconds when a matchmaking match loads. A map that has been up this long, over
+// this many good reads of the list, with nobody listed, is not a match Steam knows about (see rosterUnavailable).
+const ROSTER_GRACE_MS = 45_000;
+const ROSTER_MIN_SCANS = 3;
+
 export class SteamSource extends GameSource {
   readonly kind = "steam" as const;
   private game: GameState | null = null;
   private gsiAt = 0;
   private matchStart: number | null = null;
   private players: RosterPlayer[] = [];
+  /** Players the user added by hand (addPlayer): a community server's players are in no list. Cleared with the roster. */
+  private manual: RosterPlayer[] = [];
+  /** When the current map first showed in the game-state feed (ms); null in the menu. */
+  private mapSince: number | null = null;
+  /** Good reads of Steam's players list since the map appeared. */
+  private scansInMap = 0;
+  /** Steam's players list has named players for this map (friends added from the friends list don't count). */
+  private listed = false;
   /** Friends whose friends-list status equals ours (steam-ui.ts). Kept apart from `players`: the players list is the
    * match, these are topped up into the free slots and re-checked on every scan. */
   private uiFriends: FriendMatch[] = [];
@@ -150,12 +163,16 @@ export class SteamSource extends GameSource {
     if (!this.running) this.setGameRunning(true);
     if (s.map !== prevMap) {
       if (s.map) this.deps.friendsWindow?.newMatch();
+      this.mapSince = s.map ? this.now : null;
+      this.scansInMap = 0;
+      this.listed = false;
       if (firstPost && s.map && this.players.length > 0) {
         // The first post of the feed already names a map: the app started in the middle of a match, and its players
         // were read from Steam before the game said anything. They are this match's, so keep them. Forgetting them
         // would also look for them again from "now" (matchStart), which leaves out everyone Steam reported more than
         // three minutes ago; the start of this match is unknown, so the plain recency window stays in charge.
         this.matchStart = null;
+        this.listed = true;
       } else {
         // A new map (or back to the menu): forget the previous match's players.
         this.matchStart = s.map ? this.now : null;
@@ -203,6 +220,7 @@ export class SteamSource extends GameSource {
     this.lobby = null;
     this.hintAt = null;
     this.setHint(null);
+    this.manual = [];
   }
 
   /**
@@ -220,14 +238,39 @@ export class SteamSource extends GameSource {
     return [...this.players, ...friends].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
   }
 
-  /** The match's players: the ones we are sure of, then the mini-profile fallback's guesses (marked `via: "profile"`). */
+  /**
+   * In a map, but Steam's players list has named nobody for it, after a fair wait and several good reads: a community
+   * server or an offline match (CS2 reports only matchmaking matches' players to Steam). Needs the game-state feed
+   * and a working read of Steam, so a closed Steam or a missing feed is a problem to report, not this.
+   */
+  private get rosterUnavailable(): boolean {
+    return this.gsiLive && !!this.game?.map && this.mapSince != null && !this.listed
+      && this.now - this.mapSince >= ROSTER_GRACE_MS && this.scansInMap >= ROSTER_MIN_SCANS;
+  }
+
+  addPlayer(steamId: string): AddPlayerResult {
+    if (!this.inMap) return "no-match";
+    const local = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
+    if (steamId === local || this.roster.some((p) => p.steamId === steamId)) return "duplicate";
+    if (this.roster.length >= this.others) return "full";
+    this.manual.push({ slot: 0, name: "Unknown player", steamId, side: null, isLocal: false });
+    this.scheduleMatch();
+    return "added";
+  }
+
+  /**
+   * The match's players: the ones we are sure of, the ones added by hand, then the mini-profile fallback's guesses
+   * (marked `via: "profile"`).
+   */
   private get roster(): RosterPlayer[] {
     const base = this.baseRoster;
     const seen = new Set(base.map((p) => p.steamId));
+    const manual = this.manual.filter((p) => !seen.has(p.steamId));
+    for (const p of manual) seen.add(p.steamId);
     const guesses: RosterPlayer[] = this.profileFriends
       .filter((f) => !seen.has(f.steamId))
       .map((f) => ({ slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false, via: "profile" as const }));
-    return [...base, ...guesses].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
+    return [...base, ...manual, ...guesses].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
   }
 
   /** The user ran `status`: remember who it lists and look again now, so the friends in it show up straight away. */
@@ -245,6 +288,7 @@ export class SteamSource extends GameSource {
       this.game = null;
       this.matchStart = null;
       this.sessionStart = null;
+      this.mapSince = null;
       this.clearRoster();
       this.setGameRunning(false);
     }
@@ -286,7 +330,7 @@ export class SteamSource extends GameSource {
   private nextDelay(): number {
     const fast = this.deps.fastMs ?? 8_000, slow = this.deps.slowMs ?? 60_000;
     if (!this.inMap) return slow;
-    const complete = this.baseRoster.length >= this.others; // guesses don't count
+    const complete = this.baseRoster.length >= this.others; // guesses and players added by hand don't count
     if (!this.gsiLive) return 20_000;
     return complete ? slow : fast;
   }
@@ -301,6 +345,7 @@ export class SteamSource extends GameSource {
       const local = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
       const res = await this.deps.scan(local);
       this.localName = res.localName;
+      if (this.gsiLive && this.game?.map) this.scansInMap++;
       const picked = pickMatchPlayers(res.entries, {
         now: Math.floor(this.now / 1000),
         localSteamId: local,
@@ -321,6 +366,7 @@ export class SteamSource extends GameSource {
           if (allGone) this.clearRoster();
         }
         if (picked.players.length) this.groupStart = groupStart;
+        if (picked.players.length) this.listed = true;
         // Players stay for the whole match once seen, so a later scan can't drop one.
         const byId = new Map(this.players.map((p) => [p.steamId, p]));
         for (const e of picked.players)
@@ -478,8 +524,9 @@ export class SteamSource extends GameSource {
   protected currentMatch(): MatchState {
     const localSteamId = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
     const roster = this.roster;
+    const rosterUnavailable = this.rosterUnavailable;
     if (!this.inMap || roster.length === 0)
-      return { map: this.game?.map ?? null, mode: this.game?.mode ?? null, phase: this.game?.phase ?? null, localSteamId, players: [] };
+      return { map: this.game?.map ?? null, mode: this.game?.mode ?? null, phase: this.game?.phase ?? null, localSteamId, players: [], rosterUnavailable };
     const me: RosterPlayer = { slot: 0, name: this.localName ?? "You", steamId: localSteamId, side: null, isLocal: true };
     return {
       map: this.game?.map ?? null,
@@ -487,6 +534,7 @@ export class SteamSource extends GameSource {
       phase: this.game?.phase ?? null,
       localSteamId,
       players: [me, ...roster],
+      rosterUnavailable,
     };
   }
 }

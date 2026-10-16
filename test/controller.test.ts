@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Controller, type ControllerDeps, type Settings } from "../src/main/controller";
 import { ReplaySource } from "../src/main/game/replay";
-import { GameSource, type RecordedLine } from "../src/main/game/source";
+import { GameSource, type AddPlayerResult, type RecordedLine } from "../src/main/game/source";
 import type { LeetifyProfile } from "../src/main/leetify";
 import { HERO_READY, type HeroScrape } from "../src/main/leetify-hero";
 import { cycleHints, listOrder } from "../src/shared/lobby-order";
@@ -14,6 +14,10 @@ const steam = vi.hoisted(() => ({
   groupPlayers: vi.fn(async (ids: string[], _key: string) => ({ groups: [ids], private: [] as string[], errors: [] as string[] })),
 }));
 vi.mock("../src/main/steam/friends", () => steam);
+
+// Looking a custom profile name up at Steam (the network part of adding a player by link).
+const vanity = vi.hoisted(() => ({ resolveVanity: vi.fn(async (_name: string, _key: string | null, _f?: unknown): Promise<unknown> => ({ ok: true, steamId: "76561198000000009" })) }));
+vi.mock("../src/main/steam/vanity", () => vanity);
 
 /** A fake Leetify public API: profiles by SteamID64 (default: an average player), and the one key it accepts. */
 function fakeLeetify() {
@@ -702,5 +706,98 @@ describe("Controller", () => {
       c.setUpdateResult({ status: "failed", reason: "GitHub answered HTTP 403" });
       expect(c.state.update).toEqual({ available: true, remoteVersion: "1.2.0", checked: true });
     });
+  });
+  describe("adding a player by hand", () => {
+    class ManualSource extends FakeSource {
+      added: string[] = [];
+      result: AddPlayerResult = "added";
+      addPlayer(steamId: string): AddPlayerResult {
+        this.added.push(steamId);
+        return this.result;
+      }
+    }
+    const ID = "76561198000000007";
+
+    it("adds a SteamID64, SteamID2 or profile link to the match, and clears an old notice", async () => {
+      const src = new ManualSource();
+      const { c } = setup({}, src);
+      c.start();
+      c.state.notice = "old";
+      expect(await c.addPlayer(ID)).toBe(true);
+      expect(await c.addPlayer(`https://steamcommunity.com/profiles/${ID}`)).toBe(true);
+      expect(await c.addPlayer("STEAM_0:1:19867136")).toBe(true);
+      expect(src.added).toEqual([ID, ID, "76561198000000001"]);
+      expect(c.state.notice).toBeNull();
+      c.stop();
+    });
+
+    it("says why when the text names no player, or the source won't take one", async () => {
+      const src = new ManualSource();
+      const { c } = setup({}, src);
+      c.start();
+      expect(await c.addPlayer("not a player")).toBe(false);
+      expect(c.state.notice).toMatch(/isn't a SteamID64/);
+      expect(src.added).toEqual([]);
+
+      for (const [result, text] of [["duplicate", /already in the list/], ["full", /list is full/], ["no-match", /Join a match first/]] as const) {
+        src.result = result;
+        expect(await c.addPlayer(ID)).toBe(false);
+        expect(c.state.notice).toMatch(text);
+      }
+      c.stop();
+
+      const replay = setup({}).c; // a replay can't add players
+      replay.start();
+      expect(await replay.addPlayer(ID)).toBe(false);
+      expect(replay.state.notice).toMatch(/can't add players/);
+      replay.stop();
+    });
+
+    it("looks a custom profile name up at Steam, with the Steam key when there is one", async () => {
+      const src = new ManualSource();
+      const { c } = setup({ steamApiKey: "steam-key" }, src);
+      c.start();
+      vanity.resolveVanity.mockClear();
+      expect(await c.addPlayer("https://steamcommunity.com/id/some_name")).toBe(true);
+      expect(vanity.resolveVanity.mock.calls[0].slice(0, 2)).toEqual(["some_name", "steam-key"]);
+      expect(src.added).toEqual(["76561198000000009"]);
+
+      vanity.resolveVanity.mockResolvedValueOnce({ ok: false, reason: "not-found" });
+      expect(await c.addPlayer("https://steamcommunity.com/id/nobody_here")).toBe(false);
+      expect(c.state.notice).toMatch(/no profile called "nobody_here"/);
+      vanity.resolveVanity.mockResolvedValueOnce({ ok: false, reason: "unreachable" });
+      expect(await c.addPlayer("https://steamcommunity.com/id/some_name")).toBe(false);
+      expect(c.state.notice).toMatch(/SteamID64 instead/);
+      expect(src.added).toEqual(["76561198000000009"]); // nothing was added by the failures
+      c.stop();
+    });
+
+    it("checks an added player on Leetify like anyone else, siren included", async () => {
+      const src = new FakeSource();
+      const { c, server } = setup({}, src);
+      server.s.profiles[P(3).steamId] = VERY_HIGH();
+      c.start();
+      src.send({ players: [P(0), P(3)] }); // what the source announces once a player was added
+      await vi.advanceTimersByTimeAsync(100);
+      expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["NORMAL", "VERY_HIGH"]);
+      expect(c.state.alert.seq).toBe(1);
+      c.stop();
+    });
+  });
+
+  it("passes on that a map has no players list, even with nobody in the lobby", async () => {
+    const src = new FakeSource();
+    const { c } = setup({}, src);
+    c.start();
+    expect(c.state.game.rosterUnavailable).toBe(false);
+    src.send({ players: [], rosterUnavailable: true });
+    expect(c.state.game.rosterUnavailable).toBe(true);
+    expect(c.state.match).toBeNull(); // still no lobby to show
+    src.send({ players: [P(0), P(1)], rosterUnavailable: true });
+    expect(c.state.game.rosterUnavailable).toBe(true);
+    expect(c.state.match).not.toBeNull();
+    src.send({ players: [] });
+    expect(c.state.game.rosterUnavailable).toBe(false);
+    c.stop();
   });
 });

@@ -297,6 +297,115 @@ describe("SteamSource", () => {
   });
 });
 
+describe("SteamSource: a map Steam lists no players for, and players added by hand", () => {
+  beforeEach(() => vi.useFakeTimers({ now: 1_800_000_000_000 }));
+  afterEach(() => vi.useRealTimers());
+
+  function make(entries: () => CoplayEntry[]) {
+    let push: (s: GameState) => void = () => {};
+    const src = new SteamSource({
+      scan: async (): Promise<CoplayResult> => ({ localName: "Nova", entries: entries(), friends: [] }),
+      listen: (on) => ((push = on), () => {}),
+      fastMs: 1000,
+      slowMs: 10_000,
+    });
+    const matches: MatchState[] = [];
+    src.on("match", (m) => matches.push(m));
+    const post = (s: Partial<GameState>) => push({ map: null, mode: null, phase: null, localSteamId: ME, ...s });
+    /** Time passes with CS2 running: its heartbeat arrives every 10 s (without it the source takes CS2 for closed). */
+    const hold = async (s: Partial<GameState>, ms: number) => {
+      for (let t = 0; t < ms; t += 10_000) {
+        post(s);
+        await vi.advanceTimersByTimeAsync(Math.min(10_000, ms - t));
+      }
+    };
+    return { src, post, hold, matches };
+  }
+  const community = { map: "de_dust2", mode: "casual", phase: "live" } as const;
+
+  it("says the roster is unavailable once the map has had time and Steam still lists nobody", async () => {
+    const { src, hold, matches } = make(() => []);
+    src.start();
+    await hold(community, 20_000);
+    expect(matches.at(-1)).toMatchObject({ map: "de_dust2", players: [], rosterUnavailable: false }); // too early to say
+    await hold(community, 40_000);
+    expect(matches.at(-1)).toMatchObject({ players: [], rosterUnavailable: true });
+    src.stop();
+  });
+
+  it("doesn't say it in the menu, for a matchmaking match, or while Steam can't be read", async () => {
+    const t = () => Math.floor(Date.now() / 1000);
+    const a = make(() => []);
+    a.src.start();
+    await a.hold({}, 60_000); // main menu
+    expect(a.matches.at(-1)!.rosterUnavailable).toBe(false);
+    a.src.stop();
+
+    const b = make(() => [1, 2, 3].map((n) => E(n, t() - 5)));
+    b.src.start();
+    await b.hold({ map: "de_dust2", mode: "competitive", phase: "warmup" }, 60_000);
+    expect(b.matches.at(-1)!.players.length).toBeGreaterThan(1);
+    expect(b.matches.at(-1)!.rosterUnavailable).toBe(false);
+    b.src.stop();
+
+    const c = make(() => { throw new Error("Steam isn't running"); });
+    c.src.start();
+    await c.hold(community, 60_000);
+    expect(c.matches.at(-1)!.rosterUnavailable).toBe(false); // that's a problem to report, not a community server
+    c.src.stop();
+  });
+
+  it("clears the notice when Steam lists players after all, and when the map changes", async () => {
+    let list: CoplayEntry[] = [];
+    const { src, hold, matches } = make(() => list);
+    src.start();
+    await hold(community, 60_000);
+    expect(matches.at(-1)!.rosterUnavailable).toBe(true);
+
+    const t = Math.floor(Date.now() / 1000);
+    list = [1, 2, 3].map((n) => E(n, t - 5));
+    await hold(community, 10_000);
+    expect(matches.at(-1)!.rosterUnavailable).toBe(false);
+
+    list = [];
+    await hold({ map: "de_nuke", mode: "casual", phase: "live" }, 10_000);
+    expect(matches.at(-1)!.rosterUnavailable).toBe(false); // a new map starts the wait again
+    src.stop();
+  });
+
+  it("lists players added by hand, keeps them for the map, and forgets them with it", async () => {
+    const { src, post, hold, matches } = make(() => []);
+    src.start();
+    await hold({}, 10_000);
+    expect(src.addPlayer(id(5))).toBe("no-match"); // the feed says we're in the menu
+
+    await hold(community, 10_000);
+    expect(src.addPlayer(id(5))).toBe("added");
+    expect(src.addPlayer(id(5))).toBe("duplicate");
+    expect(src.addPlayer(ME)).toBe("duplicate"); // that's us
+    await vi.advanceTimersByTimeAsync(10);
+    expect(matches.at(-1)!.players.map((p) => [p.name, p.steamId])).toEqual([["Nova", ME], ["Unknown player", id(5)]]);
+
+    await hold(community, 60_000);
+    expect(matches.at(-1)).toMatchObject({ rosterUnavailable: true }); // adding someone doesn't hide the notice
+    expect(matches.at(-1)!.players).toHaveLength(2);
+
+    post({ map: "de_nuke", mode: "casual", phase: "live" });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(matches.at(-1)!.players).toEqual([]);
+    src.stop();
+  });
+
+  it("stops at the number of other players a lobby looks up", async () => {
+    const { src, hold } = make(() => []);
+    src.start();
+    await hold(community, 10_000);
+    for (let n = 1; n <= 9; n++) expect(src.addPlayer(id(n))).toBe("added");
+    expect(src.addPlayer(id(10))).toBe("full");
+    src.stop();
+  });
+});
+
 describe("overlay helpers", () => {
   it("lists flagged players by class (VERY_HIGH first), then by how flagged they are, whatever raised the class", () => {
     const d = (score: number) => ({ score, avgRating: 0, strongShare: 0, aim: 0, clutch: 0, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" } as const, recent: [] });

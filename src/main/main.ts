@@ -479,6 +479,7 @@ if (!app.requestSingleInstanceLock()) {
       const url = controller.playerUrl(String(steamId ?? ""));
       if (url) void shell.openExternal(url);
     });
+    ipcMain.handle("player:add", (_e, input: unknown) => (typeof input === "string" ? controller.addPlayer(input) : false));
     ipcMain.handle("leetify:open", () => {
       void shell.openExternal("https://leetify.com/");
     });
