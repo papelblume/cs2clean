@@ -1,0 +1,61 @@
+PRO CAPABILITY REPORT
+=====================
+input: all-players.json   generated: 2026-10-15T01:19:29Z
+players analyzed: 623 of 660 entries   (with match history: 591, recent matches pooled: 17725)
+skipped: banned=1, status_not-found=36
+left out (ban on record): bsd
+by source: csst.at=30, leetify-api=593   by list: None=263, hltv-cs2-stats=254, steam-guide-3559763790=21, valve-top20=85
+unit decisions: match_rating_x100=591
+
+Tail columns are measured from each metric's extreme end (end = high or low):
+85% / 75% / 10% / 5% / 1% = the value that share of players is beyond (75% = the top three quarters of players);
+extreme = the single most extreme value.
+n marked * has fewer than 50 values: the tail marks are rough there.
+
+[mechanics]
+metric                     n end     median      85%      75%      10%       5%       1%  extreme   unit          who
+preaim                   623 low      9.252    10.38    9.975    7.296    6.628    5.969    5.385   deg           lash
+reaction_ms              623 low      470.4    519.3    502.1    417.7    405.2    372.8    346.9   ms            stavn
+head_acc                 593 high     23.38    19.47    20.81    28.28    29.88    34.85    38.08   %             nota
+head_kills               30* high     44.85    31.57    34.65    58.97    64.38    66.16     66.8   %             naz
+spray_acc                623 high     43.08    38.46    39.92     48.4    49.83    52.42    56.48   %             headtr1ck
+spotted_acc              593 high     39.66    36.21    37.33    43.84    44.69    47.34    50.54   %             zont1x
+opening_min              593 high     38.56    29.19    32.32    49.12    51.88    57.96    65.53   %             chayJESUS
+stopping                 623 high     83.17    78.19    80.11    88.56    89.93    91.93    93.54   %             try
+
+[coherence]
+metric                     n end     median      85%      75%      10%       5%       1%  extreme   unit          who
+aim_rating               623 high     92.51    85.54     88.3    97.29    98.26       99    99.61   0-100         afro
+positioning_rating       593 high     65.54    55.49    58.71    76.11    77.94    82.38    88.49   0-100         chayJESUS
+utility_rating           623 high     66.04     56.3     60.2    77.89    80.65    84.98    87.02   0-100         Gizmy
+aim_lead                 593 high     25.94    18.36    21.57    34.42    36.65    42.43    54.41   points        oxygeN
+not_stopped              623 high     16.83    12.41    13.91     22.9    25.03    28.71     36.6   %             sugaR
+clutch_rating            593 high    0.1017  0.07178   0.0814   0.1519   0.1667   0.2109   0.2468   API units     easy
+
+[rating]
+metric                     n end     median      85%      75%      10%       5%       1%  extreme   unit          who
+leetify_overall          623 high      0.78    -0.84   -0.305      3.4    4.354    6.276    11.48   website units chayJESUS
+recent_mean_rating       591 high     0.865  -0.8277  -0.2917    3.641    4.698    6.634    11.75   website units chayJESUS
+strong_share_ge_2        591 high    0.3667      0.2   0.2667      0.6   0.6333   0.7667   0.9333   share 0-1     coldzera
+strong_share_ge_3        591 high       0.3   0.1667      0.2      0.5      0.6   0.7033      0.9   share 0-1     chayJESUS
+strong_share_ge_4        591 high    0.2333      0.1   0.1333   0.4333   0.5333     0.67      0.9   share 0-1     chayJESUS
+strong_share_ge_5        591 high    0.1667  0.06667      0.1   0.3667   0.4667   0.5733      0.9   share 0-1     chayJESUS
+
+[trajectory]
+metric                     n end     median      85%      75%      10%       5%       1%  extreme   unit          who
+step_effect              591 high  0.003549  -0.2443  -0.1656     0.34   0.4491   0.6662   0.8548   std devs      sinnopsyy
+floor_share              591 high    0.5667      0.4   0.4333   0.7667      0.8      0.9   0.9667   share 0-1     m0NESY
+floor_share_in_form      158 high    0.7167      0.6   0.6333   0.8667      0.9   0.9667   0.9667   share 0-1     m0NESY
+reaction_cv              591 low     0.1853   0.2266   0.2111   0.1447    0.135   0.1156   0.1028   ratio         Patsi
+divergence                90 high  -0.06589  -0.3964  -0.3217   0.2398   0.4232   0.7809   0.7871   std devs      twenty3
+
+[single match]
+metric                     n end     median      85%      75%      10%       5%       1%  extreme   unit          who
+match_rating           17725 high      0.52    -3.93    -2.42     7.76    10.54    16.87    40.59   website units STYKO (2026-09-05)
+match_preaim           17725 low       8.72    12.42    11.03     5.17     4.34     2.92        0   deg           apEX (2026-09-27)
+match_reaction_ms      17725 low        461      578      531      359      336      297        0   ms            apEX (2026-09-27)
+match_head_acc         17725 high     22.73       15    17.65       35    39.57       50      100   %             try (2026-10-06)
+match_spray_acc        17725 high     41.67    28.11    33.33    61.11    68.07      100      100   %             try (2026-09-12)
+match_spotted_acc      17725 high     39.34    32.29    34.78    48.62    51.61    58.33      100   %             EliGE (2026-09-30)
+
+Full percentiles, mean/std and the most extreme players per metric are in the JSON.

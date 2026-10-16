@@ -1,0 +1,2070 @@
+{
+  "generated_at": "2026-10-15T01:19:29Z",
+  "input": "all-players.json",
+  "settings": {
+    "window": 30,
+    "min_matches_per_player_filter": 0,
+    "lists": "all",
+    "include_banned": false,
+    "min_recent_matches_for_match_signals": 5,
+    "newest_group": 10,
+    "min_group": 8,
+    "floor_mean_gate": 2.0,
+    "strong_cuts": [
+      2.0,
+      3.0,
+      4.0,
+      5.0
+    ]
+  },
+  "coverage": {
+    "entries_in_file": 660,
+    "players_analyzed": 623,
+    "skipped": {
+      "status_not-found": 36,
+      "banned": 1
+    },
+    "excluded_bans": [
+      "bsd"
+    ],
+    "by_source": {
+      "leetify-api": 593,
+      "csst.at": 30
+    },
+    "by_pro_list": {
+      "valve-top20": 85,
+      "steam-guide-3559763790": 21,
+      "hltv-cs2-stats": 254,
+      "None": 263
+    },
+    "privacy_mode": {
+      "public": 591,
+      "private": 32
+    },
+    "with_match_history": 591,
+    "with_premier_rating": 113,
+    "matches_pooled": 17725
+  },
+  "unit_decisions": {
+    "counts": {
+      "match_rating_x100": 591
+    },
+    "warnings": [],
+    "players": {}
+  },
+  "metrics": {
+    "preaim": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "deg",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.preaim",
+      "what": "Crosshair placement error",
+      "n": 623,
+      "small_sample": false,
+      "mean": 9.14224,
+      "std": 1.34855,
+      "min": 5.3848,
+      "max": 16.02,
+      "median": 9.2518,
+      "percentiles": {
+        "p0": 5.3848,
+        "p1": 5.96876,
+        "p5": 6.62807,
+        "p10": 7.29576,
+        "p25": 8.3626,
+        "p50": 9.2518,
+        "p75": 9.97495,
+        "p90": 10.7465,
+        "p95": 11.1167,
+        "p99": 12.0406,
+        "p100": 16.02
+      },
+      "tail": {
+        "top_85pct": 10.3801,
+        "top_75pct": 9.97495,
+        "top_10pct": 7.29576,
+        "top_5pct": 6.62807,
+        "top_1pct": 5.96876,
+        "most_extreme": 5.3848
+      },
+      "extreme_players": [
+        {
+          "value": 5.3848,
+          "player": "lash",
+          "steam64_id": "76561198328716965"
+        },
+        {
+          "value": 5.3898,
+          "player": "El1an",
+          "steam64_id": "76561198210763837"
+        },
+        {
+          "value": 5.5163,
+          "player": "L00m1",
+          "steam64_id": "76561198890491804"
+        },
+        {
+          "value": 5.8083,
+          "player": "MoDo",
+          "steam64_id": "76561198350221098"
+        },
+        {
+          "value": 5.8372,
+          "player": "stavn",
+          "steam64_id": "76561198022365638"
+        }
+      ]
+    },
+    "reaction_ms": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "ms",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.reaction",
+      "what": "Reaction time",
+      "n": 623,
+      "small_sample": false,
+      "mean": 475.594,
+      "std": 56.2823,
+      "min": 346.906,
+      "max": 984.0,
+      "median": 470.38,
+      "percentiles": {
+        "p0": 346.906,
+        "p1": 372.784,
+        "p5": 405.207,
+        "p10": 417.74,
+        "p25": 439.754,
+        "p50": 470.38,
+        "p75": 502.134,
+        "p90": 534.275,
+        "p95": 569.34,
+        "p99": 643.72,
+        "p100": 984.0
+      },
+      "tail": {
+        "top_85pct": 519.31,
+        "top_75pct": 502.134,
+        "top_10pct": 417.74,
+        "top_5pct": 405.207,
+        "top_1pct": 372.784,
+        "most_extreme": 346.906
+      },
+      "extreme_players": [
+        {
+          "value": 346.906,
+          "player": "stavn",
+          "steam64_id": "76561198022365638"
+        },
+        {
+          "value": 349.623,
+          "player": "regali",
+          "steam64_id": "76561198098463229"
+        },
+        {
+          "value": 357.873,
+          "player": "ArtFr0st",
+          "steam64_id": "76561198156778414"
+        },
+        {
+          "value": 366.077,
+          "player": "woxic",
+          "steam64_id": "76561198083485506"
+        },
+        {
+          "value": 368.596,
+          "player": "z4KR",
+          "steam64_id": "76561198137783463"
+        }
+      ]
+    },
+    "head_acc": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.headAcc, coherence.movingHeadAcc",
+      "what": "Share of shots that hit the head",
+      "n": 593,
+      "small_sample": false,
+      "mean": 23.5216,
+      "std": 3.7962,
+      "min": 13.2783,
+      "max": 38.0761,
+      "median": 23.3779,
+      "percentiles": {
+        "p0": 13.2783,
+        "p1": 16.3623,
+        "p5": 17.888,
+        "p10": 18.9769,
+        "p25": 20.8104,
+        "p50": 23.3779,
+        "p75": 25.6423,
+        "p90": 28.2784,
+        "p95": 29.8801,
+        "p99": 34.8475,
+        "p100": 38.0761
+      },
+      "tail": {
+        "top_85pct": 19.4728,
+        "top_75pct": 20.8104,
+        "top_10pct": 28.2784,
+        "top_5pct": 29.8801,
+        "top_1pct": 34.8475,
+        "most_extreme": 38.0761
+      },
+      "extreme_players": [
+        {
+          "value": 38.0761,
+          "player": "nota",
+          "steam64_id": "76561198975070027"
+        },
+        {
+          "value": 36.0478,
+          "player": "m0NESY",
+          "steam64_id": "76561198074762801"
+        },
+        {
+          "value": 35.8677,
+          "player": "STYKO",
+          "steam64_id": "76561198016194159"
+        },
+        {
+          "value": 35.6672,
+          "player": "Topa",
+          "steam64_id": "76561198134742883"
+        },
+        {
+          "value": 35.615,
+          "player": "KWERTZZ",
+          "steam64_id": "76561198121271420"
+        }
+      ]
+    },
+    "head_kills": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.headKills",
+      "what": "Share of kills that were headshots (csst.at only)",
+      "n": 30,
+      "small_sample": true,
+      "mean": 45.3733,
+      "std": 12.6583,
+      "min": 20.0,
+      "max": 66.8,
+      "median": 44.85,
+      "percentiles": {
+        "p0": 20.0,
+        "p1": 21.276,
+        "p5": 25.84,
+        "p10": 27.6,
+        "p25": 34.65,
+        "p50": 44.85,
+        "p75": 55.975,
+        "p90": 58.97,
+        "p95": 64.375,
+        "p99": 66.162,
+        "p100": 66.8
+      },
+      "tail": {
+        "top_85pct": 31.57,
+        "top_75pct": 34.65,
+        "top_10pct": 58.97,
+        "top_5pct": 64.375,
+        "top_1pct": 66.162,
+        "most_extreme": 66.8
+      },
+      "extreme_players": [
+        {
+          "value": 66.8,
+          "player": "naz",
+          "steam64_id": "76561198077857805"
+        },
+        {
+          "value": 64.6,
+          "player": "sstiNiX",
+          "steam64_id": "76561198143856298"
+        },
+        {
+          "value": 64.1,
+          "player": "xelex",
+          "steam64_id": "76561198998266210"
+        },
+        {
+          "value": 58.4,
+          "player": "Nivera",
+          "steam64_id": "76561198160795931"
+        },
+        {
+          "value": 58.3,
+          "player": "vinaabEAST",
+          "steam64_id": "76561198813233208"
+        }
+      ]
+    },
+    "spray_acc": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.sprayAcc",
+      "what": "Spray accuracy",
+      "n": 623,
+      "small_sample": false,
+      "mean": 42.1367,
+      "std": 6.56223,
+      "min": 13.0,
+      "max": 56.4793,
+      "median": 43.0785,
+      "percentiles": {
+        "p0": 13.0,
+        "p1": 16.154,
+        "p5": 31.6687,
+        "p10": 36.6726,
+        "p25": 39.919,
+        "p50": 43.0785,
+        "p75": 45.9742,
+        "p90": 48.4028,
+        "p95": 49.828,
+        "p99": 52.416,
+        "p100": 56.4793
+      },
+      "tail": {
+        "top_85pct": 38.4592,
+        "top_75pct": 39.919,
+        "top_10pct": 48.4028,
+        "top_5pct": 49.828,
+        "top_1pct": 52.416,
+        "most_extreme": 56.4793
+      },
+      "extreme_players": [
+        {
+          "value": 56.4793,
+          "player": "headtr1ck",
+          "steam64_id": "76561198359519930"
+        },
+        {
+          "value": 56.4136,
+          "player": "S3NSEY",
+          "steam64_id": "76561198064010365"
+        },
+        {
+          "value": 53.3937,
+          "player": "frozen",
+          "steam64_id": "76561198068422762"
+        },
+        {
+          "value": 53.3936,
+          "player": "zont1x",
+          "steam64_id": "76561198995880877"
+        },
+        {
+          "value": 52.6908,
+          "player": "KEi",
+          "steam64_id": "76561198081687729"
+        }
+      ]
+    },
+    "spotted_acc": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.spottedAcc",
+      "what": "Accuracy on spotted enemies",
+      "n": 593,
+      "small_sample": false,
+      "mean": 39.6301,
+      "std": 3.22873,
+      "min": 30.766,
+      "max": 50.5389,
+      "median": 39.6562,
+      "percentiles": {
+        "p0": 30.766,
+        "p1": 32.4794,
+        "p5": 34.5307,
+        "p10": 35.252,
+        "p25": 37.3289,
+        "p50": 39.6562,
+        "p75": 41.8009,
+        "p90": 43.8377,
+        "p95": 44.6923,
+        "p99": 47.3445,
+        "p100": 50.5389
+      },
+      "tail": {
+        "top_85pct": 36.2052,
+        "top_75pct": 37.3289,
+        "top_10pct": 43.8377,
+        "top_5pct": 44.6923,
+        "top_1pct": 47.3445,
+        "most_extreme": 50.5389
+      },
+      "extreme_players": [
+        {
+          "value": 50.5389,
+          "player": "zont1x",
+          "steam64_id": "76561198995880877"
+        },
+        {
+          "value": 50.4355,
+          "player": "afro",
+          "steam64_id": "76561198035581101"
+        },
+        {
+          "value": 48.7723,
+          "player": "aidKiT",
+          "steam64_id": "76561198201921879"
+        },
+        {
+          "value": 48.2198,
+          "player": "S3NSEY",
+          "steam64_id": "76561198064010365"
+        },
+        {
+          "value": 48.0291,
+          "player": "SHOCK",
+          "steam64_id": "76561198169560297"
+        }
+      ]
+    },
+    "opening_min": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.opening",
+      "what": "Lower of CT and T opening-duel win rate",
+      "n": 593,
+      "small_sample": false,
+      "mean": 38.49,
+      "std": 8.43651,
+      "min": 13.2997,
+      "max": 65.5256,
+      "median": 38.5632,
+      "percentiles": {
+        "p0": 13.2997,
+        "p1": 20.2809,
+        "p5": 24.5626,
+        "p10": 27.9168,
+        "p25": 32.3187,
+        "p50": 38.5632,
+        "p75": 44.4272,
+        "p90": 49.1201,
+        "p95": 51.8783,
+        "p99": 57.9644,
+        "p100": 65.5256
+      },
+      "tail": {
+        "top_85pct": 29.1898,
+        "top_75pct": 32.3187,
+        "top_10pct": 49.1201,
+        "top_5pct": 51.8783,
+        "top_1pct": 57.9644,
+        "most_extreme": 65.5256
+      },
+      "extreme_players": [
+        {
+          "value": 65.5256,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 61.4541,
+          "player": "Surreal",
+          "steam64_id": "76561198044840457"
+        },
+        {
+          "value": 60.769,
+          "player": "Matheos",
+          "steam64_id": "76561198274726597"
+        },
+        {
+          "value": 60.4932,
+          "player": "bekker",
+          "steam64_id": "76561199439779019"
+        },
+        {
+          "value": 60.3908,
+          "player": "Senzu",
+          "steam64_id": "76561198920720017"
+        }
+      ]
+    },
+    "stopping": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.stopping",
+      "what": "Share of shots taken with good counter-strafing",
+      "n": 623,
+      "small_sample": false,
+      "mean": 82.9342,
+      "std": 4.49327,
+      "min": 63.4,
+      "max": 93.5366,
+      "median": 83.1715,
+      "percentiles": {
+        "p0": 63.4,
+        "p1": 71.2938,
+        "p5": 74.9749,
+        "p10": 77.0987,
+        "p25": 80.1109,
+        "p50": 83.1715,
+        "p75": 86.0871,
+        "p90": 88.557,
+        "p95": 89.9319,
+        "p99": 91.9335,
+        "p100": 93.5366
+      },
+      "tail": {
+        "top_85pct": 78.1926,
+        "top_75pct": 80.1109,
+        "top_10pct": 88.557,
+        "top_5pct": 89.9319,
+        "top_1pct": 91.9335,
+        "most_extreme": 93.5366
+      },
+      "extreme_players": [
+        {
+          "value": 93.5366,
+          "player": "try",
+          "steam64_id": "76561198365118288"
+        },
+        {
+          "value": 93.2859,
+          "player": "zont1x",
+          "steam64_id": "76561198995880877"
+        },
+        {
+          "value": 92.0858,
+          "player": "aidKiT",
+          "steam64_id": "76561198201921879"
+        },
+        {
+          "value": 92.0,
+          "player": "xelex",
+          "steam64_id": "76561198998266210"
+        },
+        {
+          "value": 91.9992,
+          "player": "m0NESY",
+          "steam64_id": "76561198074762801"
+        }
+      ]
+    },
+    "aim_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "0-100",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.aim, REPUTATION.coherence.aimGate",
+      "what": "Leetify aim rating",
+      "n": 623,
+      "small_sample": false,
+      "mean": 90.4353,
+      "std": 8.90176,
+      "min": 11.1,
+      "max": 99.6093,
+      "median": 92.5066,
+      "percentiles": {
+        "p0": 11.1,
+        "p1": 50.4871,
+        "p5": 76.4849,
+        "p10": 83.1973,
+        "p25": 88.2977,
+        "p50": 92.5066,
+        "p75": 95.254,
+        "p90": 97.2914,
+        "p95": 98.2571,
+        "p99": 99.0038,
+        "p100": 99.6093
+      },
+      "tail": {
+        "top_85pct": 85.5428,
+        "top_75pct": 88.2977,
+        "top_10pct": 97.2914,
+        "top_5pct": 98.2571,
+        "top_1pct": 99.0038,
+        "most_extreme": 99.6093
+      },
+      "extreme_players": [
+        {
+          "value": 99.6093,
+          "player": "afro",
+          "steam64_id": "76561198035581101"
+        },
+        {
+          "value": 99.4132,
+          "player": "aidKiT",
+          "steam64_id": "76561198201921879"
+        },
+        {
+          "value": 99.3963,
+          "player": "try",
+          "steam64_id": "76561198365118288"
+        },
+        {
+          "value": 99.3613,
+          "player": "m0NESY",
+          "steam64_id": "76561198074762801"
+        },
+        {
+          "value": 99.2656,
+          "player": "Jame",
+          "steam64_id": "76561198036125584"
+        }
+      ]
+    },
+    "positioning_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "0-100",
+      "extreme_end": "high",
+      "informs": "(context for aim_lead)",
+      "what": "Leetify positioning rating",
+      "n": 593,
+      "small_sample": false,
+      "mean": 64.6333,
+      "std": 8.8583,
+      "min": 37.4484,
+      "max": 88.493,
+      "median": 65.5422,
+      "percentiles": {
+        "p0": 37.4484,
+        "p1": 41.2625,
+        "p5": 49.4415,
+        "p10": 53.1881,
+        "p25": 58.7064,
+        "p50": 65.5422,
+        "p75": 70.884,
+        "p90": 76.1148,
+        "p95": 77.935,
+        "p99": 82.3814,
+        "p100": 88.493
+      },
+      "tail": {
+        "top_85pct": 55.4879,
+        "top_75pct": 58.7064,
+        "top_10pct": 76.1148,
+        "top_5pct": 77.935,
+        "top_1pct": 82.3814,
+        "most_extreme": 88.493
+      },
+      "extreme_players": [
+        {
+          "value": 88.493,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 85.5428,
+          "player": "SLIGHT",
+          "steam64_id": "76561198153580037"
+        },
+        {
+          "value": 83.8913,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        },
+        {
+          "value": 83.6457,
+          "player": "aliStair",
+          "steam64_id": "76561198098346710"
+        },
+        {
+          "value": 82.8944,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        }
+      ]
+    },
+    "utility_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "0-100",
+      "extreme_end": "high",
+      "informs": "(context for aim_lead)",
+      "what": "Leetify utility rating",
+      "n": 623,
+      "small_sample": false,
+      "mean": 65.2264,
+      "std": 11.219,
+      "min": 1.9,
+      "max": 87.0232,
+      "median": 66.0407,
+      "percentiles": {
+        "p0": 1.9,
+        "p1": 19.9979,
+        "p5": 48.6034,
+        "p10": 53.877,
+        "p25": 60.2014,
+        "p50": 66.0407,
+        "p75": 72.109,
+        "p90": 77.8919,
+        "p95": 80.6503,
+        "p99": 84.9818,
+        "p100": 87.0232
+      },
+      "tail": {
+        "top_85pct": 56.3012,
+        "top_75pct": 60.2014,
+        "top_10pct": 77.8919,
+        "top_5pct": 80.6503,
+        "top_1pct": 84.9818,
+        "most_extreme": 87.0232
+      },
+      "extreme_players": [
+        {
+          "value": 87.0232,
+          "player": "Gizmy",
+          "steam64_id": "76561198344226986"
+        },
+        {
+          "value": 86.4651,
+          "player": "exit",
+          "steam64_id": "76561198010496342"
+        },
+        {
+          "value": 86.1196,
+          "player": "JOTA",
+          "steam64_id": "76561198054820484"
+        },
+        {
+          "value": 85.7069,
+          "player": "apEX",
+          "steam64_id": "76561197989744167"
+        },
+        {
+          "value": 85.3736,
+          "player": "BeaKie",
+          "steam64_id": "76561198055631941"
+        }
+      ]
+    },
+    "aim_lead": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "points",
+      "extreme_end": "high",
+      "informs": "REPUTATION.coherence.aimLead",
+      "what": "Aim rating minus mean of positioning and utility",
+      "n": 593,
+      "small_sample": false,
+      "mean": 25.7501,
+      "std": 7.93241,
+      "min": -11.9654,
+      "max": 54.4136,
+      "median": 25.9416,
+      "percentiles": {
+        "p0": -11.9654,
+        "p1": 2.45262,
+        "p5": 12.9033,
+        "p10": 16.031,
+        "p25": 21.5691,
+        "p50": 25.9416,
+        "p75": 30.8418,
+        "p90": 34.4205,
+        "p95": 36.6538,
+        "p99": 42.4258,
+        "p100": 54.4136
+      },
+      "tail": {
+        "top_85pct": 18.3634,
+        "top_75pct": 21.5691,
+        "top_10pct": 34.4205,
+        "top_5pct": 36.6538,
+        "top_1pct": 42.4258,
+        "most_extreme": 54.4136
+      },
+      "extreme_players": [
+        {
+          "value": 54.4136,
+          "player": "oxygeN",
+          "steam64_id": "76561198085180615"
+        },
+        {
+          "value": 54.0652,
+          "player": "divine",
+          "steam64_id": "76561198825389932"
+        },
+        {
+          "value": 50.1303,
+          "player": "refrezh",
+          "steam64_id": "76561198064864198"
+        },
+        {
+          "value": 49.584,
+          "player": "SHOCK",
+          "steam64_id": "76561198169560297"
+        },
+        {
+          "value": 43.8885,
+          "player": "manguss",
+          "steam64_id": "76561198035510513"
+        }
+      ]
+    },
+    "not_stopped": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.coherence.notStopped",
+      "what": "100 - stopping: share of shots NOT taken standing still",
+      "n": 623,
+      "small_sample": false,
+      "mean": 17.0658,
+      "std": 4.49327,
+      "min": 6.4634,
+      "max": 36.6,
+      "median": 16.8285,
+      "percentiles": {
+        "p0": 6.4634,
+        "p1": 8.0665,
+        "p5": 10.0681,
+        "p10": 11.443,
+        "p25": 13.913,
+        "p50": 16.8285,
+        "p75": 19.8891,
+        "p90": 22.9013,
+        "p95": 25.0251,
+        "p99": 28.7062,
+        "p100": 36.6
+      },
+      "tail": {
+        "top_85pct": 12.4091,
+        "top_75pct": 13.913,
+        "top_10pct": 22.9013,
+        "top_5pct": 25.0251,
+        "top_1pct": 28.7062,
+        "most_extreme": 36.6
+      },
+      "extreme_players": [
+        {
+          "value": 36.6,
+          "player": "sugaR",
+          "steam64_id": "76561197972446654"
+        },
+        {
+          "value": 30.7822,
+          "player": "danoco",
+          "steam64_id": "76561197994888003"
+        },
+        {
+          "value": 30.4259,
+          "player": "atarax1a",
+          "steam64_id": "76561198192191289"
+        },
+        {
+          "value": 30.2587,
+          "player": "syrsoN",
+          "steam64_id": "76561197980122997"
+        },
+        {
+          "value": 29.8106,
+          "player": "Chill",
+          "steam64_id": "76561197962171557"
+        }
+      ]
+    },
+    "clutch_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "API units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.clutch",
+      "what": "Leetify clutch rating as the API sends it",
+      "n": 593,
+      "small_sample": false,
+      "mean": 0.10617,
+      "std": 0.0347286,
+      "min": 0.0401,
+      "max": 0.2468,
+      "median": 0.1017,
+      "percentiles": {
+        "p0": 0.0401,
+        "p1": 0.046092,
+        "p5": 0.05636,
+        "p10": 0.0652,
+        "p25": 0.0814,
+        "p50": 0.1017,
+        "p75": 0.1261,
+        "p90": 0.15192,
+        "p95": 0.16672,
+        "p99": 0.210948,
+        "p100": 0.2468
+      },
+      "tail": {
+        "top_85pct": 0.07178,
+        "top_75pct": 0.0814,
+        "top_10pct": 0.15192,
+        "top_5pct": 0.16672,
+        "top_1pct": 0.210948,
+        "most_extreme": 0.2468
+      },
+      "extreme_players": [
+        {
+          "value": 0.2468,
+          "player": "easy",
+          "steam64_id": "76561198318025977"
+        },
+        {
+          "value": 0.2462,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 0.2398,
+          "player": "Cooper",
+          "steam64_id": "76561197967516987"
+        },
+        {
+          "value": 0.2291,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        },
+        {
+          "value": 0.2149,
+          "player": "nin9",
+          "steam64_id": "76561198128463598"
+        }
+      ]
+    },
+    "leetify_overall": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "website units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.mean (no match history)",
+      "what": "Overall Leetify rating (ranks.leetify, else (CT+T)/2*100)",
+      "n": 623,
+      "small_sample": false,
+      "mean": 0.977271,
+      "std": 1.92009,
+      "min": -4.7,
+      "max": 11.48,
+      "median": 0.78,
+      "percentiles": {
+        "p0": -4.7,
+        "p1": -2.6628,
+        "p5": -1.587,
+        "p10": -1.23,
+        "p25": -0.305,
+        "p50": 0.78,
+        "p75": 1.91,
+        "p90": 3.4,
+        "p95": 4.354,
+        "p99": 6.2756,
+        "p100": 11.48
+      },
+      "tail": {
+        "top_85pct": -0.84,
+        "top_75pct": -0.305,
+        "top_10pct": 3.4,
+        "top_5pct": 4.354,
+        "top_1pct": 6.2756,
+        "most_extreme": 11.48
+      },
+      "extreme_players": [
+        {
+          "value": 11.48,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 9.9,
+          "player": "Lacerda",
+          "steam64_id": "76561197989311438"
+        },
+        {
+          "value": 8.46,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        },
+        {
+          "value": 7.17,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 7.16,
+          "player": "easy",
+          "steam64_id": "76561198318025977"
+        }
+      ]
+    },
+    "recent_mean_rating": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "website units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.mean, REPUTATION.trajectory.floorMean",
+      "what": "Mean rating of the recent matches",
+      "n": 591,
+      "small_sample": false,
+      "mean": 1.10505,
+      "std": 1.94997,
+      "min": -3.212,
+      "max": 11.7463,
+      "median": 0.865,
+      "percentiles": {
+        "p0": -3.212,
+        "p1": -2.26293,
+        "p5": -1.52217,
+        "p10": -1.13967,
+        "p25": -0.291667,
+        "p50": 0.865,
+        "p75": 2.1095,
+        "p90": 3.64067,
+        "p95": 4.69767,
+        "p99": 6.63373,
+        "p100": 11.7463
+      },
+      "tail": {
+        "top_85pct": -0.827667,
+        "top_75pct": -0.291667,
+        "top_10pct": 3.64067,
+        "top_5pct": 4.69767,
+        "top_1pct": 6.63373,
+        "most_extreme": 11.7463
+      },
+      "extreme_players": [
+        {
+          "value": 11.7463,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 8.278,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        },
+        {
+          "value": 7.60133,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 7.20633,
+          "player": "STYKO",
+          "steam64_id": "76561198016194159"
+        },
+        {
+          "value": 6.83567,
+          "player": "nota",
+          "steam64_id": "76561198975070027"
+        }
+      ]
+    },
+    "strong_share_ge_2": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 2",
+      "n": 591,
+      "small_sample": false,
+      "mean": 0.376638,
+      "std": 0.153981,
+      "min": 0.0,
+      "max": 0.933333,
+      "median": 0.366667,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 0.1,
+        "p5": 0.166667,
+        "p10": 0.2,
+        "p25": 0.266667,
+        "p50": 0.366667,
+        "p75": 0.466667,
+        "p90": 0.6,
+        "p95": 0.633333,
+        "p99": 0.766667,
+        "p100": 0.933333
+      },
+      "tail": {
+        "top_85pct": 0.2,
+        "top_75pct": 0.266667,
+        "top_10pct": 0.6,
+        "top_5pct": 0.633333,
+        "top_1pct": 0.766667,
+        "most_extreme": 0.933333
+      },
+      "extreme_players": [
+        {
+          "value": 0.933333,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 0.9,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 0.866667,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        },
+        {
+          "value": 0.866667,
+          "player": "Peppzor",
+          "steam64_id": "76561198288390068"
+        },
+        {
+          "value": 0.766667,
+          "player": "magixx",
+          "steam64_id": "76561197961134282"
+        }
+      ]
+    },
+    "strong_share_ge_3": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 3 (current strongMatch)",
+      "n": 591,
+      "small_sample": false,
+      "mean": 0.310299,
+      "std": 0.149046,
+      "min": 0.0,
+      "max": 0.9,
+      "median": 0.3,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 0.0633333,
+        "p5": 0.1,
+        "p10": 0.133333,
+        "p25": 0.2,
+        "p50": 0.3,
+        "p75": 0.4,
+        "p90": 0.5,
+        "p95": 0.6,
+        "p99": 0.703333,
+        "p100": 0.9
+      },
+      "tail": {
+        "top_85pct": 0.166667,
+        "top_75pct": 0.2,
+        "top_10pct": 0.5,
+        "top_5pct": 0.6,
+        "top_1pct": 0.703333,
+        "most_extreme": 0.9
+      },
+      "extreme_players": [
+        {
+          "value": 0.9,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 0.833333,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        },
+        {
+          "value": 0.8,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 0.8,
+          "player": "Peppzor",
+          "steam64_id": "76561198288390068"
+        },
+        {
+          "value": 0.733333,
+          "player": "b0denmaster",
+          "steam64_id": "76561198276534844"
+        }
+      ]
+    },
+    "strong_share_ge_4": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 4",
+      "n": 591,
+      "small_sample": false,
+      "mean": 0.247163,
+      "std": 0.140321,
+      "min": 0.0,
+      "max": 0.9,
+      "median": 0.233333,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 0.0,
+        "p5": 0.0666667,
+        "p10": 0.1,
+        "p25": 0.133333,
+        "p50": 0.233333,
+        "p75": 0.3,
+        "p90": 0.433333,
+        "p95": 0.533333,
+        "p99": 0.67,
+        "p100": 0.9
+      },
+      "tail": {
+        "top_85pct": 0.1,
+        "top_75pct": 0.133333,
+        "top_10pct": 0.433333,
+        "top_5pct": 0.533333,
+        "top_1pct": 0.67,
+        "most_extreme": 0.9
+      },
+      "extreme_players": [
+        {
+          "value": 0.9,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 0.733333,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 0.733333,
+          "player": "b0denmaster",
+          "steam64_id": "76561198276534844"
+        },
+        {
+          "value": 0.733333,
+          "player": "Peppzor",
+          "steam64_id": "76561198288390068"
+        },
+        {
+          "value": 0.733333,
+          "player": "easy",
+          "steam64_id": "76561198318025977"
+        }
+      ]
+    },
+    "strong_share_ge_5": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 5",
+      "n": 591,
+      "small_sample": false,
+      "mean": 0.198398,
+      "std": 0.132401,
+      "min": 0.0,
+      "max": 0.9,
+      "median": 0.166667,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 0.0,
+        "p5": 0.0333333,
+        "p10": 0.0666667,
+        "p25": 0.1,
+        "p50": 0.166667,
+        "p75": 0.266667,
+        "p90": 0.366667,
+        "p95": 0.466667,
+        "p99": 0.573333,
+        "p100": 0.9
+      },
+      "tail": {
+        "top_85pct": 0.0666667,
+        "top_75pct": 0.1,
+        "top_10pct": 0.366667,
+        "top_5pct": 0.466667,
+        "top_1pct": 0.573333,
+        "most_extreme": 0.9
+      },
+      "extreme_players": [
+        {
+          "value": 0.9,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 0.666667,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 0.666667,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        },
+        {
+          "value": 0.666667,
+          "player": "b0denmaster",
+          "steam64_id": "76561198276534844"
+        },
+        {
+          "value": 0.666667,
+          "player": "easy",
+          "steam64_id": "76561198318025977"
+        }
+      ]
+    },
+    "step_effect": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "std devs",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.step",
+      "what": "Newest 10 matches vs. the older ones, pooled std devs",
+      "n": 591,
+      "small_sample": false,
+      "mean": 0.0115061,
+      "std": 0.262775,
+      "min": -0.818858,
+      "max": 0.854778,
+      "median": 0.00354885,
+      "percentiles": {
+        "p0": -0.818858,
+        "p1": -0.597577,
+        "p5": -0.399655,
+        "p10": -0.320348,
+        "p25": -0.165568,
+        "p50": 0.00354885,
+        "p75": 0.184726,
+        "p90": 0.34004,
+        "p95": 0.449097,
+        "p99": 0.666205,
+        "p100": 0.854778
+      },
+      "tail": {
+        "top_85pct": -0.24433,
+        "top_75pct": -0.165568,
+        "top_10pct": 0.34004,
+        "top_5pct": 0.449097,
+        "top_1pct": 0.666205,
+        "most_extreme": 0.854778
+      },
+      "extreme_players": [
+        {
+          "value": 0.854778,
+          "player": "sinnopsyy",
+          "steam64_id": "76561198165327895"
+        },
+        {
+          "value": 0.841853,
+          "player": "ultimate",
+          "steam64_id": "76561198283989223"
+        },
+        {
+          "value": 0.776963,
+          "player": "myltsi",
+          "steam64_id": "76561198803032451"
+        },
+        {
+          "value": 0.747497,
+          "player": "BeaKie",
+          "steam64_id": "76561198055631941"
+        },
+        {
+          "value": 0.735591,
+          "player": "electroNic",
+          "steam64_id": "76561198044045107"
+        }
+      ]
+    },
+    "floor_share": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.floor",
+      "what": "Share of recent matches at or above rating 0",
+      "n": 591,
+      "small_sample": false,
+      "mean": 0.549385,
+      "std": 0.152061,
+      "min": 0.0333333,
+      "max": 0.966667,
+      "median": 0.566667,
+      "percentiles": {
+        "p0": 0.0333333,
+        "p1": 0.2,
+        "p5": 0.3,
+        "p10": 0.366667,
+        "p25": 0.433333,
+        "p50": 0.566667,
+        "p75": 0.633333,
+        "p90": 0.766667,
+        "p95": 0.8,
+        "p99": 0.9,
+        "p100": 0.966667
+      },
+      "tail": {
+        "top_85pct": 0.4,
+        "top_75pct": 0.433333,
+        "top_10pct": 0.766667,
+        "top_5pct": 0.8,
+        "top_1pct": 0.9,
+        "most_extreme": 0.966667
+      },
+      "extreme_players": [
+        {
+          "value": 0.966667,
+          "player": "m0NESY",
+          "steam64_id": "76561198074762801"
+        },
+        {
+          "value": 0.966667,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 0.966667,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 0.966667,
+          "player": "Surreal",
+          "steam64_id": "76561198044840457"
+        },
+        {
+          "value": 0.933333,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        }
+      ]
+    },
+    "floor_share_in_form": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.floor",
+      "what": "floor_share, only for players with mean rating >= 2",
+      "n": 158,
+      "small_sample": false,
+      "mean": 0.719409,
+      "std": 0.0986257,
+      "min": 0.5,
+      "max": 0.966667,
+      "median": 0.716667,
+      "percentiles": {
+        "p0": 0.5,
+        "p1": 0.552333,
+        "p5": 0.566667,
+        "p10": 0.6,
+        "p25": 0.633333,
+        "p50": 0.716667,
+        "p75": 0.791667,
+        "p90": 0.866667,
+        "p95": 0.9,
+        "p99": 0.966667,
+        "p100": 0.966667
+      },
+      "tail": {
+        "top_85pct": 0.6,
+        "top_75pct": 0.633333,
+        "top_10pct": 0.866667,
+        "top_5pct": 0.9,
+        "top_1pct": 0.966667,
+        "most_extreme": 0.966667
+      },
+      "extreme_players": [
+        {
+          "value": 0.966667,
+          "player": "m0NESY",
+          "steam64_id": "76561198074762801"
+        },
+        {
+          "value": 0.966667,
+          "player": "coldzera",
+          "steam64_id": "76561198039986599"
+        },
+        {
+          "value": 0.966667,
+          "player": "chayJESUS",
+          "steam64_id": "76561198251931752"
+        },
+        {
+          "value": 0.966667,
+          "player": "Surreal",
+          "steam64_id": "76561198044840457"
+        },
+        {
+          "value": 0.933333,
+          "player": "skullz",
+          "steam64_id": "76561198118646644"
+        }
+      ]
+    },
+    "reaction_cv": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "ratio",
+      "extreme_end": "low",
+      "informs": "REPUTATION.trajectory.spread",
+      "what": "Match-to-match variation of reaction time (sd / mean)",
+      "n": 591,
+      "small_sample": false,
+      "mean": 0.190198,
+      "std": 0.0393601,
+      "min": 0.102798,
+      "max": 0.328636,
+      "median": 0.185262,
+      "percentiles": {
+        "p0": 0.102798,
+        "p1": 0.115618,
+        "p5": 0.135015,
+        "p10": 0.144657,
+        "p25": 0.163524,
+        "p50": 0.185262,
+        "p75": 0.211135,
+        "p90": 0.24238,
+        "p95": 0.268414,
+        "p99": 0.306238,
+        "p100": 0.328636
+      },
+      "tail": {
+        "top_85pct": 0.22657,
+        "top_75pct": 0.211135,
+        "top_10pct": 0.144657,
+        "top_5pct": 0.135015,
+        "top_1pct": 0.115618,
+        "most_extreme": 0.102798
+      },
+      "extreme_players": [
+        {
+          "value": 0.102798,
+          "player": "Patsi",
+          "steam64_id": "76561198288540801"
+        },
+        {
+          "value": 0.103323,
+          "player": "Qlocuu",
+          "steam64_id": "76561198245925350"
+        },
+        {
+          "value": 0.111392,
+          "player": "magixx",
+          "steam64_id": "76561197961134282"
+        },
+        {
+          "value": 0.111537,
+          "player": "JT",
+          "steam64_id": "76561198021715100"
+        },
+        {
+          "value": 0.112574,
+          "player": "NAF",
+          "steam64_id": "76561198001151695"
+        }
+      ]
+    },
+    "divergence": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "std devs",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.divergence",
+      "what": "Non-FACEIT matches vs. FACEIT matches, pooled std devs",
+      "n": 90,
+      "small_sample": false,
+      "mean": -0.0813258,
+      "std": 0.303539,
+      "min": -0.875965,
+      "max": 0.787092,
+      "median": -0.0658936,
+      "percentiles": {
+        "p0": -0.875965,
+        "p1": -0.77843,
+        "p5": -0.497105,
+        "p10": -0.453737,
+        "p25": -0.321673,
+        "p50": -0.0658936,
+        "p75": 0.100447,
+        "p90": 0.239809,
+        "p95": 0.423185,
+        "p99": 0.78091,
+        "p100": 0.787092
+      },
+      "tail": {
+        "top_85pct": -0.396437,
+        "top_75pct": -0.321673,
+        "top_10pct": 0.239809,
+        "top_5pct": 0.423185,
+        "top_1pct": 0.78091,
+        "most_extreme": 0.787092
+      },
+      "extreme_players": [
+        {
+          "value": 0.787092,
+          "player": "twenty3",
+          "steam64_id": "76561198809859276"
+        },
+        {
+          "value": 0.780146,
+          "player": "ICY",
+          "steam64_id": "76561198055109028"
+        },
+        {
+          "value": 0.53999,
+          "player": "FreeZe",
+          "steam64_id": "76561198219516767"
+        },
+        {
+          "value": 0.535781,
+          "player": "roman",
+          "steam64_id": "76561197994395491"
+        },
+        {
+          "value": 0.438393,
+          "player": "roeJ",
+          "steam64_id": "76561197991234691"
+        }
+      ]
+    },
+    "match_rating": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "website units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongMatch",
+      "what": "Leetify rating of one match",
+      "n": 17725,
+      "small_sample": false,
+      "mean": 1.10515,
+      "std": 5.283,
+      "min": -24.54,
+      "max": 40.59,
+      "median": 0.52,
+      "percentiles": {
+        "p0": -24.54,
+        "p1": -9.2,
+        "p5": -6.38,
+        "p10": -4.94,
+        "p25": -2.42,
+        "p50": 0.52,
+        "p75": 3.95,
+        "p90": 7.76,
+        "p95": 10.54,
+        "p99": 16.87,
+        "p100": 40.59
+      },
+      "tail": {
+        "top_85pct": -3.93,
+        "top_75pct": -2.42,
+        "top_10pct": 7.76,
+        "top_5pct": 10.54,
+        "top_1pct": 16.87,
+        "most_extreme": 40.59
+      },
+      "extreme_players": [
+        {
+          "value": 40.59,
+          "player": "STYKO",
+          "steam64_id": "76561198016194159",
+          "match_id": "af2bf14e-0a25-4d7b-b931-de0a1daba789",
+          "finished_at": "2026-09-05T14:48:32.000Z"
+        },
+        {
+          "value": 38.53,
+          "player": "w0nderful",
+          "steam64_id": "76561199063068840",
+          "match_id": "50ee90c3-090c-45d5-a790-999a7afdf457",
+          "finished_at": "2026-09-26T19:11:39.000Z"
+        },
+        {
+          "value": 37.68,
+          "player": "jackasmo",
+          "steam64_id": "76561198446445284",
+          "match_id": "73d6f80e-af7b-4f9d-b324-43a23f0c6f59",
+          "finished_at": "2026-10-10T22:53:35.000Z"
+        },
+        {
+          "value": 34.16,
+          "player": "mwlky",
+          "steam64_id": "76561198167125683",
+          "match_id": "c6cebfa1-5152-4f07-99d7-75d57ea678eb",
+          "finished_at": "2026-09-23T20:09:04.000Z"
+        },
+        {
+          "value": 32.62,
+          "player": "mynio",
+          "steam64_id": "76561197985246786",
+          "match_id": "103bf676-7fd9-4d24-acd7-23de16742073",
+          "finished_at": "2026-05-15T21:42:01.000Z"
+        }
+      ]
+    },
+    "match_preaim": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "deg",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.preaim",
+      "what": "Preaim in one match",
+      "n": 17725,
+      "small_sample": false,
+      "mean": 9.11533,
+      "std": 3.44037,
+      "min": 0.0,
+      "max": 43.01,
+      "median": 8.72,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 2.92,
+        "p5": 4.34,
+        "p10": 5.17,
+        "p25": 6.73,
+        "p50": 8.72,
+        "p75": 11.03,
+        "p90": 13.53,
+        "p95": 15.26,
+        "p99": 19.1904,
+        "p100": 43.01
+      },
+      "tail": {
+        "top_85pct": 12.42,
+        "top_75pct": 11.03,
+        "top_10pct": 5.17,
+        "top_5pct": 4.34,
+        "top_1pct": 2.92,
+        "most_extreme": 0.0
+      },
+      "extreme_players": [
+        {
+          "value": 0.0,
+          "player": "apEX",
+          "steam64_id": "76561197989744167",
+          "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+          "finished_at": "2026-09-27T20:23:21.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "ZywOo",
+          "steam64_id": "76561198113666193",
+          "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+          "finished_at": "2026-09-27T20:23:21.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "lux",
+          "steam64_id": "76561198074017668",
+          "match_id": "90ecbd7f-f970-4bfa-b319-73033e4074d7",
+          "finished_at": "2026-09-26T09:47:57.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "EliGE",
+          "steam64_id": "76561198066693739",
+          "match_id": "8054dd90-5a54-42ce-b230-846d090884ec",
+          "finished_at": "2026-10-06T19:03:29.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "broky",
+          "steam64_id": "76561198201620490",
+          "match_id": "10465215-e35a-4695-b671-bafbf129c558",
+          "finished_at": "2026-05-13T17:37:00.000Z"
+        }
+      ]
+    },
+    "match_reaction_ms": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "ms",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.reaction",
+      "what": "Reaction time in one match",
+      "n": 17725,
+      "small_sample": false,
+      "mean": 473.789,
+      "std": 101.929,
+      "min": 0.0,
+      "max": 1000.0,
+      "median": 461.0,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 297.0,
+        "p5": 336.0,
+        "p10": 359.0,
+        "p25": 406.0,
+        "p50": 461.0,
+        "p75": 531.0,
+        "p90": 609.0,
+        "p95": 656.0,
+        "p99": 781.0,
+        "p100": 1000.0
+      },
+      "tail": {
+        "top_85pct": 578.0,
+        "top_75pct": 531.0,
+        "top_10pct": 359.0,
+        "top_5pct": 336.0,
+        "top_1pct": 297.0,
+        "most_extreme": 0.0
+      },
+      "extreme_players": [
+        {
+          "value": 0.0,
+          "player": "apEX",
+          "steam64_id": "76561197989744167",
+          "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+          "finished_at": "2026-09-27T20:23:21.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "ZywOo",
+          "steam64_id": "76561198113666193",
+          "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+          "finished_at": "2026-09-27T20:23:21.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "lux",
+          "steam64_id": "76561198074017668",
+          "match_id": "90ecbd7f-f970-4bfa-b319-73033e4074d7",
+          "finished_at": "2026-09-26T09:47:57.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "EliGE",
+          "steam64_id": "76561198066693739",
+          "match_id": "8054dd90-5a54-42ce-b230-846d090884ec",
+          "finished_at": "2026-10-06T19:03:29.000Z"
+        },
+        {
+          "value": 0.0,
+          "player": "broky",
+          "steam64_id": "76561198201620490",
+          "match_id": "10465215-e35a-4695-b671-bafbf129c558",
+          "finished_at": "2026-05-13T17:37:00.000Z"
+        }
+      ]
+    },
+    "match_head_acc": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.headAcc",
+      "what": "Head accuracy in one match",
+      "n": 17725,
+      "small_sample": false,
+      "mean": 23.6536,
+      "std": 9.20209,
+      "min": 0.0,
+      "max": 100.0,
+      "median": 22.73,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 5.56,
+        "p5": 10.64,
+        "p10": 13.33,
+        "p25": 17.65,
+        "p50": 22.73,
+        "p75": 28.57,
+        "p90": 35.0,
+        "p95": 39.57,
+        "p99": 50.0,
+        "p100": 100.0
+      },
+      "tail": {
+        "top_85pct": 15.0,
+        "top_75pct": 17.65,
+        "top_10pct": 35.0,
+        "top_5pct": 39.57,
+        "top_1pct": 50.0,
+        "most_extreme": 100.0
+      },
+      "extreme_players": [
+        {
+          "value": 100.0,
+          "player": "try",
+          "steam64_id": "76561198365118288",
+          "match_id": "4d15320f-3e16-428b-a1f7-e862fba600be",
+          "finished_at": "2026-10-06T23:29:53.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "cool4st",
+          "steam64_id": "76561198842848216",
+          "match_id": "3894dce2-9832-4f51-a97e-b2520777288d",
+          "finished_at": "2026-10-07T16:15:43.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "Jame",
+          "steam64_id": "76561198036125584",
+          "match_id": "bc3ded29-8f72-454d-99e1-2bced36c4142",
+          "finished_at": "2026-09-09T14:53:03.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "autimatic",
+          "steam64_id": "76561198054870849",
+          "match_id": "b06adfc6-af0b-444c-9af8-bec437a9c675",
+          "finished_at": "2026-09-26T02:10:39.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "s1n",
+          "steam64_id": "76561198190463461",
+          "match_id": "ecb1626e-2f69-48b7-9f18-575013e07b55",
+          "finished_at": "2026-10-01T17:37:25.000Z"
+        }
+      ]
+    },
+    "match_spray_acc": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.sprayAcc",
+      "what": "Spray accuracy in one match",
+      "n": 17725,
+      "small_sample": false,
+      "mean": 42.3527,
+      "std": 16.1985,
+      "min": 0.0,
+      "max": 100.0,
+      "median": 41.67,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 0.0,
+        "p5": 17.86,
+        "p10": 25.0,
+        "p25": 33.33,
+        "p50": 41.67,
+        "p75": 50.0,
+        "p90": 61.11,
+        "p95": 68.072,
+        "p99": 100.0,
+        "p100": 100.0
+      },
+      "tail": {
+        "top_85pct": 28.114,
+        "top_75pct": 33.33,
+        "top_10pct": 61.11,
+        "top_5pct": 68.072,
+        "top_1pct": 100.0,
+        "most_extreme": 100.0
+      },
+      "extreme_players": [
+        {
+          "value": 100.0,
+          "player": "try",
+          "steam64_id": "76561198365118288",
+          "match_id": "429d9fa9-ba9a-48c5-83cf-59c8a81ff93e",
+          "finished_at": "2026-09-12T09:50:57.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "ZywOo",
+          "steam64_id": "76561198113666193",
+          "match_id": "85c6706b-ef80-4767-b053-d356d28eba96",
+          "finished_at": "2026-09-19T18:18:49.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "torzsi",
+          "steam64_id": "76561198355739212",
+          "match_id": "5530e73f-3460-4d14-9b21-67b45da3bd78",
+          "finished_at": "2026-09-19T15:12:58.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "huNter-",
+          "steam64_id": "76561198012872053",
+          "match_id": "3c321a01-d74d-491e-aff3-223ff3a598c3",
+          "finished_at": "2026-09-12T14:32:09.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "NertZ",
+          "steam64_id": "76561198053126645",
+          "match_id": "4e1f206c-e4ba-4831-b759-f0f804adcf2a",
+          "finished_at": "2026-10-04T16:50:27.000Z"
+        }
+      ]
+    },
+    "match_spotted_acc": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.spottedAcc",
+      "what": "Spotted accuracy in one match",
+      "n": 17725,
+      "small_sample": false,
+      "mean": 39.5379,
+      "std": 7.55012,
+      "min": 0.0,
+      "max": 100.0,
+      "median": 39.34,
+      "percentiles": {
+        "p0": 0.0,
+        "p1": 22.4848,
+        "p5": 28.0,
+        "p10": 30.514,
+        "p25": 34.78,
+        "p50": 39.34,
+        "p75": 44.12,
+        "p90": 48.62,
+        "p95": 51.61,
+        "p99": 58.33,
+        "p100": 100.0
+      },
+      "tail": {
+        "top_85pct": 32.29,
+        "top_75pct": 34.78,
+        "top_10pct": 48.62,
+        "top_5pct": 51.61,
+        "top_1pct": 58.33,
+        "most_extreme": 100.0
+      },
+      "extreme_players": [
+        {
+          "value": 100.0,
+          "player": "EliGE",
+          "steam64_id": "76561198066693739",
+          "match_id": "df5b0682-3e5a-4e28-873c-782807d8be91",
+          "finished_at": "2026-09-30T15:39:45.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "kl1m",
+          "steam64_id": "76561198125068631",
+          "match_id": "24a13ff8-f6ff-4c0f-8cd6-c023906f9608",
+          "finished_at": "2026-06-04T16:42:53.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "SunPayus",
+          "steam64_id": "76561198309839541",
+          "match_id": "f1611b9f-7f26-4e77-b1c9-b9ce6cf87120",
+          "finished_at": "2026-06-15T20:39:23.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "SunPayus",
+          "steam64_id": "76561198309839541",
+          "match_id": "672a4c0e-aa61-44c5-aaa5-b07a4f27649f",
+          "finished_at": "2026-06-08T19:06:43.000Z"
+        },
+        {
+          "value": 100.0,
+          "player": "autimatic",
+          "steam64_id": "76561198054870849",
+          "match_id": "b06adfc6-af0b-444c-9af8-bec437a9c675",
+          "finished_at": "2026-09-26T02:10:39.000Z"
+        }
+      ]
+    }
+  }
+}
