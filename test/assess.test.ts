@@ -25,7 +25,7 @@ describe("assessProfile", () => {
     const d = assessProfile(HIGH()).detail!;
     expect(d.score).toBeGreaterThan(62);
     expect(d.levels).toMatchObject({ rating: "HIGH", aim: "HIGH" });
-    expect(d.metrics.aim).toBe(88);
+    expect(d.metrics.aim).toBe(96);
     expect(d.matches?.avgRating).toBeGreaterThan(4.5);
     expect(d.matches?.recent).toHaveLength(5);
     expect(d.matches?.recent[0].rating).toBeGreaterThan(0); // website units, not fractions
@@ -52,8 +52,8 @@ describe("assessProfile", () => {
   });
 
   it("needs both rating and aim for VERY_HIGH", () => {
-    expect(cls(profile(around(7.5, 1), { aim: 60, clutch: 30 }))).not.toBe("VERY_HIGH");
-    expect(cls(profile(around(7.5, 1), { aim: 97, clutch: 30 }))).toBe("VERY_HIGH");
+    expect(cls(profile(around(7.5, 1), { aim: 60, clutch: 30, total: 100 }))).not.toBe("VERY_HIGH");
+    expect(cls(profile(around(7.5, 1), { aim: 98, clutch: 30, total: 100 }))).toBe("VERY_HIGH");
   });
 
   it("only looks at the newest matches", () => {

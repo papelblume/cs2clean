@@ -70,24 +70,24 @@ export function ratingDisplay(v: number | null | undefined, digits = 2): string 
 /** Axis level for Time to Damage (ms, lower is better). */
 export function ttdLevel(ms: number | null | undefined): string {
   if (ms == null) return "";
-  if (ms <= 560) return "HIGH";
-  if (ms <= 600) return "MEDIUM";
+  if (ms <= 470) return "HIGH";
+  if (ms <= 585) return "MEDIUM";
   return "LOW";
 }
 
 /** Axis level for Crosshair Placement (degrees, lower is tighter). */
 export function cspLevel(deg: number | null | undefined): string {
   if (deg == null) return "";
-  if (deg <= 8.0) return "HIGH";
-  if (deg <= 9.0) return "MEDIUM";
+  if (deg <= 8.8) return "HIGH";
+  if (deg <= 9.8) return "MEDIUM";
   return "LOW";
 }
 
 /** Axis level for Headshot Accuracy (%). */
 export function hsAccuracyLevel(pct: number | null | undefined): string {
   if (pct == null) return "";
-  if (pct >= 25) return "HIGH";
-  if (pct >= 20) return "MEDIUM";
+  if (pct >= 23) return "HIGH";
+  if (pct >= 17.5) return "MEDIUM";
   return "LOW";
 }
 
@@ -112,16 +112,16 @@ export function headshotFact(m: PlayerMetrics): { label: string; value: string; 
 /** Axis level for Spray Accuracy (%). */
 export function sprayAccuracyLevel(pct: number | null | undefined): string {
   if (pct == null) return "";
-  if (pct >= 40) return "HIGH";
-  if (pct >= 36) return "MEDIUM";
+  if (pct >= 43) return "HIGH";
+  if (pct >= 35.5) return "MEDIUM";
   return "LOW";
 }
 
 /** Axis level for Spotted Accuracy (%). */
 export function spottedAccuracyLevel(pct: number | null | undefined): string {
   if (pct == null) return "";
-  if (pct >= 42) return "HIGH";
-  if (pct >= 35) return "MEDIUM";
+  if (pct >= 40) return "HIGH";
+  if (pct >= 34) return "MEDIUM";
   return "LOW";
 }
 

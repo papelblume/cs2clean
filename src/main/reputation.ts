@@ -6,9 +6,28 @@
 // and sudden or unnaturally steady changes over the last matches.
 //
 // What this is NOT: proof of anything. A ban on record is the only hard evidence; everything else is statistics
-// over public aggregates, which cannot see a careful cheater. The constants below are PLACEHOLDERS, not
-// calibrated against known cheaters; fix them with `npm run leetify:probe` output and, better, with profiles
-// that later turned out to carry a ban (compare their matches before `banned_since` with everyone else's).
+// over public aggregates, which cannot see a careful cheater. The constants below are anchored to the stats of
+// ~620 professional players (the pro capability report), NOT calibrated against known cheaters; refine them with
+// `npm run leetify:probe` output and, better, with profiles that later turned out to carry a ban (compare their
+// matches before `banned_since` with everyone else's).
+//
+// How the pro numbers are used. The point is plausibility: where a human's stats stop being believable.
+//   - Absolute skill stats (aim rating, preaim, reaction, head/spray/spotted accuracy, counter-strafing): 0 at the
+//     median pro, 1 at the value only the top 5% of pros reach. Leetify's own FACEIT Level 10 averages (headshot
+//     accuracy 22%, spray 38%, spotted 35%, counter-strafing 83%, preaim 10.0 degrees, time to damage 575 ms, aim
+//     rating 81) sit at or below the median pro on every one of these (crosshair placement, where the average
+//     Level 10 player is better than the median pro, starts at that average), so an ordinary top-tier player is 0
+//     here and only the very best humans in the world reach 1. Those numbers describe the top of the ladder (the
+//     FACEIT Level 10 average, which is also what a Premier rating of 20k or more counts as, since Premier from
+//     20k up is skewed by cheating accounts). A lower rank slides both ends down by part of the gap between its
+//     own average player and that top one (rank-means.ts), so the same stats are odder on a lower-ranked account.
+//     An account with no known rank is measured against the top as it is.
+//   - Stats measured against the lobby (opening duels, ratings) or against the player's own history (trajectory)
+//     don't measure skill, so the pros show what chance alone produces: 0 at about the top 5% (opening) or 1%
+//     (trajectory) of pros, 1 beyond the most extreme pro.
+//   - Within the mechanics family, the aim rating and the reaction time count most (weights below): the aim
+//     rating sums six stats, so it is the steadiest one, and a reaction time has a physical floor (the best pro
+//     averages 347 ms), which cheats go through.
 //
 // Shape of the computation:
 //   1. A ban on record decides everything (tier BANNED, score 0).
@@ -22,6 +41,7 @@
 import type { PlayerReputation, ReputationTier } from "../shared/reputation-types";
 import type { EvidenceClass } from "../shared/types";
 import { ratingScale } from "./matches";
+import { expectedMeans, rankGap, TOP_MEANS, type MeanKey } from "./rank-means";
 import type { LeetifyBan, LeetifyProfile, LeetifyRecentMatch } from "./leetify";
 
 export const REPUTATION = {
@@ -46,42 +66,65 @@ export const REPUTATION = {
   /** Lowest score of each tier. */
   tiers: { trusted: 85, normal: 65, watch: 45, suspicious: 25 },
   /**
-   * Absolute mechanics improve with rank, so a "tight" value means more in a low band. Premier rating maps to
-   * -0.5..+0.5 around mid-band (none known: 0); the endpoints below move by that much times these amounts.
+   * Absolute mechanics improve with rank, so a "tight" value means more on a low rank. For the six stats of
+   * rank-means.ts each range below slides by `slide` times the gap between the account's rank average and the top
+   * one (FACEIT Level 10). Half, not all of it: the averages say nothing about how far apart the players of one rank
+   * are, and the pros' spread (which the ranges come from) is narrower than that of an ordinary rank, so sliding all
+   * the way would flag ordinary strong players of a low rank. Data on the spread per rank would settle this.
+   * The aim rating sums those six stats: across the ranks of Leetify's published averages it falls about `aimSpan`
+   * points from Level 10 down to Level 1 (the average Level 10 aim rating is 81, 5-10k Premier 47, 10-15k 58,
+   * 15-20k 69), in step with the average gap of the six stats, so it slides by `slide * aimSpan * rankGap`.
+   * Opening duels are against the lobby and have no rank to slide with.
    */
-  band: { premierMax: 30000, preaimDeg: 3, reactionMs: 60, accuracyPts: 6, openingPts: 5 },
-  /** [starts to look odd, extreme]. Preaim in degrees, reaction in ms, the rest in percent. */
+  rank: { slide: 0.5, aimSpan: 48 },
+  /**
+   * [starts to look odd, extreme] at the top of the ladder (see the rank above). Preaim in degrees, reaction in ms,
+   * the rest in percent (the aim rating in points of 0-100). The first number is the median pro, the second the
+   * top-5% pro mark. Pro median / top 5% (the average FACEIT Level 10 player in brackets, Sept 2026): aim rating
+   * 92.5 / 98.3 (81), preaim 9.25 / 6.6 (8.84), reaction 470 / 405 (524), headAcc 23.4 / 29.9 (21.4), sprayAcc 43.1 /
+   * 49.8 (39.2), spottedAcc 39.7 / 44.7 (36.7), stopping 83.2 / 89.9 (79.9). Preaim starts at the Level 10 average,
+   * which is better than the median pro's.
+   */
   mechanics: {
-    preaim: [8, 6], reaction: [560, 480], headAcc: [25, 30], sprayAcc: [40, 50],
-    spottedAcc: [42, 50], opening: [55, 70], stopping: [90, 99],
+    aim: [92.5, 98.5], preaim: [8.8, 6.6], reaction: [470, 405], headAcc: [23, 30], sprayAcc: [43, 50],
+    spottedAcc: [40, 45], stopping: [83, 90],
+    /** Opening duels (the lower of CT and T) are measured against the lobby: pro top 5% is 52, top 1% is 58, the best pro 65.5. */
+    opening: [52, 65],
     /**
      * Headshot KILLS (the share of kills that were headshots, csst.at's "HS kills"): a different metric from headAcc
-     * (the share of shots that hit the head). Starts at the card's HIGH cut like the rest. csst.at data has no rank
-     * band, so there is nothing to shift it by.
+     * (the share of shots that hit the head). Starts at the card's HIGH cut like the rest. Pro report: only 30 pros
+     * have it (median 44.9, top 10% 59, top 1% 66, best 66.8), too few to move the range, so it is unchanged.
+     * csst.at data has no rank band, so there is nothing to shift it by.
      */
     headKills: [58, 70],
   },
   coherence: {
-    /** Only a high aim rating can be lopsided in a way that matters... */
+    /** Only a high aim rating can be lopsided in a way that matters (pro median 92.5, 85% of pros are above 85.5)... */
     aimGate: [65, 85],
-    /** ...and aim minus the mean of positioning and utility, in rating points. */
-    aimLead: [25, 50],
-    /** High headshot accuracy while this many percent of shots are NOT taken standing still. */
-    movingHeadAcc: [25, 40], notStopped: [30, 50],
+    /** ...and aim minus the mean of positioning and utility, in rating points. Pros are lopsided by nature (median 26, top 10% 34, top 1% 42, most 54). */
+    aimLead: [34, 54],
+    /**
+     * High headshot accuracy (same range as headAcc) while this many percent of shots are NOT taken standing still.
+     * Pros: median 17, top 1% 29, the most 37, so beyond 28 even the best pros' own numbers don't explain it.
+     */
+    movingHeadAcc: [23, 30], notStopped: [28, 38],
   },
   trajectory: {
     /** Window of "newest" matches compared with the rest, and the smallest group worth comparing. */
     newest: 10, minGroup: 8,
-    /** Mean effect size (standard deviations) of newest-vs-older and non-FACEIT-vs-FACEIT form. */
-    step: [0.6, 1.8], divergence: [0.6, 1.8],
+    /**
+     * Mean effect size (standard deviations) of newest-vs-older and non-FACEIT-vs-FACEIT form. Among pros, chance
+     * alone gives step 0.67 (top 1%) and 0.85 (most of 591); divergence 0.78 (top 1%) and 0.79 (most of 90).
+     */
+    step: [0.7, 1.4], divergence: [0.8, 1.6],
     /** Share of matches at or above average: [odd, extreme], only counted at a mean rating in floorMean. */
     floor: [0.85, 1], floorMean: [2, 5], minFloorMatches: 15,
-    /** Match-to-match variation of reaction time (sd / mean); low is odd. */
-    spread: [0.1, 0.04], minSpreadMatches: 15,
+    /** Match-to-match variation of reaction time (sd / mean); low is odd. Pros: median 0.185, steadiest 1% 0.116, steadiest 0.103. */
+    spread: [0.12, 0.06], minSpreadMatches: 15,
   },
   /** How much each signal's value counts inside its family (0..1). */
   weights: {
-    preaim: 1, reaction: 1, headAcc: 1, headKills: 1, sprayAcc: 0.7, spottedAcc: 0.7, opening: 0.5, stopping: 0.5,
+    aim: 1, reaction: 1, preaim: 0.8, headAcc: 0.8, headKills: 0.6, sprayAcc: 0.6, spottedAcc: 0.6, opening: 0.4, stopping: 0.4,
     lopsided: 1, moving: 1,
     step: 0.8, floor: 1, spread: 0.6, divergence: 0.8,
   },
@@ -119,7 +162,7 @@ export interface Reputation {
 export interface ReputationTrace {
   /** What each value was multiplied by to get the units used here. Percent-type stats are decided one by one. */
   scales: { rating: 1 | 100; percent: { head: 1 | 100; spray: 1 | 100; stopping: 1 | 100; opening: 1 | 100 }; ms: 1 | 1000 };
-  /** Rank band, -0.5..+0.5 (0 when the Premier rating is unknown). */
+  /** How far below the top of the ladder the account's rank is, 0 (top, or no rank known) to 1 (FACEIT Level 1). */
   band: number;
   /** Family scores before and after the dead zone. */
   families: Record<Family, number>;
@@ -256,9 +299,13 @@ export function assessReputation(p: LeetifyProfile): Reputation {
   const openCt = num(st.ct_opening_duel_success_percentage) ? st.ct_opening_duel_success_percentage * openS : null;
   const openT = num(st.t_opening_duel_success_percentage) ? st.t_opening_duel_success_percentage * openS : null;
 
-  const premier = p.ranks?.premier;
-  const band = num(premier) && premier > 0 ? clamp01(premier / T.band.premierMax) - 0.5 : 0;
-  const forBand = num(premier) && premier > 0 ? " for this rank" : "";
+  // The rank's average player (null: no rank known, so the ranges apply as they are) and how far each range slides.
+  const rank = expectedMeans(p.ranks);
+  const band = rank ? rankGap(rank) : 0;
+  const forBand = rank ? " for this rank" : "";
+  const slide = (k: MeanKey) => (rank ? T.rank.slide * (rank[k] - TOP_MEANS[k]) : 0);
+
+  const aim = opt(p.rating?.aim), pos = opt(p.rating?.positioning), util = opt(p.rating?.utility);
 
   const signals: ReputationSignal[] = [];
   const add = (id: SignalId, family: Family, value: number | null, text: string) => {
@@ -268,32 +315,33 @@ export function assessReputation(p: LeetifyProfile): Reputation {
 
   // Mechanics: values in the extreme tail of what a human does at this rank.
   const M_ = T.mechanics;
+  if (aim !== null)
+    add("aim", "mechanics", ramp(aim, move(M_.aim, -T.rank.slide * T.rank.aimSpan * band)), `Aim rating of ${f1(aim)} is unusually high${forBand}`);
   if (preaim !== null)
-    add("preaim", "mechanics", ramp(preaim, move(M_.preaim, -band * T.band.preaimDeg)), `Crosshair placement (preaim ${f1(preaim)}°) is unusually tight${forBand}`);
+    add("preaim", "mechanics", ramp(preaim, move(M_.preaim, slide("preaim"))), `Crosshair placement (preaim ${f1(preaim)}°) is unusually tight${forBand}`);
   if (reaction !== null)
-    add("reaction", "mechanics", ramp(reaction, move(M_.reaction, -band * T.band.reactionMs)), `Reaction time of ${Math.round(reaction)} ms is unusually fast${forBand}`);
+    add("reaction", "mechanics", ramp(reaction, move(M_.reaction, slide("reaction"))), `Reaction time of ${Math.round(reaction)} ms is unusually fast${forBand}`);
   if (head !== null)
-    add("headAcc", "mechanics", ramp(head, move(M_.headAcc, band * T.band.accuracyPts)), `Headshot accuracy of ${f1(head)}% is unusually high${forBand}`);
+    add("headAcc", "mechanics", ramp(head, move(M_.headAcc, slide("headAcc"))), `Headshot accuracy of ${f1(head)}% is unusually high${forBand}`);
   if (headKills !== null)
     add("headKills", "mechanics", ramp(headKills, M_.headKills), `Headshot kills of ${f1(headKills)}% is unusually high`);
   if (spray !== null)
-    add("sprayAcc", "mechanics", ramp(spray, move(M_.sprayAcc, band * T.band.accuracyPts)), `Spray accuracy of ${f1(spray)}% is unusually high${forBand}`);
+    add("sprayAcc", "mechanics", ramp(spray, move(M_.sprayAcc, slide("sprayAcc"))), `Spray accuracy of ${f1(spray)}% is unusually high${forBand}`);
   if (spotted !== null)
-    add("spottedAcc", "mechanics", ramp(spotted, move(M_.spottedAcc, band * T.band.accuracyPts)), `Spotted accuracy of ${f1(spotted)}% is unusually high${forBand}`);
+    add("spottedAcc", "mechanics", ramp(spotted, move(M_.spottedAcc, slide("spottedAcc"))), `Spotted accuracy of ${f1(spotted)}% is unusually high${forBand}`);
   if (openCt !== null && openT !== null)
-    add("opening", "mechanics", ramp(Math.min(openCt, openT), move(M_.opening, band * T.band.openingPts)),
-      `Wins ${f1(Math.min(openCt, openT))}% of opening duels or more on both sides${forBand}`);
+    add("opening", "mechanics", ramp(Math.min(openCt, openT), M_.opening),
+      `Wins ${f1(Math.min(openCt, openT))}% of opening duels or more on both sides`);
   if (stopping !== null)
-    add("stopping", "mechanics", ramp(stopping, M_.stopping), `${f1(stopping)}% of shots are taken perfectly stopped`);
+    add("stopping", "mechanics", ramp(stopping, move(M_.stopping, slide("stopping"))), `${f1(stopping)}% of shots are taken perfectly stopped${forBand}`);
 
   // Coherence: numbers that don't fit together the way a human's do.
   const C = T.coherence;
-  const aim = opt(p.rating?.aim), pos = opt(p.rating?.positioning), util = opt(p.rating?.utility);
   if (aim !== null && pos !== null && util !== null)
     add("lopsided", "coherence", ramp(aim - (pos + util) / 2, C.aimLead) * ramp(aim, C.aimGate),
       `Aim rating ${f1(aim)} but positioning ${f1(pos)} and utility ${f1(util)}`);
   if (head !== null && stopping !== null)
-    add("moving", "coherence", ramp(head, move(C.movingHeadAcc, band * T.band.accuracyPts)) * ramp(100 - stopping, C.notStopped),
+    add("moving", "coherence", ramp(head, move(C.movingHeadAcc, slide("headAcc"))) * ramp(100 - stopping, C.notStopped),
       `Headshot accuracy ${f1(head)}% although only ${f1(stopping)}% of shots are taken standing still`);
 
   // Trajectory: what the recent matches do over time. `ms` is newest first.

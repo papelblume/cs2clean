@@ -54,19 +54,21 @@ describe("csst.at's headshot kills", () => {
     expect(value(80)).toBe(1);
   });
 
-  it("show up as headshot kills in the working and in the lowered score", () => {
+  it("show up as headshot kills in the working and in the mechanics score", () => {
     const high = assessReputation(fromCsst(75));
     expect(signal(high, "headKills")?.text).toMatch(/^Headshot kills of 75% is unusually high/);
-    expect(high.score!).toBeLessThan(assessReputation(fromCsst(40)).score!);
+    // A lone signal never changes the tier, so the family score is what shows it.
+    expect(high.trace!.families.mechanics).toBeGreaterThan(assessReputation(fromCsst(40)).trace!.families.mechanics);
   });
 });
 
 describe("headshot accuracy", () => {
-  it("is scored from 25% (odd) to 30% (extreme)", () => {
+  it("is scored from 23% (odd, the median pro) to 30% (extreme, the top 5% of pros); an average FACEIT Level 10 player (22%) is at 0", () => {
     const value = (head: number) => signal(assessReputation(fromApi(head)), "headAcc")?.value ?? 0;
     expect(value(10)).toBe(0);
-    expect(value(25)).toBe(0);
-    expect(value(27.5)).toBeCloseTo(0.5);
+    expect(value(22)).toBe(0);
+    expect(value(23)).toBe(0);
+    expect(value(26.5)).toBeCloseTo(0.5);
     expect(value(30)).toBe(1);
     expect(value(45)).toBe(1);
   });
@@ -93,7 +95,10 @@ describe("the headshot row of a card", () => {
   });
 
   it("stays Headshot accuracy, with its own tier, on a card with Leetify data", () => {
+    // The card's tiers: HIGH from the median pro (23%), MEDIUM from the average FACEIT Level 10 player (22%).
+    expect(headshotFact(metricsOf({ stats: { accuracy_head: 17 } }))).toEqual({ label: "Headshot accuracy", value: "17.0%", level: "LOW" });
     expect(headshotFact(metricsOf({ stats: { accuracy_head: 22 } }))).toEqual({ label: "Headshot accuracy", value: "22.0%", level: "MEDIUM" });
+    expect(headshotFact(metricsOf({ stats: { accuracy_head: 23 } }))).toEqual({ label: "Headshot accuracy", value: "23.0%", level: "HIGH" });
   });
 
   it("shows an empty Headshot accuracy when there is neither", () => {

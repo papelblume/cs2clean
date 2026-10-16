@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { combineClass, LeetifyClient, lookupLobby, type LeetifyProfile, type LeetifyRecentMatch } from "../src/main/leetify";
 import { LobbyService, type LobbyAnswer } from "../src/main/lobby";
 import { assessReputation, toEvidenceClass } from "../src/main/reputation";
+import { FACEIT_MEANS, PREMIER_MEANS, type RankMeans } from "../src/main/rank-means";
 
 /** A steady wobble in -1..1, so fixtures vary from match to match without a random generator. */
 const wobble = (i: number, k: number) => Math.sin((i + 1) * 12.9898 + k * 78.233);
@@ -28,11 +29,12 @@ function matches(s: Spec): LeetifyRecentMatch[] {
   }));
 }
 
-function profile(s: Spec, o: { aim: number; pos: number; util: number; cs: number; open: number; premier?: number; total?: number }): LeetifyProfile {
+// premier: 15000 unless given; null: no Premier rating at all.
+function profile(s: Spec, o: { aim: number; pos: number; util: number; cs: number; open: number; premier?: number | null; faceit?: number; total?: number }): LeetifyProfile {
   const k = s.fractions ? 0.01 : 1;
   return {
     steam64_id: "76561198000000001", name: "p", privacy_mode: "public", total_matches: o.total ?? 400,
-    ranks: { premier: o.premier ?? 15000 },
+    ranks: { premier: o.premier === null ? undefined : o.premier ?? 15000, faceit: o.faceit },
     rating: { aim: o.aim, positioning: o.pos, utility: o.util, clutch: 2 * k },
     stats: {
       preaim: s.preaim, reaction_time_ms: s.reaction, accuracy_head: s.head * k, spray_accuracy: s.spray * k,
@@ -57,9 +59,77 @@ describe("assessReputation", () => {
   });
 
   it("does not punish skill by itself: strong, balanced, human-looking numbers stay unflagged", () => {
-    const r = assessReputation(profile({ rating: 3, ratingSd: 3.5, preaim: 7, reaction: 500, head: 30, spray: 52 },
-      { aim: 90, pos: 85, util: 80, cs: 85, open: 55, premier: 24000 }));
+    const r = assessReputation(profile({ rating: 3, ratingSd: 3.5, preaim: 9.5, reaction: 480, head: 22, spray: 42 },
+      { aim: 90, pos: 75, util: 70, cs: 82, open: 50, premier: 24000 }));
     expect(r.score).toBeGreaterThanOrEqual(65);
+  });
+
+  // The pro capability report (~620 pros) and Leetify's rank averages (rank-means.ts, September 2026). The median pro
+  // has preaim 9.25, reaction 470 ms, 23.4% head accuracy, 43% spray accuracy, 83% counter-strafing and an aim rating
+  // of 92.5 (positioning and utility near 66). The average FACEIT Level 10 player has 8.84, 524 ms, 21.4%, 39.2%,
+  // 80% and an aim rating of 81. Neither is implausible at the top of the ladder; on a lower rank the median pro is.
+  describe("measured against the pros", () => {
+    type Rank = { premier?: number | null; faceit?: number };
+    const MEDIAN_PRO: Spec = { rating: 1, ratingSd: 3, preaim: 9.25, reaction: 470, head: 23.4, spray: 43 };
+    const medianPro = (rank: Rank) => assessReputation(profile(MEDIAN_PRO, { aim: 92.5, pos: 65.5, util: 66, cs: 83, open: 39, ...rank }));
+    const TOP_10_PERCENT: Spec = { rating: 3, ratingSd: 3, preaim: 7.3, reaction: 418, head: 28.3, spray: 48.4 };
+    const top10Pro = (rank: Rank) => assessReputation(profile(TOP_10_PERCENT, { aim: 97.3, pos: 76, util: 78, cs: 88.5, open: 49, ...rank }));
+    /** The average player of a rank (its row of rank-means.ts, with the matching aim and utility ratings). */
+    const average = (m: RankMeans, aim: number, util: number, rank: Rank) =>
+      assessReputation(profile({ rating: 0, ratingSd: 3, preaim: m.preaim, reaction: m.reaction, head: m.headAcc, spray: m.sprayAcc },
+        { aim, pos: util, util, cs: m.stopping, open: 40, ...rank }));
+
+    it("leaves the median pro alone at the top of the ladder and on an account with no rank", () => {
+      for (const rank of [{ premier: 25000 }, { premier: null, faceit: 10 }, { premier: null }]) {
+        const r = medianPro(rank);
+        expect(r.tier, JSON.stringify(rank)).toBe("TRUSTED");
+      }
+    });
+
+    it("flags the median pro's numbers on a lower rank: that is a player far above their rank", () => {
+      for (const rank of [{ premier: 5000 }, { premier: 10000 }, { premier: null, faceit: 3 }, { premier: null, faceit: 5 }]) {
+        const r = medianPro(rank);
+        expect(r.tier, JSON.stringify(rank)).toBe("WATCH");
+        expect(r.reasons.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("leaves the average player of every rank alone on their own rank, but not an average Level 10 player on a very low one", () => {
+      expect(average(FACEIT_MEANS[9], 81, 61, { premier: null, faceit: 10 }).tier).toBe("TRUSTED");
+      expect(average(FACEIT_MEANS[4], 63, 58, { premier: null, faceit: 5 }).tier).toBe("TRUSTED");
+      expect(average(PREMIER_MEANS[4], 47, 51, { premier: 5000 }).tier).toBe("TRUSTED");
+      expect(average(FACEIT_MEANS[9], 81, 61, { premier: 1500 }).tier).toBe("WATCH");
+    });
+
+    it("puts the top 10% of pros in WATCH on every rank", () => {
+      for (const rank of [{ premier: null }, { premier: 5000 }, { premier: 25000 }]) expect(top10Pro(rank).tier, JSON.stringify(rank)).toBe("WATCH");
+    });
+
+    it("trusts the better of a Premier rating and a FACEIT level", () => {
+      // A 5k Premier account that is also FACEIT Level 8 is measured as a Level 8.
+      expect(medianPro({ premier: 5000, faceit: 8 }).score).toBe(medianPro({ premier: null, faceit: 8 }).score);
+      expect(medianPro({ premier: 5000, faceit: 8 }).score).toBeGreaterThan(medianPro({ premier: 5000 }).score);
+    });
+
+    it("counts the aim rating and the reaction time most inside the mechanics family", () => {
+      const ORDINARY_SPEC: Spec = { rating: 0, ratingSd: 3, preaim: 11, reaction: 560, head: 20, spray: 36 };
+      const ordinary = { aim: 80, pos: 60, util: 60, cs: 80, open: 40 };
+      // Aim rating and reaction time at the top-5% pro mark, everything else ordinary.
+      const aimAndReaction = assessReputation(profile({ ...ORDINARY_SPEC, reaction: 405 }, { ...ordinary, aim: 98.3 }));
+      expect(aimAndReaction.tier).toBe("WATCH");
+      expect(aimAndReaction.trace!.signals.filter((s) => s.value >= 0.9).map((s) => s.id).sort()).toEqual(["aim", "reaction"]);
+      // The same distance up on headshot accuracy alone does not get that far.
+      const headOnly = assessReputation(profile({ ...ORDINARY_SPEC, head: 30 }, ordinary));
+      expect(headOnly.score).toBeGreaterThanOrEqual(85);
+      expect(headOnly.trace!.families.mechanics).toBeLessThan(aimAndReaction.trace!.families.mechanics);
+    });
+
+    it("moves the aim-rating bar with the rank: an aim rating of 80 means nothing at the top of the ladder and a lot at 5k Premier", () => {
+      const aimOf = (premier: number) => assessReputation(profile({ ...MEDIAN_PRO, reaction: 500 }, { aim: 80, pos: 65, util: 66, cs: 83, open: 39, premier }))
+        .trace!.signals.find((s) => s.id === "aim")!.value;
+      expect(aimOf(25000)).toBe(0);
+      expect(aimOf(5000)).toBeGreaterThan(0.8);
+    });
   });
 
   it("puts a blatant, incoherent profile in the worst tier and explains why", () => {

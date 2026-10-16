@@ -11,8 +11,12 @@
 // Whatever the API sends is used: a missing signal is left out and the others are re-weighted, and a thin history
 // (few matches) is discounted, never refused. Only a profile with no ratings at all has nothing to score.
 //
-// The cut-offs below are starting points, not calibrated against known cheaters. Run `npm run leetify:probe
-// <steamid64>` to see a real profile's raw numbers next to what this computes, and tune THRESHOLDS.
+// The cut-offs below are anchored to the stats of ~620 professional players (the pro capability report), not
+// calibrated against known cheaters. The aim signal is 0 at the average FACEIT Level 10 player (aim rating 81, per
+// Leetify's rank averages) and 1 at the best possible aim rating, which puts the median pro (92.5) at ELEVATED, the
+// top 5% of pros (98.3) at VERY_HIGH, and the HIGH cut at about 94.6.
+// The rating and clutch stats are measured against the lobby, so there the pros only show how far the top 1%
+// goes. Run `npm run leetify:probe <steamid64>` to see a real profile's raw numbers next to what this computes.
 
 import type { AxisLevel, EvidenceClass, MatchSummary, PlayerDetail, PlayerMetrics } from "../shared/types";
 import type { LeetifyProfile } from "./leetify";
@@ -21,12 +25,17 @@ import { matchSeries } from "./matches";
 export const THRESHOLDS = {
   /** Recent matches needed before they stand in for the overall Leetify rating. */
   minRecent: 5,
-  /** Match rating in website units (+5.0 is a very strong match; the overall ranks.leetify uses the same scale). */
-  rating: { mean: [0, 6], strongMatch: 3, strongShare: [0.2, 0.9], mix: { mean: 0.7, share: 0.3 } },
-  /** Aim rating, 0-100. */
-  aim: [55, 95],
-  /** Clutch rating, as the API sends it (0.1 is a good clutcher). Noisy, so it carries little weight. */
-  clutch: [0.08, 0.3],
+  /**
+   * Match rating in website units (+5.0 is a very strong match; the overall ranks.leetify uses the same scale).
+   * Against the lobby, so the pros sit near 0 (median +0.9, top 10% +3.6, top 1% +6.6): the mean tops out at the
+   * top-1% mark. A pro has 30% matches at +3 or better (top 1%: 70%), so the share runs from the weakest quarter
+   * of pros (20%) to that top-1% mark.
+   */
+  rating: { mean: [0, 6], strongMatch: 3, strongShare: [0.2, 0.7], mix: { mean: 0.7, share: 0.3 } },
+  /** Aim rating, 0-100. Average FACEIT Level 10: 81. Pros: weakest 15% below 85.5, median 92.5, top 10% above 97.3, top 1% above 99. */
+  aim: [82, 100],
+  /** Clutch rating, as the API sends it (0.1 is a good clutcher). Noisy, so it carries little weight. Pros: median 0.10, top 1% 0.21, best 0.25. */
+  clutch: [0.08, 0.21],
   /** Share of the combined score each signal carries (a missing signal's share goes to the others). */
   weights: { rating: 0.5, aim: 0.35, clutch: 0.15 },
   /** Matches (the profile's total, else the recent ones) for full confidence; fewer discount the score. */
