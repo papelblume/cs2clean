@@ -292,7 +292,7 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
     debug("leetify", "Hero fallback for:", idsToScrape.join(", "));
     let scraped: HeroScrape;
     try {
-      scraped = await (o.scrape ?? scrapeCsstAtProfiles)(idsToScrape, 500);
+      scraped = await (o.scrape ?? scrapeCsstAtProfiles)(idsToScrape, 4000);
     } catch (e) {
       // scrapeCsstAtProfiles never throws, but a stand-in or a bug might: that is a broken fallback, not a failed lobby.
       scraped = { profiles: new Map(), status: unexpectedHeroFailure(e) };
