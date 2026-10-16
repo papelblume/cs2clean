@@ -89,6 +89,31 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("shows the players Leetify knows while the csst.at fallback is still working on the others", async () => {
+    const src = new FakeSource();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const scrape = async (ids: string[]): Promise<HeroScrape> => {
+      await gate;
+      return { profiles: new Map(ids.map((id) => [id, AVERAGE()])), status: HERO_READY, failed: new Map() };
+    };
+    const { c, server } = setup({}, src, { scrape });
+    server.s.missing.add(P(2).steamId); // not on Leetify: only csst.at may know them
+    server.s.profiles[P(1).steamId] = VERY_HIGH();
+    c.start();
+    src.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(c.state.lobby.rows.map((r) => r.status)).toEqual(["ok", "ok", "loading"]);
+    expect(c.state.lobby.rows[1].classification).toBe("VERY_HIGH");
+    expect(c.state.alert.seq).toBe(1); // and the siren doesn't wait for the fallback either
+
+    release();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(c.state.lobby.rows.map((r) => r.status)).toEqual(["ok", "ok", "ok"]);
+    expect(c.state.alert.seq).toBe(1); // not again for the same player
+    c.stop();
+  });
+
   it("works without an API key, and uses the one from the environment when none is saved", async () => {
     const a = setup();
     expect(a.c.state.leetify.hasKey).toBe(false);

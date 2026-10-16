@@ -9,7 +9,7 @@ import { pressViewKey } from "../shared/overlay-keys";
 import type { AppState, LobbyRow, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
-import { LobbyService, type LobbyOptions } from "./lobby";
+import { LobbyService, type LobbyAnswer, type LobbyOptions } from "./lobby";
 import { validateSteamKey } from "./steam/friends";
 import type { UpdateResult } from "./update-checker";
 
@@ -69,7 +69,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.leetify = new LeetifyClient(key, deps.fetchImpl);
     const steamKey = this.settings.steamApiKey || deps.steamApiKey || null;
     const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) };
-    this.lobby = new LobbyService((ids) => this.lookup(ids), () => this.publish(), lobbyOpts);
+    this.lobby = new LobbyService((ids, onEarly) => this.lookup(ids, onEarly), () => this.publish(), lobbyOpts);
     this.state = {
       version: deps.version,
       leetify: { hasKey: !!key, reachable: null, fallback: { working: null, reason: null } },
@@ -347,11 +347,12 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
 
   // ------------------------------------------------------------------ lobby
 
-  private async lookup(steamIds: string[]) {
+  private async lookup(steamIds: string[], onEarly?: (answers: LobbyAnswer[]) => void) {
     try {
       return await lookupLobby(this.leetify, steamIds, {
         concurrency: this.deps.leetifyConcurrency,
         scrape: this.deps.scrape,
+        onEarly,
         onSource: (steamId, source) => {
           if (source) this.sources.set(steamId, source);
           else this.sources.delete(steamId);

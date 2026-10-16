@@ -205,6 +205,12 @@ export interface LookupOptions {
   onReach?: (ok: boolean) => void;
   /** The csst.at fallback for players Leetify doesn't know. Tests pass a stand-in so none of them start the sidecar. */
   scrape?: (steamIds: string[], delayMs?: number) => Promise<HeroScrape>;
+  /**
+   * Called once, when Leetify has answered for everybody and the csst.at fallback is about to start, with the answers
+   * that are settled by then. The fallback can take a minute or more, and these players should not wait for it. The
+   * players waiting for the fallback are not in this list; the list lookupLobby returns still holds everybody.
+   */
+  onEarly?: (answers: LobbyAnswer[]) => void;
 }
 
 /** Fallback problems that can clear up by themselves: the lobby asks again later instead of settling on "no data". */
@@ -290,9 +296,20 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
   if (notFound.length > 0) {
     const idsToScrape = notFound.map((i) => steamIds[i]);
     debug("leetify", "Hero fallback for:", idsToScrape.join(", "));
+    // The scrape takes a while (Hero and Chrome start, then a pause between players): hand over what Leetify settled first.
+    const waiting = new Set(notFound);
+    const early = out.filter((_, i) => !waiting.has(i));
+    if (early.length > 0) {
+      try {
+        o.onEarly?.(early);
+      } catch (e) {
+        debug("leetify", "onEarly threw:", e); // a listener's bug is not a failed lookup
+      }
+    }
     let scraped: HeroScrape;
     try {
-      scraped = await (o.scrape ?? scrapeCsstAtProfiles)(idsToScrape, 4000);
+      // No delay given: scrapeCsstAtProfiles' own (SCRAPE_DELAY_MS) applies.
+      scraped = await (o.scrape ?? scrapeCsstAtProfiles)(idsToScrape);
     } catch (e) {
       // scrapeCsstAtProfiles never throws, but a stand-in or a bug might: that is a broken fallback, not a failed lobby.
       scraped = { profiles: new Map(), status: unexpectedHeroFailure(e) };

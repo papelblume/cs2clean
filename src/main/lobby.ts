@@ -35,7 +35,12 @@ export interface LobbyAnswer {
   recheckAfterMs?: number;
 }
 
-export type Lookup = (steamIds: string[]) => Promise<LobbyAnswer[]>;
+/**
+ * Answers for the given players. `onEarly` may be called once, before the lookup is finished, with the answers that are
+ * already settled: the rest (the csst.at fallback can take a minute or more) is still out, and those players wait for
+ * the returned list, which holds everyone's answer again.
+ */
+export type Lookup = (steamIds: string[], onEarly?: (answers: LobbyAnswer[]) => void) => Promise<LobbyAnswer[]>;
 
 interface Cached {
   classification: EvidenceClass | null;
@@ -294,7 +299,7 @@ export class LobbyService {
 
     let retryIn: number | null = null;
     try {
-      const answers = await this.lookup(batch);
+      const answers = await this.lookup(batch, (early) => this.absorbEarly(early, epoch));
       if (this.disposed) { this.inFlight = false; return; } // stopped while the lookup was out: its answer is dropped
       const at = this.now;
       let problem: string | null = null;
@@ -307,9 +312,7 @@ export class LobbyService {
           retryIn = Math.max(retryIn ?? 0, a.retryAfterMs ?? this.opts.retryMs ?? 15_000);
           continue;
         }
-        this.cache.set(a.steamId, { classification: a.classification, totalMatches: a.totalMatches,
-                                    name: a.name ?? null, detail: a.detail ?? null, reputation: a.reputation ?? null, note: a.note ?? null, at,
-                                    recheckAfterMs: a.recheckAfterMs ?? null });
+        this.cache.set(a.steamId, this.toCached(a, at));
         this.failed.delete(a.steamId);
         if (a.steamId === this.opts.localSteamId) localAnswered = true;
       }
@@ -334,6 +337,33 @@ export class LobbyService {
     }
     if (retryIn !== null) this.scheduleRetry(retryIn);
     else this.schedule();
+  }
+
+  private toCached(a: LobbyAnswer, at: number): Cached {
+    return { classification: a.classification, totalMatches: a.totalMatches,
+             name: a.name ?? null, detail: a.detail ?? null, reputation: a.reputation ?? null, note: a.note ?? null, at,
+             recheckAfterMs: a.recheckAfterMs ?? null };
+  }
+
+  /**
+   * Shows the settled answers of a lookup that is still running (see Lookup), so players Leetify has answered for don't
+   * wait for the slower ones. Transient answers are left alone: the lookup's final list has them too, and run() decides
+   * what to retry and when. Whoever is still out keeps the "loading" row.
+   */
+  private absorbEarly(answers: LobbyAnswer[], epoch: number): void {
+    if (this.disposed) return;
+    const at = this.now;
+    let any = false;
+    for (const a of answers) {
+      if (!a.steamId || a.transient) continue;
+      this.cache.set(a.steamId, this.toCached(a, at));
+      this.failed.delete(a.steamId);
+      if (a.steamId === this.opts.localSteamId) this.localPlayerDoneFor = epoch;
+      any = true;
+    }
+    if (!any) return;
+    this.updatedAt = new Date(at).toISOString();
+    this.onChange();
   }
 
   /** Fetch friends lists for all lobby players and compute connected components. */

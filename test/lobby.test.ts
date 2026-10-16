@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MatchState } from "../src/shared/types";
-import { LobbyService } from "../src/main/lobby";
+import { LobbyService, type LobbyAnswer } from "../src/main/lobby";
 
 // The Steam Web API call behind the friendship groups; the tests count and steer it.
 const groupPlayers = vi.hoisted(() =>
@@ -85,6 +85,83 @@ describe("LobbyService", () => {
     expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "ok"]);
     expect(lobby.error).toBeNull();
   });
+
+  describe("a lookup that hands over some answers early", () => {
+    /** A lookup that gives `early` right away and the full list only when `release()` is called. */
+    function slowLookup(early: (ids: string[]) => LobbyAnswer[], final: (ids: string[]) => LobbyAnswer[]) {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      const lookup = vi.fn(async (ids: string[], onEarly?: (a: LobbyAnswer[]) => void) => {
+        onEarly?.(early(ids));
+        await gate;
+        return final(ids);
+      });
+      return { lookup, release };
+    }
+
+    it("shows them while the rest is still out, and the others stay 'loading'", async () => {
+      const { lookup, release } = slowLookup((ids) => [ok(ids[0])], (ids) => ids.map(ok));
+      let changes = 0;
+      const lobby = new LobbyService(lookup, () => changes++, { debounceMs: 10 });
+      lobby.setMatch(match(A, B));
+      await vi.advanceTimersByTimeAsync(20);
+      expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "loading"]);
+      expect(lobby.rows()[0]).toMatchObject({ classification: "NORMAL", totalMatches: 3 });
+      expect(lobby.updatedAt).not.toBeNull();
+      const before = changes;
+      expect(before).toBeGreaterThan(1); // the window was told when the early answer came, not only at the end
+
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "ok"]);
+      expect(changes).toBeGreaterThan(before);
+      expect(lookup).toHaveBeenCalledTimes(1); // nobody is asked twice
+    });
+
+    it("leaves a temporary failure to the final answers: no 'error' row, no retry timer, until they arrive", async () => {
+      const { lookup, release } = slowLookup((ids) => [limited(ids[0], 5000)], (ids) => [limited(ids[0], 5000), ok(ids[1])]);
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10 });
+      lobby.setMatch(match(A, B));
+      await vi.advanceTimersByTimeAsync(20);
+      expect(lobby.rows().map((r) => r.status)).toEqual(["loading", "loading"]);
+      expect(lobby.error).toBeNull();
+
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(lobby.rows().map((r) => r.status)).toEqual(["error", "ok"]);
+      expect(lobby.error).toMatch(/request limit/);
+      await vi.advanceTimersByTimeAsync(4000); // still inside Retry-After
+      expect(lookup).toHaveBeenCalledTimes(1);
+    });
+
+    it("counts the local player as looked up once their early answer is in", async () => {
+      const { lookup, release } = slowLookup((ids) => [ok(ids[0])], (ids) => ids.map(ok));
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: A });
+      lobby.setMatch(match(A, B));
+      await vi.advanceTimersByTimeAsync(20);
+      release();
+      await vi.advanceTimersByTimeAsync(2000);
+      lobby.setMatch(match(A, B, C)); // a player joins: only the new one is asked about
+      await vi.advanceTimersByTimeAsync(20);
+      expect(lookup).toHaveBeenCalledTimes(2);
+      expect(lookup.mock.calls[1][0]).toEqual([C]);
+    });
+
+    it("drops an early answer that arrives after the service was disposed", async () => {
+      let late!: (a: LobbyAnswer[]) => void;
+      const lookup = vi.fn((_ids: string[], onEarly?: (a: LobbyAnswer[]) => void) => new Promise<LobbyAnswer[]>(() => { late = onEarly!; }));
+      let changes = 0;
+      const lobby = new LobbyService(lookup, () => changes++, { debounceMs: 10 });
+      lobby.setMatch(match(A));
+      await vi.advanceTimersByTimeAsync(20);
+      const before = changes;
+      lobby.dispose();
+      late([ok(A)]);
+      expect(changes).toBe(before);
+      expect(lobby.rows()[0].status).toBe("loading");
+    });
+  });
+
   // SteamSource re-announces the match on every GSI post and every scan (every 10 s or less). The tests below pass
   // `localSteamId`, as the app does; without it the per-match state that used to be reset on each call stays hidden.
   describe("a match that is announced again", () => {

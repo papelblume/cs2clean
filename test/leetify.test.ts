@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LeetifyClient, LeetifyError, lookupLobby, type LeetifyProfile } from "../src/main/leetify";
+import type { LobbyAnswer } from "../src/main/lobby";
 import { HERO_READY, type HeroProblem, type HeroScrape, type HeroStatus } from "../src/main/leetify-hero";
 import { AVERAGE, HIGH } from "./profiles";
 
@@ -143,6 +144,76 @@ describe("lookupLobby", () => {
       const sc = scraper({});
       await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1)], { scrape: sc.scrape });
       expect(sc.calls).toEqual([]);
+    });
+
+    describe("while it is still running", () => {
+      /** A fallback that answers only when the test lets it. */
+      function slowScraper(found: Record<string, LeetifyProfile>) {
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => (release = resolve));
+        const calls: [string[], number | undefined][] = [];
+        const scrape = async (ids: string[], delayMs?: number): Promise<HeroScrape> => {
+          calls.push([ids, delayMs]);
+          await gate;
+          return { profiles: new Map(Object.entries(found).filter(([id]) => ids.includes(id))), status: HERO_READY };
+        };
+        return { scrape, release, calls };
+      }
+      const tick = () => new Promise((r) => setTimeout(r, 20));
+
+      it("hands over the players Leetify answered for, without waiting for it", async () => {
+        const sc = slowScraper({ [ID(2)]: AVERAGE() });
+        const early: LobbyAnswer[][] = [];
+        let finished = false;
+        const done = lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1), ID(2)], {
+          scrape: sc.scrape,
+          onEarly: (a) => early.push(a),
+        }).then((out) => ((finished = true), out));
+        await tick();
+        expect(sc.calls).toHaveLength(1); // the fallback is out...
+        expect(finished).toBe(false);
+        expect(early).toHaveLength(1); // ...and Leetify's answer is already out too
+        expect(early[0].map((a) => [a.steamId, a.classification])).toEqual([[ID(1), "HIGH"]]);
+
+        sc.release();
+        const out = await done;
+        expect(out.map((a) => [a.steamId, a.classification])).toEqual([[ID(1), "HIGH"], [ID(2), "NORMAL"]]); // the final list has everybody
+        expect(early).toHaveLength(1);
+      });
+
+      it("includes a temporary failure among the early answers, so the caller can tell it from 'still out'", async () => {
+        const sc = slowScraper({});
+        const early: LobbyAnswer[][] = [];
+        const f = fake({ [ID(1)]: json(429, {}, { "Retry-After": "12" }) });
+        const done = lookupLobby(new LeetifyClient("k", f.fetchImpl), [ID(1), ID(2)], { scrape: sc.scrape, onEarly: (a) => early.push(a) });
+        await tick();
+        expect(early[0]).toHaveLength(1);
+        expect(early[0][0]).toMatchObject({ steamId: ID(1), transient: true, retryAfterMs: 12_000 });
+        sc.release();
+        await done;
+      });
+
+      it("says nothing early when Leetify knows everybody, or when nobody was settled", async () => {
+        const early: LobbyAnswer[][] = [];
+        await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1)], { scrape: scraper({}).scrape, onEarly: (a) => early.push(a) });
+        await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1), ID(2)], { scrape: scraper({}).scrape, onEarly: (a) => early.push(a) });
+        expect(early).toEqual([]);
+      });
+
+      it("is not failed by a listener that throws", async () => {
+        const out = await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1), ID(2)], {
+          scrape: scraper({ [ID(2)]: AVERAGE() }).scrape,
+          onEarly: () => { throw new Error("listener bug"); },
+        });
+        expect(out.map((a) => a.classification)).toEqual(["HIGH", "NORMAL"]);
+      });
+
+      it("leaves the pause between players to the fallback", async () => {
+        const sc = slowScraper({});
+        sc.release();
+        await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: sc.scrape });
+        expect(sc.calls).toEqual([[[ID(1)], undefined]]);
+      });
     });
 
     it("says why when it is broken for good, instead of guessing the profile is private", async () => {

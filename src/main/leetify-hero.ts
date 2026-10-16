@@ -540,11 +540,14 @@ export async function checkHeroRuntime(): Promise<HeroStatus> {
   }
 }
 
+/** The pause between one player's request to csst.at and the next, in ms. csst.at is a website, not an API: go easy on it. */
+export const SCRAPE_DELAY_MS = 4000;
+
 /**
- * Scrapes csst.at for the given players. Always resolves: `profiles` holds the players it found, `status` says
- * whether the fallback itself worked, and when it didn't, why.
+ * Scrapes csst.at for the given players, pausing `delayMs` between two players. Always resolves: `profiles` holds the
+ * players it found, `status` says whether the fallback itself worked, and when it didn't, why.
  */
-export async function scrapeCsstAtProfiles(steamIds: string[], delayMs = 4000): Promise<HeroScrape> {
+export async function scrapeCsstAtProfiles(steamIds: string[], delayMs = SCRAPE_DELAY_MS): Promise<HeroScrape> {
   const profiles = new Map<string, LeetifyProfile>();
   if (steamIds.length === 0) return { profiles, status: HERO_READY };
   try {
