@@ -14,6 +14,26 @@ import { COLLECT_FRIENDS_JS } from "./steam-ui-page";
 
 export const DEFAULT_DEBUG_PORT = 8080;
 
+/**
+ * The title of Steam's friends list window in every language Steam has. The window's title is localized, so a plain
+ * "Friends List" would only find it on an English Steam.
+ */
+export const FRIENDS_WINDOW_TITLES: readonly string[] = [
+  "Friends List", "Lista de amigos", "好友列表", "好友名單", "フレンドリスト", "친구 목록", "รายชื่อเพื่อน",
+  "Daftar Teman", "Senarai Rakan", "Списък с приятели", "Seznam přátel", "Venneliste", "Freundesliste",
+  "Λίστα φίλων", "Liste de contacts", "Lista amici", "Barátlista", "Vriendenlijst", "Lista znajomych",
+  "Lista de prieteni", "Список друзей", "Kaverilista", "Vänlista", "Arkadaş Listesi", "Danh sách bạn bè",
+  "Список друзів",
+];
+
+const titleKey = (t: string): string => t.normalize("NFC").trim().toLowerCase();
+const FRIENDS_TITLE_KEYS: ReadonlySet<string> = new Set(FRIENDS_WINDOW_TITLES.map(titleKey));
+
+/** True for the title of the friends list window in any of Steam's languages. */
+export function isFriendsWindowTitle(title: unknown): boolean {
+  return typeof title === "string" && FRIENDS_TITLE_KEYS.has(titleKey(title));
+}
+
 export interface UiRow {
   group: string | null;
   /** The name shown: our nickname for the friend when we set one, else their persona name. */
@@ -118,17 +138,36 @@ function evaluate(wsUrl: string, expression: string, timeoutMs: number): Promise
   });
 }
 
+/** One page the debug port lists (Steam's windows are pages). */
+export interface DebugTarget {
+  title?: unknown;
+  webSocketDebuggerUrl?: unknown;
+}
+
+export type TargetList = { ok: true; targets: DebugTarget[] } | { ok: false; detail: string };
+
+/** The pages the debug port lists, or why it can't be reached. Never throws. */
+export async function listDebugTargets(port = DEFAULT_DEBUG_PORT, timeoutMs = 1500): Promise<TargetList> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(timeoutMs) });
+    const targets: unknown = await res.json();
+    return { ok: true, targets: Array.isArray(targets) ? (targets as DebugTarget[]) : [] };
+  } catch (e) {
+    return { ok: false, detail: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** The friends list window among the listed pages, if it is open. */
+export function findFriendsTarget(targets: readonly DebugTarget[]): (DebugTarget & { webSocketDebuggerUrl: string }) | null {
+  return (targets.find((t) => isFriendsWindowTitle(t?.title) && typeof t.webSocketDebuggerUrl === "string") as
+    (DebugTarget & { webSocketDebuggerUrl: string }) | undefined) ?? null;
+}
+
 /** Reads Steam's friends list window over the debug port. Never throws. */
 export async function readFriendUi(port = DEFAULT_DEBUG_PORT, timeoutMs = 4000): Promise<UiResult> {
-  let targets: unknown;
-  try {
-    const res = await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(1500) });
-    targets = await res.json();
-  } catch (e) {
-    return { ok: false, reason: "unreachable", detail: e instanceof Error ? e.message : String(e) };
-  }
-  const list = Array.isArray(targets) ? (targets as { title?: unknown; webSocketDebuggerUrl?: unknown }[]) : [];
-  const target = list.find((t) => t?.title === "Friends List" && typeof t.webSocketDebuggerUrl === "string");
+  const listed = await listDebugTargets(port);
+  if (!listed.ok) return { ok: false, reason: "unreachable", detail: listed.detail };
+  const target = findFriendsTarget(listed.targets);
   // The friends window only exists while it is open; Steam's own pages are not scanned for it.
   if (!target) return { ok: false, reason: "no-friends-window" };
   // localhost can resolve to ::1 first while Steam listens on IPv4 only.

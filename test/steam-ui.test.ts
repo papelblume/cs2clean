@@ -8,6 +8,7 @@ import { SteamSource } from "../src/main/game/steam";
 import type { CoplayEntry, CoplayResult, FriendInGame } from "../src/main/steam/coplay";
 import type { GameState } from "../src/main/steam/gsi";
 import {
+  FRIENDS_WINDOW_TITLES, findFriendsTarget, isFriendsWindowTitle,
   matchFriends, normalizeStatus, parseMatchStatus, readFriendUi, rowName, snapshotFromPage,
   type FriendMatch, type NativeFriend, type UiResult, type UiRow, type UiSnapshot,
 } from "../src/main/steam/steam-ui";
@@ -145,6 +146,37 @@ async function fakeSteam(title: string, page: unknown) {
   return { port: (server.address() as AddressInfo).port, sent, close: () => { server.closeAllConnections(); server.close(); } };
 }
 
+// The titles Steam gives its friends list window, one per language it ships in.
+const STEAM_TITLES = [
+  "Friends List", "Lista de amigos", "好友列表", "好友名單", "フレンドリスト", "친구 목록", "รายชื่อเพื่อน", "Daftar Teman",
+  "Senarai Rakan", "Списък с приятели", "Seznam přátel", "Venneliste", "Freundesliste", "Λίστα φίλων", "Liste de contacts",
+  "Lista amici", "Barátlista", "Vriendenlijst", "Lista znajomych", "Lista de prieteni", "Список друзей", "Kaverilista",
+  "Vänlista", "Arkadaş Listesi", "Danh sách bạn bè", "Список друзів",
+];
+
+describe("the friends window's title", () => {
+  it("knows all 26 of Steam's titles", () => {
+    expect(new Set(FRIENDS_WINDOW_TITLES)).toEqual(new Set(STEAM_TITLES));
+    expect(STEAM_TITLES).toHaveLength(26);
+    for (const t of STEAM_TITLES) expect(isFriendsWindowTitle(t), t).toBe(true);
+  });
+
+  it("ignores spacing, case and Unicode form, and nothing else", () => {
+    expect(isFriendsWindowTitle("  Freundesliste ")).toBe(true);
+    expect(isFriendsWindowTitle("FRIENDS LIST")).toBe(true);
+    expect(isFriendsWindowTitle("Arkadaş Listesi".normalize("NFD"))).toBe(true);
+    expect(isFriendsWindowTitle("Lista de amigos".normalize("NFD"))).toBe(true);
+    for (const t of ["Steam", "Friends", "Friends List - chat", "", undefined, null, 5]) expect(isFriendsWindowTitle(t), String(t)).toBe(false);
+  });
+
+  it("picks the friends window out of the pages Steam lists, and needs its debugger address", () => {
+    const ws = "ws://127.0.0.1:8080/devtools/page/ABC";
+    expect(findFriendsTarget([{ title: "Steam" }, { title: "Liste de contacts", webSocketDebuggerUrl: ws }])?.webSocketDebuggerUrl).toBe(ws);
+    expect(findFriendsTarget([{ title: "Freundesliste" }])).toBeNull();
+    expect(findFriendsTarget([])).toBeNull();
+  });
+});
+
 describe("reading the friends list over the debug port", () => {
   it("reports a closed port as unreachable", async () => {
     const s = await fakeSteam("Friends List", {});
@@ -157,6 +189,15 @@ describe("reading the friends list over the debug port", () => {
     const s = await fakeSteam("Something Else", {});
     expect(await readFriendUi(s.port, 1000)).toEqual({ ok: false, reason: "no-friends-window" });
     s.close();
+  });
+
+  it("finds the friends window under its title in any of Steam's languages", async () => {
+    for (const title of ["Freundesliste", "好友列表", "Список друзей", "Arkadaş Listesi"]) {
+      const s = await fakeSteam(title, { own: null, rows: [] });
+      const r = await readFriendUi(s.port, 2000);
+      s.close();
+      expect(r, title).toEqual({ ok: true, snapshot: { own: null, rows: [] } });
+    }
   });
 
   it("evaluates the page script in the Friends List page and returns a snapshot", async () => {

@@ -278,6 +278,12 @@ function SettingsPanel({ s }: { s: AppState }) {
           Start automatically with Windows, minimized
         </label>
       )}
+      {s.game.source === "steam" && (
+        <label className="check small">
+          <input type="checkbox" checked={s.autoOpenFriendsList} onChange={(e) => bridge.setAutoOpenFriendsList(e.target.checked)} />
+          Open Steam's friends list for me when it is closed (needs Steam's debug port, see the README)
+        </label>
+      )}
       <div className="row small">
         <label className="check">
           <input type="checkbox" checked={s.overlay.siren} onChange={(e) => bridge.setSiren(e.target.checked)} />

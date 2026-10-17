@@ -167,6 +167,8 @@ export interface AppState {
   hotkeysEditable: boolean;
   /** Start with Windows, minimized to the taskbar; null where it isn't offered (not an installed app). */
   startWithWindows: boolean | null;
+  /** Open Steam's friends list window when it is closed (only does anything with Steam's debug port on). */
+  autoOpenFriendsList: boolean;
   /** Bumped when a HIGH player is found in the current match; the overlay plays the siren on a change. */
   alert: { seq: number; names: string[] };
   /** The newest release GitHub reported: `available` shows the banner; `checked` once GitHub has answered (a failed check is no answer). */
@@ -184,6 +186,7 @@ export interface Bridge {
   setHotkey(which: "lobby" | "detail" | "cycle" | "previous", hotkey: string): Promise<boolean>;
   resetHotkeys(): Promise<boolean>;
   setStartWithWindows(on: boolean): Promise<void>;
+  setAutoOpenFriendsList(on: boolean): Promise<void>;
   /** Turns the hotkeys off while Settings waits for a key press, so the press reaches the page. */
   pauseHotkeys(paused: boolean): Promise<void>;
   toggleOverlay(): Promise<void>;

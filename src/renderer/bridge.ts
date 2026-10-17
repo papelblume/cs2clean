@@ -134,6 +134,7 @@ function simulated(): Bridge {
     },
     hotkeysEditable: true,
     startWithWindows: false,
+    autoOpenFriendsList: true,
     alert: { seq: 0, names: [] },
     update: { available: false, remoteVersion: null, checked: false },
   };
@@ -162,6 +163,7 @@ function simulated(): Bridge {
     resetHotkeys: async () => (set({ overlay: { ...state.overlay, hotkey: DEFAULT_HOTKEYS.lobby, detailHotkey: DEFAULT_HOTKEYS.detail, cycleHotkey: DEFAULT_HOTKEYS.cycle, previousHotkey: DEFAULT_HOTKEYS.previous } }), true),
     pauseHotkeys: async () => {},
     setStartWithWindows: async (on) => set({ startWithWindows: on }),
+    setAutoOpenFriendsList: async (on) => set({ autoOpenFriendsList: on }),
     // The same answer as the real controller's (shared/overlay-keys.ts).
     toggleOverlay: async () => set({ overlay: pressViewKey(state.overlay, "lobby") }),
     toggleDetail: async () => set({ overlay: pressViewKey(state.overlay, "detail") }),

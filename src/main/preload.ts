@@ -16,6 +16,7 @@ const bridge: Bridge = {
   setHotkey: (which, hotkey) => ipcRenderer.invoke("hotkey:set", which, hotkey),
   resetHotkeys: () => ipcRenderer.invoke("hotkey:reset"),
   setStartWithWindows: (on) => ipcRenderer.invoke("startup:set", on),
+  setAutoOpenFriendsList: (on) => ipcRenderer.invoke("friends-window:set", on),
   pauseHotkeys: (paused) => ipcRenderer.invoke("hotkey:pause", paused),
   toggleOverlay: () => ipcRenderer.invoke("overlay:toggle"),
   toggleDetail: () => ipcRenderer.invoke("overlay:detail"),

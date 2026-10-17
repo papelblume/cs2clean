@@ -1,19 +1,25 @@
 // `npm run friends-ui`: prints what Steam's friends list window shows (read over the debug port) and which friends
 // the app would add to your match because their status line equals yours. Use it in a match's warm-up or live, with
 // Steam started with -cef-enable-debugging. Optional: your SteamID64 as an argument, to leave yourself out.
-// Port: 8080, or CS2CLEAN_DEBUG_PORT.
+// Port: the one in Steam's command line (Linux), else CS2CLEAN_DEBUG_PORT, else 8080. It also says what the app can
+// use to find friends (the debug port, CS2's console.log) and why not.
 
+import { cefHint, describeCapabilities, detectCef, systemConsoleLog, systemCefIo } from "./capabilities";
 import { readCoplay, type FriendInGame } from "./coplay";
-import { DEFAULT_DEBUG_PORT, matchFriends, readFriendUi, rowName } from "./steam-ui";
+import { matchFriends, readFriendUi, rowName } from "./steam-ui";
 
 async function main(): Promise<void> {
-  const port = Number(process.env.CS2CLEAN_DEBUG_PORT) || DEFAULT_DEBUG_PORT;
+  const cef = await detectCef(systemCefIo());
+  const port = cef.port;
+  // CS2's session start isn't known here: a console.log written in the last 10 minutes counts as active.
+  for (const line of describeCapabilities(cef, systemConsoleLog(Date.now() - 10 * 60_000), true)) console.log(line);
+  console.log();
   const local = process.argv.slice(2).find((a) => /^\d{17}$/.test(a)) ?? null;
 
   const ui = await readFriendUi(port);
   if (!ui.ok) {
     const why = {
-      unreachable: `Nothing answers on 127.0.0.1:${port}. Quit Steam fully, then start it with -cef-enable-debugging.`,
+      unreachable: cefHint(cef, true) ?? `Nothing answers on 127.0.0.1:${port}. Quit Steam fully, then start it with -cef-enable-debugging.`,
       "no-friends-window": "The debug port works, but Steam has no \"Friends List\" window open. Open the friends list (Shift+Tab or View > Friends).",
       error: "The debug port answered, but reading the friends list failed.",
     }[ui.reason];

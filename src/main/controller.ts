@@ -20,6 +20,8 @@ export interface Settings {
   steamApiKey?: string | null;
   /** Siren when a HIGH player is found (default on). */
   siren?: boolean;
+  /** Open Steam's friends list window when it is closed, to find friends in the match (default on). */
+  autoOpenFriendsList?: boolean;
   /** Overlay hotkeys chosen in Settings (default Shift+F2, F7 and F6). */
   hotkeys?: Partial<Hotkeys>;
 }
@@ -81,6 +83,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       overlay: { ...deps.overlay, siren: this.settings.siren ?? true },
       hotkeysEditable: !!deps.applyHotkeys,
       startWithWindows: deps.startup ? deps.startup.get() : null,
+      autoOpenFriendsList: this.settings.autoOpenFriendsList ?? true,
       alert: { seq: 0, names: [] },
       update: { available: false, remoteVersion: null, checked: false },
     };
@@ -289,6 +292,12 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     if (!this.deps.startup) return;
     this.deps.startup.set(on);
     this.update({ startWithWindows: this.deps.startup.get() });
+  }
+
+  setAutoOpenFriendsList(on: boolean): void {
+    this.settings = { ...this.settings, autoOpenFriendsList: on };
+    this.deps.store.save(this.settings);
+    this.update({ autoOpenFriendsList: on });
   }
 
   setSiren(on: boolean): void {

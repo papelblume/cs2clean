@@ -30,7 +30,9 @@ import { CS2_GAME_ID, type GameSource } from "./game/source";
 import { SteamSource } from "./game/steam";
 import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
-import { DEFAULT_DEBUG_PORT, readFriendUi } from "./steam/steam-ui";
+import { cefHint, detectCef, systemCefIo } from "./steam/capabilities";
+import { FriendsWindowOpener } from "./steam/friends-window";
+import { DEFAULT_DEBUG_PORT, findFriendsTarget, listDebugTargets, readFriendUi } from "./steam/steam-ui";
 
 // Overwolf's overlay keeps the default hotkeys (none is bound in CS2 by default); the app's own overlay
 // window uses the ones chosen in Settings.
@@ -65,13 +67,13 @@ function settingsStore(): SettingsStore {
         let steamApiKey: string | null = raw.steamApiKey ?? null;
         if (raw.steamApiKeyEnc && safeStorage.isEncryptionAvailable())
           steamApiKey = safeStorage.decryptString(Buffer.from(raw.steamApiKeyEnc, "base64"));
-        return { leetifyKey, steamApiKey, siren: raw.siren, hotkeys: raw.hotkeys };
+        return { leetifyKey, steamApiKey, siren: raw.siren, autoOpenFriendsList: raw.autoOpenFriendsList, hotkeys: raw.hotkeys };
       } catch {
         return {};
       }
     },
     save(s: Settings) {
-      const out: Record<string, unknown> = { siren: s.siren, hotkeys: s.hotkeys };
+      const out: Record<string, unknown> = { siren: s.siren, autoOpenFriendsList: s.autoOpenFriendsList, hotkeys: s.hotkeys };
       if (s.leetifyKey && safeStorage.isEncryptionAvailable()) out.leetifyKeyEnc = safeStorage.encryptString(s.leetifyKey).toString("base64");
       else if (s.leetifyKey) out.leetifyKey = s.leetifyKey;
       if (s.steamApiKey && safeStorage.isEncryptionAvailable()) out.steamApiKeyEnc = safeStorage.encryptString(s.steamApiKey).toString("base64");
@@ -112,6 +114,11 @@ function gsiToken(): string {
   return token;
 }
 
+const debugPort = (): number => Number(process.env.CS2CLEAN_DEBUG_PORT) || DEFAULT_DEBUG_PORT;
+
+/** The "open Steam's friends list for me" setting; the controller exists once the app is ready. */
+const autoOpenFriendsList = (): boolean => controller?.state.autoOpenFriendsList ?? true;
+
 function steamSource(): SteamSource {
   const token = gsiToken();
   let gsiProblem: string | null = null;
@@ -127,7 +134,18 @@ function steamSource(): SteamSource {
   return new SteamSource({
     scan: scanCoplay,
     // Friends in the same match are found through Steam's friends list when Steam was started with -cef-enable-debugging.
-    uiStatus: () => readFriendUi(Number(process.env.CS2CLEAN_DEBUG_PORT) || DEFAULT_DEBUG_PORT),
+    uiStatus: () => readFriendUi(debugPort()),
+    // ... and Steam's friends list window is opened when it is closed (the "open it for me" setting), once when the app
+    // starts and in a match's warm-up.
+    friendsWindow: new FriendsWindowOpener({
+      open: (url) => shell.openExternal(url),
+      windowState: async () => {
+        const r = await listDebugTargets(debugPort());
+        return !r.ok ? "unreachable" : findFriendsTarget(r.targets) ? "open" : "closed";
+      },
+      enabled: autoOpenFriendsList,
+    }),
+    friendsListHint: async () => cefHint(await detectCef(systemCefIo()), autoOpenFriendsList()),
     listen: (onState) => {
       const server = startGsiServer(token, onState);
       return () => server.close();
@@ -400,6 +418,7 @@ if (!app.requestSingleInstanceLock()) {
       (which === "lobby" || which === "detail" || which === "cycle" || which === "previous") && typeof hotkey === "string" ? controller.setHotkey(which, hotkey) : false);
     ipcMain.handle("hotkey:reset", () => controller.resetHotkeys());
     ipcMain.handle("startup:set", (_e, on: unknown) => controller.setStartWithWindows(on === true));
+    ipcMain.handle("friends-window:set", (_e, on: unknown) => controller.setAutoOpenFriendsList(on === true));
     ipcMain.handle("hotkey:pause", (_e, paused: unknown) => {
       if (overlay.mode !== "window") return;
       if (paused === true) globalShortcut.unregisterAll();

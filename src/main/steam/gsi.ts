@@ -60,7 +60,7 @@ export function libraryPaths(vdf: string): string[] {
   return [...vdf.matchAll(/"path"\s+"([^"]+)"/g)].map((m) => m[1].replace(/\\\\/g, "\\"));
 }
 
-function steamPath(): string | null {
+export function steamPath(): string | null {
   if (process.platform === "linux") {
     // Native Steam: ~/.steam/debian-installation (Debian, Ubuntu, Linux Mint, Pop!_OS, Zorin) or
     // ~/.local/share/Steam (everything else); on the Debian family one is normally a symlink to the other.

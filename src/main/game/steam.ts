@@ -8,6 +8,7 @@
 import type { MatchState, RosterPlayer } from "../../shared/types";
 import type { CoplayResult, FriendInGame } from "../steam/coplay";
 import type { GameState } from "../steam/gsi";
+import type { FriendsWindow } from "../steam/friends-window";
 import { othersToFind, pickFriends, pickMatchPlayers } from "../steam/pick";
 import { matchFriends, type FriendMatch, type UiResult } from "../steam/steam-ui";
 import { GameSource } from "./source";
@@ -20,6 +21,12 @@ export interface SteamSourceDeps {
   /** Reads Steam's friends list window over the debug port (steam/steam-ui.ts). Optional: without it, or when Steam
    * wasn't started with -cef-enable-debugging, friends are only added by the presence rules in pickFriends. */
   uiStatus?: () => Promise<UiResult>;
+  /** Opens Steam's friends list window when it is closed (steam/friends-window.ts): once when the app starts, and in a
+   * match's warm-up while a friend in CS2 could fill an empty slot. Optional: without it the window is left alone. */
+  friendsWindow?: FriendsWindow;
+  /** One line on why Steam's friends list can't be read, from the capabilities (steam/capabilities.ts); null when
+   * nothing needs saying. Optional: without it a generic line is logged. */
+  friendsListHint?: () => Promise<string | null>;
   /** Why game-state data may be missing (e.g. CS2's folder wasn't found), or null. */
   gsiProblem?: string | null;
   /** Our Steam ID from the linked account, used until the game reports it. */
@@ -31,6 +38,11 @@ export interface SteamSourceDeps {
 }
 
 const GSI_SILENT_MS = 35_000; // CS2 sends a heartbeat every 10 s while running.
+// Opening the friends list when the app starts: first after one heartbeat period (so a running CS2 has said what it
+// is doing), then every 15 s until it is open or the tries run out. Steam may still be starting.
+const START_OPEN_FIRST_MS = 12_000;
+const START_OPEN_RETRY_MS = 15_000;
+const START_OPEN_TRIES = 8;
 
 export class SteamSource extends GameSource {
   readonly kind = "steam" as const;
@@ -42,6 +54,8 @@ export class SteamSource extends GameSource {
    * match, these are topped up into the free slots and re-checked on every scan. */
   private uiFriends: FriendMatch[] = [];
   private uiWarned = false;
+  private startOpenTimer: NodeJS.Timeout | null = null;
+  private startOpenTries = 0;
   /** Coplay time (s) of the current match's group; null until found. */
   private groupStart: number | null = null;
   private localName: string | null = null;
@@ -64,6 +78,7 @@ export class SteamSource extends GameSource {
     this.stopListening = this.deps.listen((s) => this.onGameState(s));
     this.watchdog = setInterval(() => this.checkRunning(), 5_000);
     this.setProblem(this.deps.gsiProblem ?? null);
+    if (this.deps.friendsWindow) this.startOpenTimer = setTimeout(() => void this.openFriendsWindowAtStart(), START_OPEN_FIRST_MS);
     this.schedule(0);
   }
 
@@ -71,7 +86,8 @@ export class SteamSource extends GameSource {
     this.stopListening?.();
     if (this.timer) clearTimeout(this.timer);
     if (this.watchdog) clearInterval(this.watchdog);
-    this.timer = this.watchdog = null;
+    if (this.startOpenTimer) clearTimeout(this.startOpenTimer);
+    this.timer = this.watchdog = this.startOpenTimer = null;
   }
 
   refresh(): void {
@@ -89,6 +105,7 @@ export class SteamSource extends GameSource {
     this.game = s;
     if (!this.running) this.setGameRunning(true);
     if (s.map !== prevMap) {
+      if (s.map) this.deps.friendsWindow?.newMatch();
       if (firstPost && s.map && this.players.length > 0) {
         // The first post of the feed already names a map: the app started in the middle of a match, and its players
         // were read from Steam before the game said anything. They are this match's, so keep them. Forgetting them
@@ -104,6 +121,34 @@ export class SteamSource extends GameSource {
       if (s.map) this.schedule(1_500);
     }
     this.scheduleMatch();
+  }
+
+  /** A window popping up over a live round is a nuisance: only when CS2 isn't running, is in its menu, or is warming up. */
+  private get safeToOpenWindow(): boolean {
+    if (!this.gsiLive || !this.game?.map) return true;
+    return this.game.phase == null || this.game.phase === "warmup";
+  }
+
+  /** The app just started: open Steam's friends list if it is closed (once it is reachable and it is safe to). */
+  private async openFriendsWindowAtStart(): Promise<void> {
+    this.startOpenTimer = null;
+    const w = this.deps.friendsWindow;
+    if (!w) return;
+    this.startOpenTries++;
+    let result: string = "wait";
+    if (this.safeToOpenWindow) {
+      try { result = await w.ensure("start"); } catch { result = "failed"; }
+    }
+    const settled = result === "open" || result === "opened" || result === "disabled" || result === "limit";
+    if (!settled && this.startOpenTries < START_OPEN_TRIES && this.deps.friendsWindow)
+      this.startOpenTimer = setTimeout(() => void this.openFriendsWindowAtStart(), START_OPEN_RETRY_MS);
+  }
+
+  /** Warm-up, a friend is playing CS2 and a slot is empty: the friends list is needed now, so open it if it is closed. */
+  private openFriendsWindowInWarmup(friends: FriendInGame[], others: number): void {
+    const w = this.deps.friendsWindow;
+    if (!w || this.game?.phase !== "warmup" || friends.length === 0 || this.players.length >= others) return;
+    void w.ensure("warmup").catch(() => {});
   }
 
   private clearRoster(): void {
@@ -207,6 +252,7 @@ export class SteamSource extends GameSource {
         for (const f of friends)
           byId.set(f.steamId, { slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false });
         this.players = [...byId.values()].slice(0, others).map((p, i) => ({ ...p, slot: i + 1 }));
+        this.openFriendsWindowInWarmup(res.friends ?? [], others);
         await this.updateUiFriends(res.friends ?? [], local);
       }
       // Players found but CS2 never sent game state: it was most likely started before the cfg existed.
@@ -240,13 +286,24 @@ export class SteamSource extends GameSource {
     if (!r.ok) {
       if (!this.uiWarned && r.reason !== "error") {
         this.uiWarned = true;
-        console.warn(`[cs2clean] Friends in CS2 found, but Steam's friends list can't be read (${r.reason}). Start Steam with -cef-enable-debugging and keep the friends list window open to add friends in your match.`);
+        void this.warnFriendsListUnreadable(r.reason);
       }
       return;
     }
     this.uiWarned = false;
     const exclude = new Set([...this.players.map((p) => p.steamId), local].filter((x): x is string => !!x));
     this.uiFriends = matchFriends(friends, r.snapshot, { exclude, previous: this.uiFriends });
+  }
+
+  private async warnFriendsListUnreadable(reason: string): Promise<void> {
+    const hint = this.deps.friendsListHint;
+    if (!hint) {
+      console.warn(`[cs2clean] Friends in CS2 found, but Steam's friends list can't be read (${reason}). Start Steam with -cef-enable-debugging and keep the friends list window open to add friends in your match.`);
+      return;
+    }
+    let line: string | null = null;
+    try { line = await hint(); } catch { /* no hint */ }
+    if (line) console.warn(`[cs2clean] Friends in CS2 found, but Steam's friends list can't be read. ${line}`);
   }
 
   protected currentMatch(): MatchState {
