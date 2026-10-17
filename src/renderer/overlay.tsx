@@ -182,7 +182,7 @@ function Card({ r, compact }: { r: LobbyRow; compact?: boolean }) {
           {matches && (
             <>
               <Fact label="Avg match rating" value={show(matches.avgRating, 1)} />
-              <Fact label="Strong matches (5.0+ rating)" value={`${Math.round(matches.strongShare * 100)}%`} />
+              <Fact label="Strong matches (3.0+ rating)" value={`${Math.round(matches.strongShare * 100)}%`} />
             </>
           )}
           <Fact label="Leetify rating" value={ratingDisplay(m.leetify)} level={d.levels.rating} />
