@@ -240,6 +240,7 @@ function LobbyLine({ r }: { r: LobbyRow }) {
         onClick={() => r.steamId && bridge.openPlayer(r.steamId)}>
         {r.name}{r.isLocal && <span className="you">you</span>}
         {r.groupName && <span className="group-badge" title={`${r.groupName} in this lobby`}>{r.groupName}</span>}
+        {r.via === "profile" && <span className="group-badge" title="Found from Steam's profile page, which can be ten minutes out of date: this friend may not be in your match">maybe</span>}
       </button>
       <PlayerClass r={r} />
       {r.steamId && r.status !== "skipped" && (

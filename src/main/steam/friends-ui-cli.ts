@@ -4,7 +4,7 @@
 // Port: the one in Steam's command line (Linux), else CS2CLEAN_DEBUG_PORT, else 8080. It also says what the app can
 // use to find friends (the debug port, CS2's console.log) and why not.
 
-import { cefHint, describeCapabilities, detectCef, systemConsoleLog, systemCefIo } from "./capabilities";
+import { cefHint, describeCapabilities, detectCef, profileFallbackWanted, systemConsoleLog, systemCefIo } from "./capabilities";
 import { readCoplay, type FriendInGame } from "./coplay";
 import { matchFriends, readFriendUi, rowName } from "./steam-ui";
 
@@ -12,7 +12,9 @@ async function main(): Promise<void> {
   const cef = await detectCef(systemCefIo());
   const port = cef.port;
   // CS2's session start isn't known here: a console.log written in the last 10 minutes counts as active.
-  for (const line of describeCapabilities(cef, systemConsoleLog(Date.now() - 10 * 60_000), true)) console.log(line);
+  const log = systemConsoleLog(Date.now() - 10 * 60_000);
+  for (const line of describeCapabilities(cef, log, true)) console.log(line);
+  console.log(`Steam profile fallback (friends on your map, up to 10 minutes old): ${profileFallbackWanted({ cef, log, nowMs: Date.now() }) ? "used, since neither the debug port nor console.log is in use" : "not needed"}`);
   console.log();
   const local = process.argv.slice(2).find((a) => /^\d{17}$/.test(a)) ?? null;
 

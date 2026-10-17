@@ -130,6 +130,8 @@ export type ConsoleLogState =
 export interface ConsoleLogCapability {
   state: ConsoleLogState;
   path: string | null;
+  /** When the file was last written; null when there is no file. */
+  mtimeMs: number | null;
 }
 
 /** CS2's console.log: next to its cfg folder, in game/csgo. Null when CS2's folder isn't found. */
@@ -138,9 +140,9 @@ export function findCs2ConsoleLog(cfgDir: string | null = findCs2CfgDir()): stri
 }
 
 export function detectConsoleLog(o: { path: string | null; mtimeMs: number | null; sessionStartMs: number | null }): ConsoleLogCapability {
-  if (!o.path) return { state: "not-found", path: null };
-  if (o.mtimeMs == null) return { state: "missing", path: o.path };
-  return { state: o.sessionStartMs != null && o.mtimeMs >= o.sessionStartMs ? "active" : "inactive", path: o.path };
+  if (!o.path) return { state: "not-found", path: null, mtimeMs: null };
+  if (o.mtimeMs == null) return { state: "missing", path: o.path, mtimeMs: null };
+  return { state: o.sessionStartMs != null && o.mtimeMs >= o.sessionStartMs ? "active" : "inactive", path: o.path, mtimeMs: o.mtimeMs };
 }
 
 /** Looks at the real console.log. `sessionStartMs` is when CS2's current session began (null when it isn't running). */
@@ -197,6 +199,22 @@ export function friendsHint(i: HintInput): string | null {
     return "Friends of yours are playing CS2. Run `status` in the CS2 console to find the ones in your match (tip: `bind <key> status` once, then press that key).";
   const cef = cefHint(i.cef, i.autoOpen);
   return `Friends of yours are playing CS2, but can't be found automatically. ${cef ? `${cef} ` : ""}Or launch CS2 with -condebug and run \`status\` in its console.`;
+}
+
+/** A console.log written to this recently counts as in use even if nothing has been written since the app saw CS2 start. */
+export const CONSOLE_RECENT_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Whether to fall back to the mini-profile (miniprofile.ts) for finding friends: only when neither Steam's debug port
+ * nor CS2's console.log is in use, because those are exact and live and the mini-profile is neither. The console.log
+ * counts as in use when it is being written this session, or was written within the last two hours (the app may have
+ * started mid-match, before anything was printed since).
+ */
+export function profileFallbackWanted(i: { cef: CefCapability; log: ConsoleLogCapability; nowMs: number }): boolean {
+  if (i.cef.state === "reachable") return false;
+  if (i.log.state === "active") return false;
+  if (i.log.state === "inactive" && i.log.mtimeMs != null && i.nowMs - i.log.mtimeMs < CONSOLE_RECENT_MS) return false;
+  return true;
 }
 
 /** The capabilities as lines for `npm run friends-ui`. */

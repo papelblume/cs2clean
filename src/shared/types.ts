@@ -21,6 +21,9 @@ export interface RosterPlayer {
   steamId: string | null;
   side: Side | null;
   isLocal: boolean;
+  /** How a friend was found when that was a guess: "profile" is the mini-profile fallback, whose text can be ten minutes
+   * old. Absent for everyone Steam's players list, `status` or the friends list placed in the match. */
+  via?: "profile";
 }
 
 /** Map phase from the game: warm-up, then live once the match starts. */

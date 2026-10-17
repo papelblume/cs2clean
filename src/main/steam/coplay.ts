@@ -46,6 +46,9 @@ export interface FriendInGame {
   steamId: string;
   name: string | null;
   presence: Record<string, string>;
+  /** The friend's rich-presence line from Steam's public mini-profile ("Premier - Inferno [ 0 : 2 ]"), up to ~10 minutes
+   * old (see miniprofile.ts). Filled in by the app only when it needs it; missing otherwise. */
+  status?: string | null;
 }
 
 export interface CoplayResult {

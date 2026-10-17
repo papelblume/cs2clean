@@ -80,6 +80,7 @@ function Line({ r }: { r: LobbyRow }) {
       <SideEmblem side={r.side} size={14} />
       <span className="ov-name">{r.name}</span>
       {r.groupName && <span className="ov-group-badge" title={`${r.groupName} in this lobby`}>{r.groupName}</span>}
+      {r.via === "profile" && <span className="ov-group-badge" title="Found from Steam's profile page, which can be ten minutes out of date: this friend may not be in your match">maybe</span>}
       <PlayerClass r={r} compact />
     </div>
   );

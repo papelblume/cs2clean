@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   CEF_FLAG_FILE, cefHint, debugPortFromArgs, describeCapabilities, detectCef, detectConsoleLog, findCs2ConsoleLog,
-  friendsHint, scanSteamProcesses, systemConsoleLog, type CefIo, type CefState, type ConsoleLogState, type SteamProcesses,
+  CONSOLE_RECENT_MS, friendsHint, profileFallbackWanted, scanSteamProcesses, systemConsoleLog, type CefIo, type CefState, type ConsoleLogState, type SteamProcesses,
 } from "../src/main/steam/capabilities";
 
 // Steam's web helper command line, as read from /proc on Linux Mint (shortened: the parts that matter).
@@ -100,12 +100,12 @@ describe("CS2's console.log", () => {
 
   it("is active only when written to since this CS2 session began", () => {
     const path = "/x/console.log";
-    expect(detectConsoleLog({ path: null, mtimeMs: null, sessionStartMs: 1 })).toEqual({ state: "not-found", path: null });
-    expect(detectConsoleLog({ path, mtimeMs: null, sessionStartMs: 1 })).toEqual({ state: "missing", path });
-    expect(detectConsoleLog({ path, mtimeMs: 1000, sessionStartMs: 2000 })).toEqual({ state: "inactive", path });
-    expect(detectConsoleLog({ path, mtimeMs: 2000, sessionStartMs: 2000 })).toEqual({ state: "active", path });
-    expect(detectConsoleLog({ path, mtimeMs: 3000, sessionStartMs: 2000 })).toEqual({ state: "active", path });
-    expect(detectConsoleLog({ path, mtimeMs: 3000, sessionStartMs: null })).toEqual({ state: "inactive", path }); // CS2 isn't running
+    expect(detectConsoleLog({ path: null, mtimeMs: null, sessionStartMs: 1 })).toEqual({ state: "not-found", path: null, mtimeMs: null });
+    expect(detectConsoleLog({ path, mtimeMs: null, sessionStartMs: 1 })).toEqual({ state: "missing", path, mtimeMs: null });
+    expect(detectConsoleLog({ path, mtimeMs: 1000, sessionStartMs: 2000 })).toEqual({ state: "inactive", path, mtimeMs: 1000 });
+    expect(detectConsoleLog({ path, mtimeMs: 2000, sessionStartMs: 2000 })).toEqual({ state: "active", path, mtimeMs: 2000 });
+    expect(detectConsoleLog({ path, mtimeMs: 3000, sessionStartMs: 2000 })).toEqual({ state: "active", path, mtimeMs: 3000 });
+    expect(detectConsoleLog({ path, mtimeMs: 3000, sessionStartMs: null })).toEqual({ state: "inactive", path, mtimeMs: 3000 }); // CS2 isn't running
   });
 
   it("is read from the real file's modification time", () => {
@@ -141,7 +141,7 @@ describe("wording", () => {
   });
 
   it("lists both capabilities for the diagnostics", () => {
-    const lines = describeCapabilities(cef("reachable", false), { state: "missing", path: "/s/console.log" }, true);
+    const lines = describeCapabilities(cef("reachable", false), { state: "missing", path: "/s/console.log", mtimeMs: null }, true);
     expect(lines[0]).toMatch(/reachable, friends list window closed/);
     expect(lines.join("\n")).toContain("/s/console.log): missing");
     expect(lines.join("\n")).toContain("-condebug");
@@ -150,7 +150,7 @@ describe("wording", () => {
 
 describe("the hint about finding friends", () => {
   const cef = (state: CefState, friendsWindow: boolean | null = null) => ({ state, port: 8080, friendsWindow });
-  const log = (state: ConsoleLogState) => ({ state, path: "/s/console.log" });
+  const log = (state: ConsoleLogState) => ({ state, path: "/s/console.log", mtimeMs: null });
   const hint = (c: ReturnType<typeof cef>, l: ConsoleLogState, o: { statusSeen?: boolean; autoOpen?: boolean } = {}) =>
     friendsHint({ cef: c, log: log(l), statusSeen: o.statusSeen ?? false, autoOpen: o.autoOpen ?? true });
 
@@ -185,5 +185,27 @@ describe("the hint about finding friends", () => {
   it("asks to open the window when the app isn't allowed to, and the friends list is otherwise ready", () => {
     expect(hint(cef("reachable", false), "missing", { autoOpen: false })).toMatch(/friends list window is closed/);
     expect(hint(cef("reachable", false), "active", { autoOpen: false })).toContain("Run `status`");
+  });
+});
+
+describe("when the mini-profile fallback is wanted", () => {
+  const NOW = 1_800_000_000_000;
+  const cef = (state: CefState) => ({ state, port: 8080, friendsWindow: state === "reachable" ? true : null });
+  const log = (state: ConsoleLogState, mtimeMs: number | null = null) => ({ state, path: "/s/console.log", mtimeMs });
+  const wanted = (c: CefState, l: ReturnType<typeof log>) => profileFallbackWanted({ cef: cef(c), log: l, nowMs: NOW });
+
+  it("is wanted only when neither the debug port nor console.log is in use", () => {
+    for (const c of ["off", "restart-steam", "steam-not-running", "unknown"] as const) {
+      expect(wanted(c, log("missing")), c).toBe(true);
+      expect(wanted(c, log("not-found")), c).toBe(true);
+    }
+    expect(wanted("reachable", log("missing"))).toBe(false);        // the friends list is there to use
+    expect(wanted("off", log("active", NOW - 1000))).toBe(false);   // console.log is being written
+  });
+
+  it("counts a console.log written to recently as in use, even if nothing was written since the app began", () => {
+    expect(wanted("off", log("inactive", NOW - 60_000))).toBe(false);
+    expect(wanted("off", log("inactive", NOW - CONSOLE_RECENT_MS + 1000))).toBe(false);
+    expect(wanted("off", log("inactive", NOW - CONSOLE_RECENT_MS - 1000))).toBe(true);   // an old file from another day
   });
 });

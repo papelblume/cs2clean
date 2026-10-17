@@ -30,7 +30,8 @@ import { CS2_GAME_ID, type GameSource } from "./game/source";
 import { SteamSource } from "./game/steam";
 import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
-import { cefHint, detectCef, findCs2ConsoleLog, friendsHint, systemCefIo, systemConsoleLog } from "./steam/capabilities";
+import { cefHint, detectCef, findCs2ConsoleLog, friendsHint, profileFallbackWanted, systemCefIo, systemConsoleLog, type CefCapability, type ConsoleLogCapability } from "./steam/capabilities";
+import { MiniprofileStatus } from "./steam/miniprofile";
 import { watchStatusBlocks } from "./steam/console-log";
 import { FriendNameDirectory } from "./steam/friend-names";
 import { FriendsWindowOpener } from "./steam/friends-window";
@@ -134,6 +135,15 @@ const friendNameDirectory = new FriendNameDirectory(
   () => nameLocal,
 );
 
+// One look at what Steam and CS2 allow, shared by the hint and the mini-profile fallback, at most every 10 seconds.
+const miniprofile = new MiniprofileStatus();
+let capsMemo: { at: number; sessionStartMs: number | null; value: Promise<{ cef: CefCapability; log: ConsoleLogCapability }> } | null = null;
+function capabilities(sessionStartMs: number | null): Promise<{ cef: CefCapability; log: ConsoleLogCapability }> {
+  if (!capsMemo || Date.now() - capsMemo.at > 10_000 || capsMemo.sessionStartMs !== sessionStartMs)
+    capsMemo = { at: Date.now(), sessionStartMs, value: (async () => ({ cef: await detectCef(systemCefIo()), log: systemConsoleLog(sessionStartMs) }))() };
+  return capsMemo.value;
+}
+
 function steamSource(): SteamSource {
   const token = gsiToken();
   let gsiProblem: string | null = null;
@@ -173,12 +183,11 @@ function steamSource(): SteamSource {
       return friendNameDirectory.get();
     },
     // While friends are playing CS2 and the match has an empty slot, say what would find them.
-    friendsHint: async (ctx) => friendsHint({
-      cef: await detectCef(systemCefIo()),
-      log: systemConsoleLog(ctx.sessionStartMs),
-      statusSeen: ctx.statusSeen,
-      autoOpen: autoOpenFriendsList(),
-    }),
+    friendsHint: async (ctx) => friendsHint({ ...(await capabilities(ctx.sessionStartMs)), statusSeen: ctx.statusSeen, autoOpen: autoOpenFriendsList() }),
+    // The fallback, only when neither Steam's debug port nor CS2's console.log is in use: friends on our map from their
+    // Steam profile (up to ~10 minutes old), shown as a guess.
+    friendStatus: (steamId) => miniprofile.get(steamId),
+    profileFallback: async (ctx) => profileFallbackWanted({ ...(await capabilities(ctx.sessionStartMs)), nowMs: Date.now() }),
     listen: (onState) => {
       const server = startGsiServer(token, onState);
       return () => server.close();

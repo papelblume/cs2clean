@@ -9,6 +9,7 @@ import type { MatchState, RosterPlayer } from "../../shared/types";
 import type { LobbyPlayer, StatusBlock } from "../steam/console-log";
 import type { CoplayResult, FriendInGame } from "../steam/coplay";
 import type { FriendNames } from "../steam/friend-names";
+import { matchProfileFriends } from "../steam/miniprofile";
 import { matchLobbyNames, type NameCandidate } from "../steam/name-match";
 import type { GameState } from "../steam/gsi";
 import type { FriendsWindow } from "../steam/friends-window";
@@ -37,6 +38,12 @@ export interface SteamSourceDeps {
    * a `status` list besides the friends the Steam client says are playing CS2. They include friends who appear
    * offline. Optional. */
   friendNames?: (localSteamId: string | null) => Promise<FriendNames>;
+  /** A friend's rich-presence line ("Premier - Inferno [ 0 : 2 ]") from Steam's public mini-profile, up to ~10 minutes old
+   * (steam/miniprofile.ts). Only used as the fallback when `profileFallback` says so. Optional: without it there is no fallback. */
+  friendStatus?: (steamId: string) => Promise<string | null>;
+  /** Whether the mini-profile fallback is wanted now: neither Steam's debug port nor CS2's console.log is in use
+   * (steam/capabilities.ts). Optional: without it there is no fallback. */
+  profileFallback?: (ctx: { sessionStartMs: number | null }) => Promise<boolean>;
   /** The line to show while friends are playing CS2 and a slot is empty: what would find them (steam/capabilities.ts);
    * null when nothing needs saying. Optional: without it no hint is shown. */
   friendsHint?: (ctx: { statusSeen: boolean; sessionStartMs: number | null }) => Promise<string | null>;
@@ -57,6 +64,8 @@ const START_OPEN_FIRST_MS = 12_000;
 const START_OPEN_RETRY_MS = 15_000;
 const START_OPEN_TRIES = 8;
 const HINT_EVERY_MS = 15_000; // how often the hint is worked out while it is needed
+const PROFILE_CHECK_MS = 15_000; // how often it is worked out whether the mini-profile fallback is wanted
+const MAX_PROFILE_LOOKUPS = 12; // friends whose mini-profile is read per scan
 
 export class SteamSource extends GameSource {
   readonly kind = "steam" as const;
@@ -80,6 +89,10 @@ export class SteamSource extends GameSource {
   /** When CS2's current session began, as far as we know (the first game-state post since it wasn't running). */
   private sessionStart: number | null = null;
   private lastHint: string | null = null;
+  /** Friends found through the mini-profile fallback: a guess, so they come last and are worked out afresh each scan. */
+  private profileFriends: { steamId: string; name: string | null }[] = [];
+  private profileWanted = false;
+  private profileWantedAt: number | null = null;
   private hintAt: number | null = null;
   private startOpenTimer: NodeJS.Timeout | null = null;
   private startOpenTries = 0;
@@ -186,16 +199,17 @@ export class SteamSource extends GameSource {
     this.players = [];
     this.uiFriends = [];
     this.statusFriends.clear();
+    this.profileFriends = [];
     this.lobby = null;
     this.hintAt = null;
     this.setHint(null);
   }
 
   /**
-   * The match's players: the players list first, then friends found by name in a `status` list, then friends found
-   * through the friends list's status lines, each friend once, up to the mode's size.
+   * The players we are sure of: the players list first, then friends found by name in a `status` list, then friends
+   * found through the friends list's status lines, each friend once, up to the mode's size.
    */
-  private get roster(): RosterPlayer[] {
+  private get baseRoster(): RosterPlayer[] {
     const seen = new Set(this.players.map((p) => p.steamId));
     const friends: RosterPlayer[] = [];
     for (const f of [...this.statusFriends.values(), ...this.uiFriends]) {
@@ -204,6 +218,16 @@ export class SteamSource extends GameSource {
       friends.push({ slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false });
     }
     return [...this.players, ...friends].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
+  }
+
+  /** The match's players: the ones we are sure of, then the mini-profile fallback's guesses (marked `via: "profile"`). */
+  private get roster(): RosterPlayer[] {
+    const base = this.baseRoster;
+    const seen = new Set(base.map((p) => p.steamId));
+    const guesses: RosterPlayer[] = this.profileFriends
+      .filter((f) => !seen.has(f.steamId))
+      .map((f) => ({ slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false, via: "profile" as const }));
+    return [...base, ...guesses].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
   }
 
   /** The user ran `status`: remember who it lists and look again now, so the friends in it show up straight away. */
@@ -262,7 +286,7 @@ export class SteamSource extends GameSource {
   private nextDelay(): number {
     const fast = this.deps.fastMs ?? 8_000, slow = this.deps.slowMs ?? 60_000;
     if (!this.inMap) return slow;
-    const complete = this.roster.length >= this.others;
+    const complete = this.baseRoster.length >= this.others; // guesses don't count
     if (!this.gsiLive) return 20_000;
     return complete ? slow : fast;
   }
@@ -312,6 +336,7 @@ export class SteamSource extends GameSource {
         await this.updateStatusFriends(res.friends ?? [], local, others);
         this.openFriendsWindowInWarmup(res.friends ?? [], others);
         await this.updateUiFriends(res.friends ?? [], local);
+        await this.updateProfileFriends(res.friends ?? [], local, others);
         await this.updateHint(res.friends ?? [], others);
       }
       // Players found but CS2 never sent game state: it was most likely started before the cfg existed.
@@ -363,7 +388,7 @@ export class SteamSource extends GameSource {
    * first, so a stranger and a friend with the same name can't be mixed up.
    */
   private async updateStatusFriends(inCs2: FriendInGame[], local: string | null, others: number): Promise<void> {
-    if (!this.lobby || this.roster.length >= others) return;
+    if (!this.lobby || this.baseRoster.length >= others) return;
     const candidates: NameCandidate[] = [...inCs2.map((f) => ({ steamId: f.steamId, name: f.name })), ...(await this.webFriendNames(local))];
     // Friends the friends list found are not "known" here: a name in the list confirms them (and moves them up).
     const have = [...this.players, ...this.statusFriends.values()];
@@ -390,11 +415,43 @@ export class SteamSource extends GameSource {
     }
   }
 
+  /**
+   * The fallback, when neither Steam's debug port nor CS2's console.log is in use: friends playing CS2 whose mini-profile
+   * line (up to ~10 minutes old) names our map in a mode that can be ours, only while a slot is empty and only if they
+   * all fit. They are guesses: marked in the roster, worked out afresh each scan, and never in the way of the exact sources.
+   */
+  private async updateProfileFriends(inCs2: FriendInGame[], local: string | null, others: number): Promise<void> {
+    const ask = this.deps.friendStatus;
+    const base = this.baseRoster;
+    const known = new Set([...base.map((p) => p.steamId), local].filter((x): x is string => !!x));
+    const free = others - base.length;
+    const candidates = inCs2.filter((f) => !known.has(f.steamId));
+    if (!ask || !this.game?.map || free <= 0 || candidates.length === 0 || !(await this.profileFallbackOn())) {
+      this.profileFriends = [];
+      return;
+    }
+    const withStatus = await Promise.all(candidates.slice(0, MAX_PROFILE_LOOKUPS).map(async (f) => {
+      try { return { ...f, status: await ask(f.steamId) }; } catch { return { ...f, status: null }; }
+    }));
+    this.profileFriends = matchProfileFriends(withStatus, { map: this.game.map, mode: this.game.mode, exclude: known, max: free })
+      .map((f) => ({ steamId: f.steamId, name: f.name }));
+  }
+
+  /** Whether the fallback is wanted, asked at most every 15 s. */
+  private async profileFallbackOn(): Promise<boolean> {
+    const ask = this.deps.profileFallback;
+    if (!ask) return false;
+    if (this.profileWantedAt != null && this.now - this.profileWantedAt < PROFILE_CHECK_MS) return this.profileWanted;
+    this.profileWantedAt = this.now;
+    try { this.profileWanted = await ask({ sessionStartMs: this.sessionStart }); } catch { this.profileWanted = false; }
+    return this.profileWanted;
+  }
+
   /** The hint about finding friends: while friends are playing CS2 and a slot is empty, and not more than every 15 s. */
   private async updateHint(inCs2: FriendInGame[], others: number): Promise<void> {
     const make = this.deps.friendsHint;
     if (!make) return;
-    const roster = this.roster;
+    const roster = this.baseRoster; // a guess doesn't settle it: the hint is how to get the exact answer
     const inRoster = new Set(roster.map((p) => p.steamId));
     if (roster.length >= others || !inCs2.some((f) => !inRoster.has(f.steamId))) {
       this.setHint(null);
