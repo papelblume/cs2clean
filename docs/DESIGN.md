@@ -43,6 +43,7 @@ The app does not look at demos and makes no accusations. Treat a flag as "worth 
 
 - **Main process**: Controller, game sources, lobby service, Leetify client, window management, IPC, hotkeys
 - **Coplay worker**: Separate utility process that reads Steam's players list (isolated from the app so a Steam client quirk can't crash it). Uses [`koffi`](https://github.com/felixge/node-koffi), a native FFI library, to call Steam's native API without a full native addon.
+- **Friend finding** (see below) uses plain `fs` and `fetch` in the main process; only the coplay read is isolated in the utility process
 - **Renderer**: Two React windows (desktop + overlay), both receive state via IPC and use the bridge for IPC calls
 
 ## Components
@@ -88,6 +89,7 @@ interface GameSource extends EventEmitter {
   refresh(): void;
   on("running", (running: boolean)): void;
   on("problem", (problem: string | null)): void;
+  on("hint", (hint: string | null)): void;   // a suggestion that isn't a problem; null clears it
   on("match", (m: MatchState)): void;
 }
 ```
@@ -96,7 +98,7 @@ interface GameSource extends EventEmitter {
 - Reads players from Steam's "recently played with" list via native coplay API
 - Uses CS2 Game State Integration (GSI) for match phases, map name, local Steam ID
 - Does NOT provide team information (Steam's API doesn't include it)
-- Fills missing players with Steam friends on the same map or in the same party, and with friends whose friends-list status line equals yours (see "Steam friends fill-in")
+- Fills missing players with friends, which the coplay list leaves out (see "Finding friends in the match")
 
 **Overwolf** (`overwolf.ts`):
 - Uses Overwolf's Game Events Provider (GEP) for CS2 game events
@@ -113,6 +115,37 @@ interface GameSource extends EventEmitter {
 - Parses Overwolf GEP info updates into a MatchState
 - Handles roster entries, map/mode detection, phase transitions
 - Extracts team info from roster entries
+
+### Finding friends in the match (`src/main/steam/`)
+
+Steam's coplay list leaves out people who are already your friends. What was tried for finding them, and found empty on both Windows and Linux: the game server address and lobby ID in the Steam client's game info (CS2 reports neither, and the Web API's `gameserverip` and `lobbysteamid` are empty too), and rich presence through the Steam client interface, even after `RequestFriendRichPresence` (Steam appears to give it only to the game itself). What does work:
+
+| Source | Modules | Needs | Nature |
+|--------|---------|-------|--------|
+| `status` names | `console-log.ts`, `name-match.ts`, `friend-names.ts` | CS2 launched with `-condebug`; the user runs `status` | Exact |
+| Friends list status lines | `steam-ui.ts`, `steam-ui-page.ts`, `friends-window.ts` | Steam's debug port on | Live, matched on an identical line |
+| Mini-profile | `miniprofile.ts` | Nothing; used only when neither above is in use | A guess, up to ~10 minutes old |
+
+`capabilities.ts` says what is available and why not; `game/steam.ts` runs it all.
+
+**Capabilities** (`capabilities.ts`). Every system touch goes through an injectable `io`, so the decisions are tested.
+- *Debug port*: probed at `127.0.0.1:<port>/json`. On Linux the port comes from Steam's web helper command line in `/proc` (`--remote-debugging-port=8080`), else `CS2CLEAN_DEBUG_PORT`, else 8080. A closed port is explained: Steam not running, running without the flag, or the flag file (`.cef-enable-remote-debugging`) present but Steam not restarted. On Windows the command line isn't read, so a closed port is just "unknown".
+- *console.log*: `game/csgo/console.log` next to CS2's `cfg` folder. It is "active" when written to since the session began; `profileFallbackWanted` also counts a write within the last two hours as in use, because the app may have started mid-match.
+- `friendsHint` and `profileFallbackWanted` are pure functions of these, and `main.ts` shares one look at them (at most every 10 s) between the hint and the fallback.
+
+**Friends list** (`steam-ui.ts`). Steam's friends list shows each friend's rich presence ("Competitive - Office [ 5 : 0 ]": mode, map and score). With the debug port on, the app evaluates a read-only script in the Friends List page over the local DevTools protocol, joins the rows to the Steam client's friends in CS2 by persona name, and adds friends whose line equals ours. They are re-checked on every scan: they stay while they remain in our mode and map (two players' scores can differ for a moment at a round end) and drop out when they leave. A failed read keeps what was found before. The window's title is localized, so `isFriendsWindowTitle` knows all 26 titles Steam uses.
+
+**Opening the window** (`friends-window.ts`). When the window is closed the app asks Steam for it with `steam://open/friends`, the only address it ever opens, then waits up to 5 s for the page to appear. Rules: only with the debug port reachable and the setting (`autoOpenFriendsList`, on by default) on; once after start-up (first try 12 s in, so a running CS2 has sent a heartbeat; up to 8 tries 15 s apart while Steam may still be starting) and in a match's warm-up while a friend is in CS2 and a slot is empty; never in a live round, at half-time or on the end screen; at most once a minute and 3 times per match; one try at a time.
+
+**`status`** (`console-log.ts`, `name-match.ts`, `friend-names.ts`). `LogTailer` polls the file every 250 ms, starts at its end (a file that appears later is read from its start), and copes with truncation, replacement, CRLF, half-written lines and characters split across reads. `StatusParser` reads the block `status` prints (`---------players--------` ... `#end`), skipping bots and `[NoChan]` slots; it carries names, not Steam IDs, so the names are matched to friends: the ones Steam says are in CS2 (with names, from `coplay.ts`) plus, with a key, all friends from the Web API (`GetFriendList` + `GetPlayerSummaries`, batches of 100, cached 5 minutes, a failure remembered as long). A name counts only when it fits exactly one friend and one lobby entry; players the app already has, and the user, use up lobby entries first, so a stranger and a friend with the same name aren't mixed up. Lists are accepted only while in a match, an arriving list triggers a scan at once (or right after the one running), and matched friends stay for the match.
+
+**Mini-profile** (`miniprofile.ts`). A friend's rich presence from `steamcommunity.com/miniprofile/<account id>`, which anyone can read. It is a fallback because the page refreshes only about every 10 minutes: only map and mode are used (never the score), friends on our map in a mode that can be ours are added only if they all fit the empty slots (otherwise none: the lines are too old to tell who is in this match), they are marked `via: "profile"` (a "maybe" badge), and they are worked out afresh each scan. Lookups are cached for 2 minutes, share a request in flight, and back off for 5 minutes after a 429 or a Steam error. Up to 12 friends per scan.
+
+**Roster** (`game/steam.ts`). The players we are sure of come first: the players list, then `status` friends, then friends-list friends, each friend once, up to the mode's size (a friend both of the last two find counts as a `status` friend). The mini-profile's guesses come after, and never count towards the match being complete or take a slot from an exact source.
+
+**Hint**. While a friend is playing CS2 and a slot is empty, `game.hint` carries one line (shown in the overlay and window): nothing when the friends list will find them by itself or `status` has been run, otherwise a prompt to run `status`, with what it needs (`-condebug`) and what the friends list needs when those aren't set up. It is worked out at most every 15 s.
+
+Every source fails closed: when one can't be read, nothing is added and the others carry on. `npm run friends-ui` and `npm run console-status` show what each can see.
 
 ### Lobby Service (`src/main/lobby.ts`)
 
@@ -255,7 +288,9 @@ Stored in `%APPDATA%\CS2Clean` (Windows) or `~/.config/CS2Clean` (Linux):
 ```typescript
 interface Settings {
   leetifyKey?: string | null;      // Encrypted with OS keychain
+  steamApiKey?: string | null;     // Optional, encrypted: friendship badges, and friend names for `status`
   siren?: boolean;                  // Default: true
+  autoOpenFriendsList?: boolean;    // Open Steam's friends list window when needed. Default: true
   hotkeys?: Partial<Hotkeys>;       // Custom hotkeys
 }
 ```
@@ -314,12 +349,14 @@ npm run typecheck  # TypeScript type checking
 `CS2CLEAN_HERO_DIR` to `/nonexistent/...` so tests that reach the fallback get a fast "no-runtime" status instead of
 spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_HERO_DIR` to a stub of their own.
 
-**Test coverage**: 9 test files, 95 tests covering controller, assess, reputation, leetify, hotkeys, lobby, and more.
+**Test coverage**: controller, assess, reputation, leetify, hotkeys, lobby, and the Steam source and friend finding: `steam.test.ts`, `steam-ui.test.ts`, `capabilities.test.ts`, `friends-window.test.ts`, `console-log.test.ts`, `name-match.test.ts`, `friend-names.test.ts`, `status-friends.test.ts`, `miniprofile.test.ts` and `profile-friends.test.ts`, among others. Run `npm test` for the current count.
 
 **Hero sidecar tests**: `test/hero-sidecar.test.ts` (316 lines) covers `classifyHeroFailure` and all failure modes
 (abi-mismatch, native-load, module-missing, browser-missing, spawn errors, timeouts, crashes...).
 
 **Replay fixture**: `fixtures/premier-mirage.jsonl` — hand-written test data for replay mode without CS2.
+
+**Console fixture**: `fixtures/console-status.log` — a real `status` block as CS2 wrote it to `console.log` (names replaced), for the parser tests.
 
 ## Key Design Decisions
 
@@ -329,7 +366,7 @@ spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_H
 
 3. **Signal agreement**: One strong number alone never flags a player. The worst tiers require two active signal families.
 
-4. **Steam friends fill-in**: The coplay list leaves out your friends, and the Steam client interface gives no rich presence for CS2 (tried, including `RequestFriendRichPresence`). The friends list window does show it: "Competitive - Office [ 5 : 0 ]" is mode, map and score. When Steam runs with `-cef-enable-debugging`, `steam/steam-ui.ts` reads that window over the local DevTools port (read-only), joins the rows to the Steam client's list of friends in CS2 by persona name, and adds friends whose line equals yours to the free slots. Friends found this way are re-checked on every scan: they stay while they remain in your mode and map (the score of two players can differ for a moment around a round end) and drop out when they leave. A failed read keeps what was found before; with no debug port the app works as before. The older rules (same party, same map from presence) still run but only fire when presence is available. The window's title is localized, so `isFriendsWindowTitle` knows all 26 titles Steam uses. `steam/friends-window.ts` opens the window with `steam://open/friends` when it is closed (setting "Open Steam's friends list for me", on by default): once after the app starts (first try 12 s in, so a running CS2 has had a heartbeat; up to 8 tries 15 s apart while Steam may still be starting), and in a match's warm-up only while a friend is in CS2 and a slot is empty. It never does this in a live round, halftime or the end screen, never when the debug port isn't reachable, and at most once a minute and 3 times per match. `steam/capabilities.ts` says what the app can use: the debug port (probed; on Linux Steam's web helper command line in /proc gives the port and tells "flag off" from "restart Steam" when a `.cef-enable-remote-debugging` file exists) and CS2's `console.log` (active when written to since the session began). Both feed the roster now; `npm run friends-ui` prints them. `steam/console-log.ts` tails CS2's `console.log` (from its end; a file that appears later from its start; truncation, replacement, CRLF and split characters handled) and parses the block `status` prints (`---------players--------` ... `#end`; bots and `[NoChan]` slots skipped; names only, no Steam IDs). `steam/name-match.ts` matches those names to friends: the friends Steam says are in CS2 (with names, from coplay.ts) plus the Web API's (`steam/friend-names.ts`: GetFriendList + GetPlayerSummaries, cached 5 minutes, a failure remembered as long). A name counts only when it fits exactly one friend and one lobby entry; players the app already has, and the user, use up lobby entries first, so a stranger and a friend with the same name aren't mixed up. The roster is: the players list, then friends matched by `status` (they stay for the match), then friends found through the friends list, each friend once, up to the mode's size; a friend both find is placed as a `status` friend. A `status` list that arrives triggers a scan at once (or right after the one running). `friendsHint` (capabilities.ts) is the line shown (overlay and window) while a friend is in CS2 and a slot is empty: nothing when the friends list will find them by itself or `status` has been run, else a prompt to run `status`, with what it needs (`-condebug`) and what the friends list needs when those aren't set up. It is worked out at most every 15 s. `steam/miniprofile.ts` is the fallback for when neither source is in use (`profileFallbackWanted`: the debug port doesn't answer and console.log isn't being written, nor was written in the last two hours): a friend's rich presence ("Premier - Inferno [ 0 : 2 ]") from the public mini-profile page `steamcommunity.com/miniprofile/<account id>`, which the Steam client's own interface withholds from a process that isn't CS2 (checked on Windows and Linux). The page only refreshes about every 10 minutes, so only the map and mode are used (never the score), friends on our map in a mode that can be ours are added only if they all fit the empty slots (otherwise nobody is: the lines are too old to tell who is in this match), and they are marked `via: "profile"` (a "maybe" badge) and worked out afresh each scan. They come after every exact source and never count towards the match being complete. Lookups are cached for 2 minutes, share a request in flight, and back off for 5 minutes after a 429 or a Steam error.
+4. **Friend finding from several imperfect sources**: The coplay list leaves out your friends, and nothing the Steam client gives a non-game process (server address, lobby, rich presence) says which match a friend is in. So the app combines what each setup allows, exact where it can be (`status` names), live where it can be (Steam's friends list over the debug port), and a marked guess otherwise (mini-profile). None needs injection: the app only reads a local port and a log file, and only ever asks the system to open `steam://open/friends`. Each source fails closed, exact sources always win over guesses, and the window says what would help when no source can find a friend whose slot is empty. See "Finding friends in the match".
 
 5. **csst.at fallback in a sidecar**: When Leetify's API returns "not found", the app fetches profiles from csst.at through Hero, which runs in a separate folder with its own Node 22 and its own `better-sqlite3` (see "Hero sidecar"). When it can't, the window says so and why.
 
