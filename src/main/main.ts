@@ -43,7 +43,7 @@ import { DEFAULT_DEBUG_PORT, findFriendsTarget, listDebugTargets, readFriendUi }
 const HOTKEY = { label: DEFAULT_HOTKEYS.lobby, code: "F2", accelerator: DEFAULT_HOTKEYS.lobby };
 const DETAIL_HOTKEY = { label: DEFAULT_HOTKEYS.detail, code: "F7", accelerator: DEFAULT_HOTKEYS.detail };
 const CYCLE_HOTKEY = { label: DEFAULT_HOTKEYS.cycle, code: "F6", accelerator: DEFAULT_HOTKEYS.cycle };
-const PREVIOUS_HOTKEY = { label: DEFAULT_HOTKEYS.previous, code: "F5", accelerator: DEFAULT_HOTKEYS.previous };
+const PREVIOUS_HOTKEY = { label: DEFAULT_HOTKEYS.previous, code: "Shift+F6", accelerator: DEFAULT_HOTKEYS.previous };
 
 const root = join(__dirname, "..", "..");
 const rendererDir = join(root, "dist", "renderer");

@@ -1,0 +1,168 @@
+FACEIT ELO CAPABILITY REPORT
+============================
+input: all-players.json   generated: 2026-10-17T22:46:39Z
+usable profiles: 623   with faceit_elo: 492   without faceit_elo (skipped): 131   of 660 entries
+skipped: banned=1, status_not-found=36
+left out (ban on record): bsd
+by source: leetify-api=492   by list: None=203, hltv-cs2-stats=198, steam-guide-3559763790=19, valve-top20=72
+faceit_elo of these players: min 1128  p10 3137  p25 3389  median 3670  p75 3940  p90 4189  max 4825
+unit decisions: match_rating_x100=491
+bands (equal-count): 1128-3388 (123 players),  3389-3669 (123 players),  3670-3938 (123 players),  3944-4825 (123 players)
+
+1. DOES ELO CHANGE WHAT PLAYERS REACH?   (one value per player)
+rho = Spearman rank correlation with faceit_elo, t = its t-statistic (|t| >= 3 yes, >= 2 weak, else no).
+slope = straight-line change per +1000 elo; shift = slope x (p90 elo - p10 elo), in the metric's unit and in its own std devs.
+moves = whether a higher elo pushes the value toward the metric's extreme end (low for preaim/reaction, high for the rest).
+
+[mechanics]
+metric                    n    rho      t   slope/1000       shift   in sd  moves   effect  unit
+preaim                  492  -0.11   -2.4      -0.3789     -0.3987   -0.31  toward  weak    deg
+reaction_ms             492  -0.28   -6.5       -33.18      -34.91   -0.82  toward  yes     ms
+head_acc                492   0.05    1.2       0.8031       0.845    0.23  -       no      %
+spray_acc               492   0.04    1.0       0.6856      0.7213    0.18  -       no      %
+spotted_acc             492   0.17    3.8        1.249       1.314    0.42  toward  yes     %
+opening_min             492   0.03    0.6       0.7256      0.7634    0.09  -       no      %
+stopping                492   0.11    2.4         1.11       1.168    0.27  toward  weak    %
+
+[coherence]
+metric                    n    rho      t   slope/1000       shift   in sd  moves   effect  unit
+aim_rating              492   0.23    5.1        3.718       3.912    0.69  toward  yes     0-100
+positioning_rating      492   0.18    4.1        3.852       4.053    0.48  toward  yes     0-100
+utility_rating          492  -0.08   -1.9       -1.973      -2.075   -0.23  -       no      0-100
+aim_lead                492   0.08    1.7        2.779       2.923    0.39  -       no      points
+not_stopped             492  -0.11   -2.4        -1.11      -1.168   -0.27  away    weak    %
+clutch_rating           492   0.00    0.0    -0.003963   -0.004169   -0.12  -       no      API units
+
+[rating]
+metric                    n    rho      t   slope/1000       shift   in sd  moves   effect  unit
+leetify_overall         492   0.03    0.7      0.05613     0.05906    0.03  -       no      website units
+recent_mean_rating      491   0.03    0.8      0.07139     0.07511    0.04  -       no      website units
+strong_share_ge_2       491  -0.00   -0.0    -0.002846   -0.002994   -0.02  -       no      share 0-1
+strong_share_ge_3       491   0.05    1.0     0.006312     0.00664    0.05  -       no      share 0-1
+strong_share_ge_4       491   0.03    0.7    -0.001086   -0.001142   -0.01  -       no      share 0-1
+strong_share_ge_5       491   0.03    0.6    -0.002676   -0.002815   -0.02  -       no      share 0-1
+
+[trajectory]
+metric                    n    rho      t   slope/1000       shift   in sd  moves   effect  unit
+step_effect             491  -0.09   -2.1     -0.05994    -0.06307   -0.24  away    weak    std devs
+floor_share             491   0.02    0.4     0.007189    0.007563    0.05  -       no      share 0-1
+floor_share_in_form     129  -0.12   -1.4     -0.02793    -0.02938   -0.31  -       no      share 0-1
+reaction_cv             491  -0.03   -0.6   -0.0004606  -0.0004846   -0.01  -       no      ratio
+divergence               77  -0.35   -3.2        -0.25      -0.263   -0.82  away    yes     std devs
+
+2. BY ELO BAND
+Values of the players in the band (single-match rows: of their pooled recent matches). * = fewer than 20 values.
+
+Median
+[mechanics]             1128-3388  3389-3669  3670-3938  3944-4825
+  preaim                     9.25      9.302      9.357      9.121
+  reaction_ms               478.3      472.4      461.1      449.2
+  head_acc                  23.09      23.61      23.14      23.42
+  spray_acc                 43.32      43.33      44.11      43.75
+  spotted_acc               39.39      39.29       40.6      40.64
+  opening_min               39.24      38.18      38.47      39.35
+  stopping                  82.98      83.34      82.95      84.61
+[coherence]             1128-3388  3389-3669  3670-3938  3944-4825
+  aim_rating                91.62      91.77      93.06      93.94
+  positioning_rating        63.68      63.31      65.54      67.72
+  utility_rating            67.09      66.65      67.27       65.5
+  aim_lead                  25.52      26.69      25.73      26.91
+  not_stopped               17.02      16.66      17.05      15.39
+  clutch_rating            0.0993     0.1001     0.1011     0.1052
+[rating]                1128-3388  3389-3669  3670-3938  3944-4825
+  leetify_overall            0.84       0.65       0.57       1.03
+  recent_mean_rating         1.09     0.5423     0.6883      1.278
+  strong_share_ge_2        0.3667     0.3333     0.3333     0.3667
+  strong_share_ge_3           0.3     0.2667     0.2667        0.3
+  strong_share_ge_4        0.2333        0.2        0.2     0.2333
+  strong_share_ge_5           0.2     0.1667     0.1667        0.2
+[trajectory]            1128-3388  3389-3669  3670-3938  3944-4825
+  step_effect             0.01518   -0.01537  -0.003384 -0.0004504
+  floor_share              0.5667     0.5333     0.5333     0.5667
+  floor_share_in_form      0.7333        0.7     0.6667     0.7167
+  reaction_cv              0.1855     0.1867     0.1855      0.182
+  divergence              0.06526    -0.1025  -0.09358*   -0.3676*
+[single match]          1128-3388  3389-3669  3670-3938  3944-4825
+  match_rating               0.72       0.22       0.26      0.665
+  match_preaim               8.78       8.83      8.915       8.29
+  match_reaction_ms           469        469        453        438
+  match_head_acc            22.22      22.93      22.45      22.92
+  match_spray_acc            41.9      41.67      42.86      42.22
+  match_spotted_acc         39.13      38.96       39.8      40.26
+
+Extreme end, 10% mark: the value 10% of the band is beyond
+[mechanics]             1128-3388  3389-3669  3670-3938  3944-4825
+  preaim                    7.539      7.539      7.612      6.618
+  reaction_ms               429.6      431.9      418.5      409.1
+  head_acc                  28.01      28.22      27.61      28.77
+  spray_acc                 48.55      48.12      49.89      48.56
+  spotted_acc               42.67      43.45      43.59      44.41
+  opening_min               47.81       48.7      48.39      49.08
+  stopping                     88       88.3      88.35      88.99
+[coherence]             1128-3388  3389-3669  3670-3938  3944-4825
+  aim_rating                96.26      96.71      97.03      98.26
+  positioning_rating         73.5      74.54      76.42      77.64
+  utility_rating            79.49      78.65      77.25       75.8
+  aim_lead                  33.16      35.15      34.28      34.26
+  not_stopped               23.17      21.62      23.35      22.35
+  clutch_rating            0.1645      0.141     0.1422     0.1492
+[rating]                1128-3388  3389-3669  3670-3938  3944-4825
+  leetify_overall             3.9      2.922      3.062       3.16
+  recent_mean_rating        3.954      2.863      3.587      3.207
+  strong_share_ge_2        0.6333     0.5333     0.5333        0.6
+  strong_share_ge_3        0.5333     0.4667     0.4933        0.5
+  strong_share_ge_4        0.4667        0.4        0.4        0.4
+  strong_share_ge_5           0.4     0.3333     0.3667     0.3333
+[trajectory]            1128-3388  3389-3669  3670-3938  3944-4825
+  step_effect              0.3172     0.3211      0.352      0.242
+  floor_share              0.7967        0.7     0.7333     0.7333
+  floor_share_in_form      0.8667        0.8     0.8333       0.82
+  reaction_cv              0.1419     0.1489     0.1486     0.1415
+  divergence               0.4177     0.1807    0.2243*    0.1476*
+[single match]          1128-3388  3389-3669  3670-3938  3944-4825
+  match_rating              8.052       7.03      7.461      7.711
+  match_preaim              5.189       5.39       5.23       4.82
+  match_reaction_ms           367        367        359        352
+  match_head_acc            34.48      35.48      33.33      35.71
+  match_spray_acc              60       61.9      61.36      61.11
+  match_spotted_acc         48.28      48.08      48.96         50
+
+Extreme end, most extreme value in the band
+[mechanics]             1128-3388  3389-3669  3670-3938  3944-4825
+  preaim                    5.385      6.023       5.39      5.516
+  reaction_ms               378.5        407      349.6      346.9
+  head_acc                  34.83      35.87      35.03      38.08
+  spray_acc                 56.41      53.39      53.39      56.48
+  spotted_acc               50.44      47.66      50.54      48.77
+  opening_min               61.45      55.25      58.57      60.77
+  stopping                  90.73      93.54      93.29      92.09
+[coherence]             1128-3388  3389-3669  3670-3938  3944-4825
+  aim_rating                99.61       99.4      99.22      99.41
+  positioning_rating        85.54      78.81      83.65      82.38
+  utility_rating            86.12      87.02      85.37      86.47
+  aim_lead                  54.41      43.89      49.58      40.39
+  not_stopped               30.78      28.93      27.55      30.26
+  clutch_rating            0.2398     0.2149     0.2468     0.1786
+[rating]                1128-3388  3389-3669  3670-3938  3944-4825
+  leetify_overall               6       5.37       7.16       6.28
+  recent_mean_rating        6.189      7.206      6.622      6.836
+  strong_share_ge_2        0.8667        0.7     0.7667     0.7667
+  strong_share_ge_3           0.8     0.6333     0.7333        0.7
+  strong_share_ge_4        0.7333        0.6     0.7333     0.6667
+  strong_share_ge_5        0.6333        0.5     0.6667     0.5667
+[trajectory]            1128-3388  3389-3669  3670-3938  3944-4825
+  step_effect              0.7356     0.8419     0.8548      0.777
+  floor_share              0.9667     0.8667     0.8667     0.9667
+  floor_share_in_form      0.9667     0.8667     0.8667     0.9667
+  reaction_cv              0.1126     0.1167       0.13     0.1028
+  divergence               0.7871     0.7801      0.54*    0.2797*
+[single match]          1128-3388  3389-3669  3670-3938  3944-4825
+  match_rating                 29      40.59      34.16      38.53
+  match_preaim                  0          0          0          0
+  match_reaction_ms             0          0          0          0
+  match_head_acc            83.33        100        100        100
+  match_spray_acc             100        100        100        100
+  match_spotted_acc            75        100        100        100
+
+Notes: professionals only, so the elo range is narrow and high; nothing is valid below it. faceit_elo is the value at fetch time.
+The JSON has all percentiles, the straight-line formula per metric (intercept + slope_per_elo * elo) and the most extreme player or match everywhere.

@@ -1,0 +1,4660 @@
+{
+  "generated_at": "2026-10-17T22:46:39Z",
+  "input": "all-players.json",
+  "settings": {
+    "window": 30,
+    "min_matches_per_player_filter": 0,
+    "lists": "all",
+    "include_banned": false,
+    "bands": 4,
+    "band_edges": [
+      3388.75,
+      3669.5,
+      3939.5
+    ],
+    "band_edges_custom": false,
+    "k": 40,
+    "elo_queries": [],
+    "elo_source": "profile.ranks.faceit_elo (profile.faceit_elo and entry.faceit_elo as fallbacks), > 0",
+    "min_recent_matches_for_match_signals": 5,
+    "newest_group": 10,
+    "min_group": 8,
+    "floor_mean_gate": 2.0,
+    "strong_cuts": [
+      2.0,
+      3.0,
+      4.0,
+      5.0
+    ]
+  },
+  "coverage": {
+    "entries_in_file": 660,
+    "usable_profiles": 623,
+    "players_with_elo": 492,
+    "players_without_elo": 131,
+    "names_without_elo": [
+      "magixx",
+      "n1ssim",
+      "ropz",
+      "xelex",
+      "huNter-",
+      "molodoy",
+      "XANTARES",
+      "woxic",
+      "zorte",
+      "Rainwaker",
+      "s1zzi",
+      "max",
+      "JT",
+      "broky",
+      "dav1deuS",
+      "JamYoung",
+      "gr1ks",
+      "z4KR",
+      "Liazz",
+      "Kvem",
+      "cool4st",
+      "Tiger",
+      "HObbit",
+      "REZ",
+      "Starry",
+      "Jame",
+      "coldzera",
+      "glowiing",
+      "hardzao",
+      "clax"
+    ],
+    "skipped": {
+      "status_not-found": 36,
+      "banned": 1
+    },
+    "excluded_bans": [
+      "bsd"
+    ],
+    "by_source": {
+      "leetify-api": 492
+    },
+    "by_pro_list": {
+      "valve-top20": 72,
+      "steam-guide-3559763790": 19,
+      "hltv-cs2-stats": 198,
+      "None": 203
+    },
+    "privacy_mode": {
+      "public": 491,
+      "private": 1
+    },
+    "with_match_history": 491,
+    "matches_pooled": 14730
+  },
+  "unit_decisions": {
+    "counts": {
+      "match_rating_x100": 491
+    },
+    "warnings": [],
+    "players": {}
+  },
+  "elo": {
+    "n": 492,
+    "min": 1128.0,
+    "p10": 3137.3,
+    "p25": 3388.75,
+    "median": 3669.5,
+    "p75": 3939.5,
+    "p90": 4189.4,
+    "max": 4825.0,
+    "mean": 3658.3354,
+    "std": 431.69383
+  },
+  "bands": [
+    {
+      "index": 0,
+      "label": "1128-3388",
+      "n_players": 123,
+      "elo_min": 1128.0,
+      "elo_max": 3388.0
+    },
+    {
+      "index": 1,
+      "label": "3389-3669",
+      "n_players": 123,
+      "elo_min": 3389.0,
+      "elo_max": 3669.0
+    },
+    {
+      "index": 2,
+      "label": "3670-3938",
+      "n_players": 123,
+      "elo_min": 3670.0,
+      "elo_max": 3938.0
+    },
+    {
+      "index": 3,
+      "label": "3944-4825",
+      "n_players": 123,
+      "elo_min": 3944.0,
+      "elo_max": 4825.0
+    }
+  ],
+  "queries": [],
+  "metrics": {
+    "preaim": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "deg",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.preaim",
+      "what": "Crosshair placement error",
+      "band_constant": "REPUTATION.band.preaimDeg",
+      "relationship": {
+        "n": 492,
+        "spearman_rho": -0.1063,
+        "t": -2.367,
+        "effect": "weak",
+        "slope_per_elo": -0.00037891977014859146,
+        "intercept": 10.488229010589878,
+        "slope_per_1000": -0.37892,
+        "slope_se_per_1000": 0.133122,
+        "r2": 0.01627,
+        "residual_std": 1.27341,
+        "metric_std": 1.28258,
+        "shift_p10_to_p90_elo": -0.398661,
+        "shift_in_metric_std": -0.3108,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 9.20012,
+          "std": 1.19787,
+          "min": 5.3848,
+          "max": 12.0891,
+          "median": 9.2502,
+          "percentiles": {
+            "p5": 7.18633,
+            "p10": 7.53936,
+            "p25": 8.4863,
+            "p50": 9.2502,
+            "p75": 10.0711,
+            "p90": 10.6695,
+            "p95": 11.0324
+          },
+          "tail": {
+            "top_10pct": 7.53936,
+            "top_5pct": 7.18633,
+            "top_1pct": 6.3691,
+            "most_extreme": 5.3848
+          },
+          "most_extreme_by": {
+            "value": 5.3848,
+            "player": "lash",
+            "steam64_id": "76561198328716965",
+            "faceit_elo": 3189.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 9.21927,
+          "std": 1.19365,
+          "min": 6.0233,
+          "max": 12.2706,
+          "median": 9.3021,
+          "percentiles": {
+            "p5": 7.17634,
+            "p10": 7.53934,
+            "p25": 8.5495,
+            "p50": 9.3021,
+            "p75": 9.939,
+            "p90": 10.6244,
+            "p95": 10.9239
+          },
+          "tail": {
+            "top_10pct": 7.53934,
+            "top_5pct": 7.17634,
+            "top_1pct": 6.47442,
+            "most_extreme": 6.0233
+          },
+          "most_extreme_by": {
+            "value": 6.0233,
+            "player": "maxxkor",
+            "steam64_id": "76561199030972198",
+            "faceit_elo": 3604.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 9.23827,
+          "std": 1.2719,
+          "min": 5.3898,
+          "max": 11.8685,
+          "median": 9.3568,
+          "percentiles": {
+            "p5": 6.80553,
+            "p10": 7.6124,
+            "p25": 8.6214,
+            "p50": 9.3568,
+            "p75": 10.0081,
+            "p90": 10.7465,
+            "p95": 11.0452
+          },
+          "tail": {
+            "top_10pct": 7.6124,
+            "top_5pct": 6.80553,
+            "top_1pct": 5.98551,
+            "most_extreme": 5.3898
+          },
+          "most_extreme_by": {
+            "value": 5.3898,
+            "player": "El1an",
+            "steam64_id": "76561198210763837",
+            "faceit_elo": 3919.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 8.75039,
+          "std": 1.40576,
+          "min": 5.5163,
+          "max": 11.6332,
+          "median": 9.1206,
+          "percentiles": {
+            "p5": 6.15815,
+            "p10": 6.61802,
+            "p25": 7.8839,
+            "p50": 9.1206,
+            "p75": 9.6265,
+            "p90": 10.2795,
+            "p95": 10.7944
+          },
+          "tail": {
+            "top_10pct": 6.61802,
+            "top_5pct": 6.15815,
+            "top_1pct": 5.81466,
+            "most_extreme": 5.5163
+          },
+          "most_extreme_by": {
+            "value": 5.5163,
+            "player": "L00m1",
+            "steam64_id": "76561198890491804",
+            "faceit_elo": 4627.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "reaction_ms": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "ms",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.reaction",
+      "what": "Reaction time",
+      "band_constant": "REPUTATION.band.reactionMs",
+      "relationship": {
+        "n": 492,
+        "spearman_rho": -0.2813,
+        "t": -6.489,
+        "effect": "yes",
+        "slope_per_elo": -0.033180280428057866,
+        "intercept": 589.9597665096378,
+        "slope_per_1000": -33.1803,
+        "slope_se_per_1000": 4.16998,
+        "r2": 0.1144,
+        "residual_std": 39.8888,
+        "metric_std": 42.3444,
+        "shift_p10_to_p90_elo": -34.909,
+        "shift_in_metric_std": -0.8244,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 485.004,
+          "std": 49.5613,
+          "min": 378.501,
+          "max": 613.87,
+          "median": 478.32,
+          "percentiles": {
+            "p5": 413.69,
+            "p10": 429.63,
+            "p25": 447.312,
+            "p50": 478.32,
+            "p75": 512.955,
+            "p90": 551.411,
+            "p95": 581.769
+          },
+          "tail": {
+            "top_10pct": 429.63,
+            "top_5pct": 413.69,
+            "top_1pct": 389.379,
+            "most_extreme": 378.501
+          },
+          "most_extreme_by": {
+            "value": 378.501,
+            "player": "afro",
+            "steam64_id": "76561198035581101",
+            "faceit_elo": 3221.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 475.722,
+          "std": 34.8892,
+          "min": 407.03,
+          "max": 569.568,
+          "median": 472.412,
+          "percentiles": {
+            "p5": 420.296,
+            "p10": 431.88,
+            "p25": 450.61,
+            "p50": 472.412,
+            "p75": 502.439,
+            "p90": 518.423,
+            "p95": 530.385
+          },
+          "tail": {
+            "top_10pct": 431.88,
+            "top_5pct": 420.296,
+            "top_1pct": 411.015,
+            "most_extreme": 407.03
+          },
+          "most_extreme_by": {
+            "value": 407.03,
+            "player": "try",
+            "steam64_id": "76561198365118288",
+            "faceit_elo": 3406.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 461.814,
+          "std": 39.3298,
+          "min": 349.623,
+          "max": 623.744,
+          "median": 461.081,
+          "percentiles": {
+            "p5": 409.546,
+            "p10": 418.477,
+            "p25": 435.207,
+            "p50": 461.081,
+            "p75": 486.716,
+            "p90": 511.162,
+            "p95": 514.074
+          },
+          "tail": {
+            "top_10pct": 418.477,
+            "top_5pct": 409.546,
+            "top_1pct": 370.445,
+            "most_extreme": 349.623
+          },
+          "most_extreme_by": {
+            "value": 349.623,
+            "player": "regali",
+            "steam64_id": "76561198098463229",
+            "faceit_elo": 3902.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 451.761,
+          "std": 36.6213,
+          "min": 346.906,
+          "max": 522.612,
+          "median": 449.237,
+          "percentiles": {
+            "p5": 391.672,
+            "p10": 409.125,
+            "p25": 425.297,
+            "p50": 449.237,
+            "p75": 483.313,
+            "p90": 496.321,
+            "p95": 507.847
+          },
+          "tail": {
+            "top_10pct": 409.125,
+            "top_5pct": 391.672,
+            "top_1pct": 362.799,
+            "most_extreme": 346.906
+          },
+          "most_extreme_by": {
+            "value": 346.906,
+            "player": "stavn",
+            "steam64_id": "76561198022365638",
+            "faceit_elo": 4191.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "head_acc": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.headAcc, coherence.movingHeadAcc",
+      "what": "Share of shots that hit the head",
+      "band_constant": "REPUTATION.band.accuracyPts",
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.05369,
+        "t": 1.19,
+        "effect": "no",
+        "slope_per_elo": 0.0008031256337136822,
+        "intercept": 20.502230017790872,
+        "slope_per_1000": 0.803126,
+        "slope_se_per_1000": 0.390633,
+        "r2": 0.008553,
+        "residual_std": 3.73668,
+        "metric_std": 3.74894,
+        "shift_p10_to_p90_elo": 0.844968,
+        "shift_in_metric_std": 0.2254,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 23.1488,
+          "std": 3.63413,
+          "min": 13.2783,
+          "max": 34.832,
+          "median": 23.094,
+          "percentiles": {
+            "p5": 18.0954,
+            "p10": 18.5232,
+            "p25": 20.7401,
+            "p50": 23.094,
+            "p75": 25.1374,
+            "p90": 28.012,
+            "p95": 29.6418
+          },
+          "tail": {
+            "top_10pct": 28.012,
+            "top_5pct": 29.6418,
+            "top_1pct": 31.7992,
+            "most_extreme": 34.832
+          },
+          "most_extreme_by": {
+            "value": 34.832,
+            "player": "Calyx",
+            "steam64_id": "76561198052546265",
+            "faceit_elo": 3361.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 23.8219,
+          "std": 3.9152,
+          "min": 16.0775,
+          "max": 35.8677,
+          "median": 23.6101,
+          "percentiles": {
+            "p5": 18.4987,
+            "p10": 19.2554,
+            "p25": 20.9936,
+            "p50": 23.6101,
+            "p75": 25.9633,
+            "p90": 28.2231,
+            "p95": 31.4206
+          },
+          "tail": {
+            "top_10pct": 28.2231,
+            "top_5pct": 31.4206,
+            "top_1pct": 35.0891,
+            "most_extreme": 35.8677
+          },
+          "most_extreme_by": {
+            "value": 35.8677,
+            "player": "STYKO",
+            "steam64_id": "76561198016194159",
+            "faceit_elo": 3590.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 22.9949,
+          "std": 3.62414,
+          "min": 14.2131,
+          "max": 35.0259,
+          "median": 23.14,
+          "percentiles": {
+            "p5": 17.6524,
+            "p10": 18.6451,
+            "p25": 20.0017,
+            "p50": 23.14,
+            "p75": 25.3582,
+            "p90": 27.6112,
+            "p95": 28.6581
+          },
+          "tail": {
+            "top_10pct": 27.6112,
+            "top_5pct": 28.6581,
+            "top_1pct": 31.4729,
+            "most_extreme": 35.0259
+          },
+          "most_extreme_by": {
+            "value": 35.0259,
+            "player": "b0RUP",
+            "steam64_id": "76561198107142008",
+            "faceit_elo": 3823.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 23.7958,
+          "std": 3.78598,
+          "min": 14.7036,
+          "max": 38.0761,
+          "median": 23.4216,
+          "percentiles": {
+            "p5": 18.4858,
+            "p10": 19.2601,
+            "p25": 21.3079,
+            "p50": 23.4216,
+            "p75": 26.2685,
+            "p90": 28.768,
+            "p95": 29.6152
+          },
+          "tail": {
+            "top_10pct": 28.768,
+            "top_5pct": 29.6152,
+            "top_1pct": 34.9683,
+            "most_extreme": 38.0761
+          },
+          "most_extreme_by": {
+            "value": 38.0761,
+            "player": "nota",
+            "steam64_id": "76561198975070027",
+            "faceit_elo": 4224.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "spray_acc": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.sprayAcc",
+      "what": "Spray accuracy",
+      "band_constant": "REPUTATION.band.accuracyPts",
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.04327,
+        "t": 0.9587,
+        "effect": "no",
+        "slope_per_elo": 0.0006856116111538503,
+        "intercept": 41.064549543643444,
+        "slope_per_1000": 0.685612,
+        "slope_se_per_1000": 0.422681,
+        "r2": 0.005341,
+        "residual_std": 4.04323,
+        "metric_std": 4.04994,
+        "shift_p10_to_p90_elo": 0.721332,
+        "shift_in_metric_std": 0.1781,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 43.3233,
+          "std": 4.31273,
+          "min": 29.6768,
+          "max": 56.4136,
+          "median": 43.3183,
+          "percentiles": {
+            "p5": 36.3596,
+            "p10": 38.3747,
+            "p25": 40.2313,
+            "p50": 43.3183,
+            "p75": 46.4035,
+            "p90": 48.5545,
+            "p95": 49.8039
+          },
+          "tail": {
+            "top_10pct": 48.5545,
+            "top_5pct": 49.8039,
+            "top_1pct": 52.3069,
+            "most_extreme": 56.4136
+          },
+          "most_extreme_by": {
+            "value": 56.4136,
+            "player": "S3NSEY",
+            "steam64_id": "76561198064010365",
+            "faceit_elo": 3195.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 43.1076,
+          "std": 3.92336,
+          "min": 33.7516,
+          "max": 53.3937,
+          "median": 43.3339,
+          "percentiles": {
+            "p5": 36.0871,
+            "p10": 38.5114,
+            "p25": 40.6795,
+            "p50": 43.3339,
+            "p75": 46.0409,
+            "p90": 48.1207,
+            "p95": 48.7001
+          },
+          "tail": {
+            "top_10pct": 48.1207,
+            "top_5pct": 48.7001,
+            "top_1pct": 50.8558,
+            "most_extreme": 53.3937
+          },
+          "most_extreme_by": {
+            "value": 53.3937,
+            "player": "frozen",
+            "steam64_id": "76561198068422762",
+            "faceit_elo": 3652.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 44.0715,
+          "std": 4.38838,
+          "min": 32.1101,
+          "max": 53.3936,
+          "median": 44.1142,
+          "percentiles": {
+            "p5": 36.8067,
+            "p10": 39.06,
+            "p25": 40.9093,
+            "p50": 44.1142,
+            "p75": 47.0722,
+            "p90": 49.8947,
+            "p95": 51.1873
+          },
+          "tail": {
+            "top_10pct": 49.8947,
+            "top_5pct": 51.1873,
+            "top_1pct": 52.6179,
+            "most_extreme": 53.3936
+          },
+          "most_extreme_by": {
+            "value": 53.3936,
+            "player": "zont1x",
+            "steam64_id": "76561198995880877",
+            "faceit_elo": 3693.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 43.7886,
+          "std": 3.49035,
+          "min": 35.094,
+          "max": 56.4793,
+          "median": 43.7465,
+          "percentiles": {
+            "p5": 38.7497,
+            "p10": 39.5275,
+            "p25": 41.4175,
+            "p50": 43.7465,
+            "p75": 45.6855,
+            "p90": 48.5551,
+            "p95": 49.3558
+          },
+          "tail": {
+            "top_10pct": 48.5551,
+            "top_5pct": 49.3558,
+            "top_1pct": 52.1044,
+            "most_extreme": 56.4793
+          },
+          "most_extreme_by": {
+            "value": 56.4793,
+            "player": "headtr1ck",
+            "steam64_id": "76561198359519930",
+            "faceit_elo": 4044.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "spotted_acc": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.spottedAcc",
+      "what": "Accuracy on spotted enemies",
+      "band_constant": "REPUTATION.band.accuracyPts",
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.1696,
+        "t": 3.809,
+        "effect": "yes",
+        "slope_per_elo": 0.001248932103787462,
+        "intercept": 35.267926539554566,
+        "slope_per_1000": 1.24893,
+        "slope_se_per_1000": 0.32047,
+        "r2": 0.03006,
+        "residual_std": 3.06551,
+        "metric_std": 3.10949,
+        "shift_p10_to_p90_elo": 1.314,
+        "shift_in_metric_std": 0.4226,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 39.2399,
+          "std": 3.08651,
+          "min": 31.2314,
+          "max": 50.4355,
+          "median": 39.3919,
+          "percentiles": {
+            "p5": 34.8838,
+            "p10": 35.4124,
+            "p25": 36.9869,
+            "p50": 39.3919,
+            "p75": 41.1236,
+            "p90": 42.6727,
+            "p95": 44.1078
+          },
+          "tail": {
+            "top_10pct": 42.6727,
+            "top_5pct": 44.1078,
+            "top_1pct": 47.6229,
+            "most_extreme": 50.4355
+          },
+          "most_extreme_by": {
+            "value": 50.4355,
+            "player": "afro",
+            "steam64_id": "76561198035581101",
+            "faceit_elo": 3221.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 39.3155,
+          "std": 3.11499,
+          "min": 31.8079,
+          "max": 47.6613,
+          "median": 39.2871,
+          "percentiles": {
+            "p5": 34.8743,
+            "p10": 35.3498,
+            "p25": 37.1103,
+            "p50": 39.2871,
+            "p75": 41.1515,
+            "p90": 43.4479,
+            "p95": 44.5571
+          },
+          "tail": {
+            "top_10pct": 43.4479,
+            "top_5pct": 44.5571,
+            "top_1pct": 47.1961,
+            "most_extreme": 47.6613
+          },
+          "most_extreme_by": {
+            "value": 47.6613,
+            "player": "try",
+            "steam64_id": "76561198365118288",
+            "faceit_elo": 3406.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 40.1582,
+          "std": 3.07727,
+          "min": 33.2685,
+          "max": 50.5389,
+          "median": 40.5957,
+          "percentiles": {
+            "p5": 34.7858,
+            "p10": 36.0034,
+            "p25": 38.0007,
+            "p50": 40.5957,
+            "p75": 42.1106,
+            "p90": 43.5892,
+            "p95": 44.5873
+          },
+          "tail": {
+            "top_10pct": 43.5892,
+            "top_5pct": 44.5873,
+            "top_1pct": 47.8724,
+            "most_extreme": 50.5389
+          },
+          "most_extreme_by": {
+            "value": 50.5389,
+            "player": "zont1x",
+            "steam64_id": "76561198995880877",
+            "faceit_elo": 3693.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 40.6342,
+          "std": 2.97249,
+          "min": 33.2613,
+          "max": 48.7723,
+          "median": 40.6437,
+          "percentiles": {
+            "p5": 35.7093,
+            "p10": 36.8042,
+            "p25": 38.7929,
+            "p50": 40.6437,
+            "p75": 42.4405,
+            "p90": 44.4074,
+            "p95": 45.5859
+          },
+          "tail": {
+            "top_10pct": 44.4074,
+            "top_5pct": 45.5859,
+            "top_1pct": 46.4927,
+            "most_extreme": 48.7723
+          },
+          "most_extreme_by": {
+            "value": 48.7723,
+            "player": "aidKiT",
+            "steam64_id": "76561198201921879",
+            "faceit_elo": 4344.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "opening_min": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.opening",
+      "what": "Lower of CT and T opening-duel win rate",
+      "band_constant": "REPUTATION.band.openingPts",
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.02858,
+        "t": 0.633,
+        "effect": "no",
+        "slope_per_elo": 0.000725558843052611,
+        "intercept": 35.73051140819261,
+        "slope_per_1000": 0.725559,
+        "slope_se_per_1000": 0.84754,
+        "r2": 0.001493,
+        "residual_std": 8.10731,
+        "metric_std": 8.10511,
+        "shift_p10_to_p90_elo": 0.76336,
+        "shift_in_metric_std": 0.09418,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 38.0489,
+          "std": 8.73725,
+          "min": 16.4691,
+          "max": 61.4541,
+          "median": 39.2407,
+          "percentiles": {
+            "p5": 22.2299,
+            "p10": 26.3095,
+            "p25": 31.7077,
+            "p50": 39.2407,
+            "p75": 44.0616,
+            "p90": 47.811,
+            "p95": 50.8069
+          },
+          "tail": {
+            "top_10pct": 47.811,
+            "top_5pct": 50.8069,
+            "top_1pct": 59.7035,
+            "most_extreme": 61.4541
+          },
+          "most_extreme_by": {
+            "value": 61.4541,
+            "player": "Surreal",
+            "steam64_id": "76561198044840457",
+            "faceit_elo": 3087.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 38.2059,
+          "std": 7.88543,
+          "min": 19.2952,
+          "max": 55.251,
+          "median": 38.1751,
+          "percentiles": {
+            "p5": 26.4178,
+            "p10": 28.83,
+            "p25": 32.5137,
+            "p50": 38.1751,
+            "p75": 44.2833,
+            "p90": 48.7033,
+            "p95": 51.18
+          },
+          "tail": {
+            "top_10pct": 48.7033,
+            "top_5pct": 51.18,
+            "top_1pct": 54.4566,
+            "most_extreme": 55.251
+          },
+          "most_extreme_by": {
+            "value": 55.251,
+            "player": "bnox",
+            "steam64_id": "76561198360682773",
+            "faceit_elo": 3503.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 38.2238,
+          "std": 7.46974,
+          "min": 21.8373,
+          "max": 58.5656,
+          "median": 38.468,
+          "percentiles": {
+            "p5": 26.8012,
+            "p10": 28.6155,
+            "p25": 33.112,
+            "p50": 38.468,
+            "p75": 42.2012,
+            "p90": 48.3942,
+            "p95": 50.5376
+          },
+          "tail": {
+            "top_10pct": 48.3942,
+            "top_5pct": 50.5376,
+            "top_1pct": 55.6442,
+            "most_extreme": 58.5656
+          },
+          "most_extreme_by": {
+            "value": 58.5656,
+            "player": "kl1m",
+            "steam64_id": "76561198125068631",
+            "faceit_elo": 3900.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 39.0607,
+          "std": 8.33289,
+          "min": 19.4017,
+          "max": 60.769,
+          "median": 39.3514,
+          "percentiles": {
+            "p5": 25.6909,
+            "p10": 28.6682,
+            "p25": 32.3165,
+            "p50": 39.3514,
+            "p75": 44.6893,
+            "p90": 49.0841,
+            "p95": 50.9934
+          },
+          "tail": {
+            "top_10pct": 49.0841,
+            "top_5pct": 50.9934,
+            "top_1pct": 59.3947,
+            "most_extreme": 60.769
+          },
+          "most_extreme_by": {
+            "value": 60.769,
+            "player": "Matheos",
+            "steam64_id": "76561198274726597",
+            "faceit_elo": 3961.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "stopping": {
+      "family": "mechanics",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.stopping",
+      "what": "Share of shots taken with good counter-strafing",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.1059,
+        "t": 2.356,
+        "effect": "weak",
+        "slope_per_elo": 0.0011102005799157593,
+        "intercept": 79.02920704473382,
+        "slope_per_1000": 1.1102,
+        "slope_se_per_1000": 0.45343,
+        "r2": 0.01209,
+        "residual_std": 4.33737,
+        "metric_std": 4.35938,
+        "shift_p10_to_p90_elo": 1.16804,
+        "shift_in_metric_std": 0.2679,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 82.4421,
+          "std": 4.42885,
+          "min": 69.2178,
+          "max": 90.7324,
+          "median": 82.9827,
+          "percentiles": {
+            "p5": 75.3366,
+            "p10": 76.8317,
+            "p25": 79.461,
+            "p50": 82.9827,
+            "p75": 86.0126,
+            "p90": 88.0014,
+            "p95": 88.9348
+          },
+          "tail": {
+            "top_10pct": 88.0014,
+            "top_5pct": 88.9348,
+            "top_1pct": 90.3024,
+            "most_extreme": 90.7324
+          },
+          "most_extreme_by": {
+            "value": 90.7324,
+            "player": "FaNg",
+            "steam64_id": "76561198272723319",
+            "faceit_elo": 3338.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 83.3201,
+          "std": 4.26782,
+          "min": 71.0656,
+          "max": 93.5366,
+          "median": 83.3422,
+          "percentiles": {
+            "p5": 76.6533,
+            "p10": 78.3755,
+            "p25": 80.8671,
+            "p50": 83.3422,
+            "p75": 85.6558,
+            "p90": 88.301,
+            "p95": 90.5501
+          },
+          "tail": {
+            "top_10pct": 88.301,
+            "top_5pct": 90.5501,
+            "top_1pct": 91.8618,
+            "most_extreme": 93.5366
+          },
+          "most_extreme_by": {
+            "value": 93.5366,
+            "player": "try",
+            "steam64_id": "76561198365118288",
+            "faceit_elo": 3406.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 82.8067,
+          "std": 4.35293,
+          "min": 72.4479,
+          "max": 93.2859,
+          "median": 82.9471,
+          "percentiles": {
+            "p5": 74.9087,
+            "p10": 76.6529,
+            "p25": 80.0663,
+            "p50": 82.9471,
+            "p75": 86.197,
+            "p90": 88.3497,
+            "p95": 89.531
+          },
+          "tail": {
+            "top_10pct": 88.3497,
+            "top_5pct": 89.531,
+            "top_1pct": 91.641,
+            "most_extreme": 93.2859
+          },
+          "most_extreme_by": {
+            "value": 93.2859,
+            "player": "zont1x",
+            "steam64_id": "76561198995880877",
+            "faceit_elo": 3693.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 83.7939,
+          "std": 4.31858,
+          "min": 69.7413,
+          "max": 92.0858,
+          "median": 84.6084,
+          "percentiles": {
+            "p5": 76.2021,
+            "p10": 77.6528,
+            "p25": 81.53,
+            "p50": 84.6084,
+            "p75": 86.4956,
+            "p90": 88.9878,
+            "p95": 90.056
+          },
+          "tail": {
+            "top_10pct": 88.9878,
+            "top_5pct": 90.056,
+            "top_1pct": 91.9906,
+            "most_extreme": 92.0858
+          },
+          "most_extreme_by": {
+            "value": 92.0858,
+            "player": "aidKiT",
+            "steam64_id": "76561198201921879",
+            "faceit_elo": 4344.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "aim_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "0-100",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.aim, REPUTATION.coherence.aimGate",
+      "what": "Leetify aim rating",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.2264,
+        "t": 5.145,
+        "effect": "yes",
+        "slope_per_elo": 0.0037183677620809008,
+        "intercept": 77.94905273711956,
+        "slope_per_1000": 3.71837,
+        "slope_se_per_1000": 0.568746,
+        "r2": 0.08023,
+        "residual_std": 5.44045,
+        "metric_std": 5.667,
+        "shift_p10_to_p90_elo": 3.91209,
+        "shift_in_metric_std": 0.6903,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 90.0405,
+          "std": 6.58614,
+          "min": 50.3989,
+          "max": 99.6093,
+          "median": 91.6207,
+          "percentiles": {
+            "p5": 78.6385,
+            "p10": 83.0938,
+            "p25": 87.4928,
+            "p50": 91.6207,
+            "p75": 94.3515,
+            "p90": 96.2607,
+            "p95": 96.9736
+          },
+          "tail": {
+            "top_10pct": 96.2607,
+            "top_5pct": 96.9736,
+            "top_1pct": 97.9325,
+            "most_extreme": 99.6093
+          },
+          "most_extreme_by": {
+            "value": 99.6093,
+            "player": "afro",
+            "steam64_id": "76561198035581101",
+            "faceit_elo": 3221.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 90.9838,
+          "std": 5.94478,
+          "min": 55.567,
+          "max": 99.3963,
+          "median": 91.7736,
+          "percentiles": {
+            "p5": 81.8589,
+            "p10": 84.1826,
+            "p25": 88.3954,
+            "p50": 91.7736,
+            "p75": 95.1036,
+            "p90": 96.7116,
+            "p95": 97.4352
+          },
+          "tail": {
+            "top_10pct": 96.7116,
+            "top_5pct": 97.4352,
+            "top_1pct": 98.9086,
+            "most_extreme": 99.3963
+          },
+          "most_extreme_by": {
+            "value": 99.3963,
+            "player": "try",
+            "steam64_id": "76561198365118288",
+            "faceit_elo": 3406.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 91.7823,
+          "std": 5.10534,
+          "min": 70.5402,
+          "max": 99.224,
+          "median": 93.0563,
+          "percentiles": {
+            "p5": 82.1474,
+            "p10": 85.769,
+            "p25": 89.5258,
+            "p50": 93.0563,
+            "p75": 95.3521,
+            "p90": 97.0348,
+            "p95": 98.2091
+          },
+          "tail": {
+            "top_10pct": 97.0348,
+            "top_5pct": 98.2091,
+            "top_1pct": 98.794,
+            "most_extreme": 99.224
+          },
+          "most_extreme_by": {
+            "value": 99.224,
+            "player": "SHOCK",
+            "steam64_id": "76561198169560297",
+            "faceit_elo": 3778.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 93.4017,
+          "std": 4.28197,
+          "min": 74.2154,
+          "max": 99.4132,
+          "median": 93.9429,
+          "percentiles": {
+            "p5": 85.769,
+            "p10": 87.7781,
+            "p25": 91.3085,
+            "p50": 93.9429,
+            "p75": 96.7109,
+            "p90": 98.2571,
+            "p95": 98.5256
+          },
+          "tail": {
+            "top_10pct": 98.2571,
+            "top_5pct": 98.5256,
+            "top_1pct": 99.2839,
+            "most_extreme": 99.4132
+          },
+          "most_extreme_by": {
+            "value": 99.4132,
+            "player": "aidKiT",
+            "steam64_id": "76561198201921879",
+            "faceit_elo": 4344.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "positioning_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "0-100",
+      "extreme_end": "high",
+      "informs": "(context for aim_lead)",
+      "what": "Leetify positioning rating",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.1811,
+        "t": 4.076,
+        "effect": "yes",
+        "slope_per_elo": 0.0038519401053187866,
+        "intercept": 50.86243079775734,
+        "slope_per_1000": 3.85194,
+        "slope_se_per_1000": 0.871551,
+        "r2": 0.03834,
+        "residual_std": 8.337,
+        "metric_std": 8.49288,
+        "shift_p10_to_p90_elo": 4.05263,
+        "shift_in_metric_std": 0.4772,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 63.7243,
+          "std": 8.37062,
+          "min": 37.4484,
+          "max": 85.5428,
+          "median": 63.6831,
+          "percentiles": {
+            "p5": 48.8033,
+            "p10": 51.9139,
+            "p25": 59.4835,
+            "p50": 63.6831,
+            "p75": 69.8468,
+            "p90": 73.4997,
+            "p95": 75.7723
+          },
+          "tail": {
+            "top_10pct": 73.4997,
+            "top_5pct": 75.7723,
+            "top_1pct": 79.985,
+            "most_extreme": 85.5428
+          },
+          "most_extreme_by": {
+            "value": 85.5428,
+            "player": "SLIGHT",
+            "steam64_id": "76561198153580037",
+            "faceit_elo": 3216.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 63.3123,
+          "std": 9.07528,
+          "min": 38.5908,
+          "max": 78.8145,
+          "median": 63.3072,
+          "percentiles": {
+            "p5": 46.4541,
+            "p10": 51.675,
+            "p25": 57.3385,
+            "p50": 63.3072,
+            "p75": 69.8468,
+            "p90": 74.5373,
+            "p95": 77.0045
+          },
+          "tail": {
+            "top_10pct": 74.5373,
+            "top_5pct": 77.0045,
+            "top_1pct": 78.7505,
+            "most_extreme": 78.8145
+          },
+          "most_extreme_by": {
+            "value": 78.8145,
+            "player": "blameF",
+            "steam64_id": "76561198028458803",
+            "faceit_elo": 3420.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 64.8543,
+          "std": 8.2176,
+          "min": 44.8283,
+          "max": 83.6457,
+          "median": 65.5422,
+          "percentiles": {
+            "p5": 52.4718,
+            "p10": 54.855,
+            "p25": 58.3166,
+            "p50": 65.5422,
+            "p75": 70.3673,
+            "p90": 76.4238,
+            "p95": 78.201
+          },
+          "tail": {
+            "top_10pct": 76.4238,
+            "top_5pct": 78.201,
+            "top_1pct": 81.4759,
+            "most_extreme": 83.6457
+          },
+          "most_extreme_by": {
+            "value": 83.6457,
+            "player": "aliStair",
+            "steam64_id": "76561198098346710",
+            "faceit_elo": 3825.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 67.9256,
+          "std": 7.56165,
+          "min": 50.3989,
+          "max": 82.3814,
+          "median": 67.7242,
+          "percentiles": {
+            "p5": 54.4587,
+            "p10": 58.0041,
+            "p25": 62.93,
+            "p50": 67.7242,
+            "p75": 74.0534,
+            "p90": 77.6373,
+            "p95": 78.7854
+          },
+          "tail": {
+            "top_10pct": 77.6373,
+            "top_5pct": 78.7854,
+            "top_1pct": 82.2665,
+            "most_extreme": 82.3814
+          },
+          "most_extreme_by": {
+            "value": 82.3814,
+            "player": "donk",
+            "steam64_id": "76561198386265483",
+            "faceit_elo": 4668.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "utility_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "0-100",
+      "extreme_end": "high",
+      "informs": "(context for aim_lead)",
+      "what": "Leetify utility rating",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": -0.08369,
+        "t": -1.859,
+        "effect": "no",
+        "slope_per_elo": -0.0019725261194943004,
+        "intercept": 73.49807405488599,
+        "slope_per_1000": -1.97253,
+        "slope_se_per_1000": 0.9252,
+        "r2": 0.009191,
+        "residual_std": 8.85018,
+        "metric_std": 8.88208,
+        "shift_p10_to_p90_elo": -2.07529,
+        "shift_in_metric_std": -0.2336,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 66.7797,
+          "std": 9.69301,
+          "min": 17.0402,
+          "max": 86.1196,
+          "median": 67.0864,
+          "percentiles": {
+            "p5": 52.6531,
+            "p10": 55.5547,
+            "p25": 61.5593,
+            "p50": 67.0864,
+            "p75": 72.9257,
+            "p90": 79.4943,
+            "p95": 81.2395
+          },
+          "tail": {
+            "top_10pct": 79.4943,
+            "top_5pct": 81.2395,
+            "top_1pct": 82.5496,
+            "most_extreme": 86.1196
+          },
+          "most_extreme_by": {
+            "value": 86.1196,
+            "player": "JOTA",
+            "steam64_id": "76561198054820484",
+            "faceit_elo": 3019.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 66.3622,
+          "std": 9.34042,
+          "min": 40.7254,
+          "max": 87.0232,
+          "median": 66.649,
+          "percentiles": {
+            "p5": 50.9729,
+            "p10": 54.6026,
+            "p25": 59.8935,
+            "p50": 66.649,
+            "p75": 72.319,
+            "p90": 78.6511,
+            "p95": 80.6503
+          },
+          "tail": {
+            "top_10pct": 78.6511,
+            "top_5pct": 80.6503,
+            "top_1pct": 85.4958,
+            "most_extreme": 87.0232
+          },
+          "most_extreme_by": {
+            "value": 87.0232,
+            "player": "Gizmy",
+            "steam64_id": "76561198344226986",
+            "faceit_elo": 3603.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 66.5138,
+          "std": 8.086,
+          "min": 47.0703,
+          "max": 85.3736,
+          "median": 67.2712,
+          "percentiles": {
+            "p5": 52.0241,
+            "p10": 55.9156,
+            "p25": 60.7752,
+            "p50": 67.2712,
+            "p75": 71.6757,
+            "p90": 77.2524,
+            "p95": 79.826
+          },
+          "tail": {
+            "top_10pct": 77.2524,
+            "top_5pct": 79.826,
+            "top_1pct": 82.1727,
+            "most_extreme": 85.3736
+          },
+          "most_extreme_by": {
+            "value": 85.3736,
+            "player": "BeaKie",
+            "steam64_id": "76561198055631941",
+            "faceit_elo": 3719.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 65.4719,
+          "std": 8.36372,
+          "min": 37.4585,
+          "max": 86.4651,
+          "median": 65.5023,
+          "percentiles": {
+            "p5": 51.9985,
+            "p10": 55.6728,
+            "p25": 61.1928,
+            "p50": 65.5023,
+            "p75": 71.0072,
+            "p90": 75.8004,
+            "p95": 77.4842
+          },
+          "tail": {
+            "top_10pct": 75.8004,
+            "top_5pct": 77.4842,
+            "top_1pct": 84.9267,
+            "most_extreme": 86.4651
+          },
+          "most_extreme_by": {
+            "value": 86.4651,
+            "player": "exit",
+            "steam64_id": "76561198010496342",
+            "faceit_elo": 3960.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "aim_lead": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "points",
+      "extreme_end": "high",
+      "informs": "REPUTATION.coherence.aimLead",
+      "what": "Aim rating minus mean of positioning and utility",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.07675,
+        "t": 1.704,
+        "effect": "no",
+        "slope_per_elo": 0.002778660769168657,
+        "intercept": 15.7688003107979,
+        "slope_per_1000": 2.77866,
+        "slope_se_per_1000": 0.78286,
+        "r2": 0.02507,
+        "residual_std": 7.4886,
+        "metric_std": 7.57653,
+        "shift_p10_to_p90_elo": 2.92343,
+        "shift_in_metric_std": 0.3859,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 24.7885,
+          "std": 9.05618,
+          "min": -11.9654,
+          "max": 54.4136,
+          "median": 25.5226,
+          "percentiles": {
+            "p5": 7.42928,
+            "p10": 13.6361,
+            "p25": 20.7345,
+            "p50": 25.5226,
+            "p75": 30.6174,
+            "p90": 33.1571,
+            "p95": 36.2202
+          },
+          "tail": {
+            "top_10pct": 33.1571,
+            "top_5pct": 36.2202,
+            "top_1pct": 42.0953,
+            "most_extreme": 54.4136
+          },
+          "most_extreme_by": {
+            "value": 54.4136,
+            "player": "oxygeN",
+            "steam64_id": "76561198085180615",
+            "faceit_elo": 2754.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 26.1465,
+          "std": 7.77258,
+          "min": -10.9917,
+          "max": 43.8885,
+          "median": 26.6876,
+          "percentiles": {
+            "p5": 13.7087,
+            "p10": 16.518,
+            "p25": 21.2742,
+            "p50": 26.6876,
+            "p75": 31.2253,
+            "p90": 35.1546,
+            "p95": 35.8317
+          },
+          "tail": {
+            "top_10pct": 35.1546,
+            "top_5pct": 35.8317,
+            "top_1pct": 41.1759,
+            "most_extreme": 43.8885
+          },
+          "most_extreme_by": {
+            "value": 43.8885,
+            "player": "manguss",
+            "steam64_id": "76561198035510513",
+            "faceit_elo": 3456.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 26.0983,
+          "std": 7.03067,
+          "min": 1.21395,
+          "max": 49.584,
+          "median": 25.7286,
+          "percentiles": {
+            "p5": 14.8626,
+            "p10": 17.506,
+            "p25": 22.5388,
+            "p50": 25.7286,
+            "p75": 30.4301,
+            "p90": 34.2776,
+            "p95": 36.4019
+          },
+          "tail": {
+            "top_10pct": 34.2776,
+            "top_5pct": 36.4019,
+            "top_1pct": 40.0003,
+            "most_extreme": 49.584
+          },
+          "most_extreme_by": {
+            "value": 49.584,
+            "player": "SHOCK",
+            "steam64_id": "76561198169560297",
+            "faceit_elo": 3778.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 26.703,
+          "std": 6.09731,
+          "min": 1.5869,
+          "max": 40.3902,
+          "median": 26.9052,
+          "percentiles": {
+            "p5": 16.4227,
+            "p10": 19.2244,
+            "p25": 23.2364,
+            "p50": 26.9052,
+            "p75": 31.1378,
+            "p90": 34.262,
+            "p95": 35.5125
+          },
+          "tail": {
+            "top_10pct": 34.262,
+            "top_5pct": 35.5125,
+            "top_1pct": 38.5268,
+            "most_extreme": 40.3902
+          },
+          "most_extreme_by": {
+            "value": 40.3902,
+            "player": "AquaRS",
+            "steam64_id": "76561198800147622",
+            "faceit_elo": 3956.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "not_stopped": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.coherence.notStopped",
+      "what": "100 - stopping: share of shots NOT taken standing still",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": -0.1059,
+        "t": -2.356,
+        "effect": "weak",
+        "slope_per_elo": -0.0011102005799157593,
+        "intercept": 20.97079295526617,
+        "slope_per_1000": -1.1102,
+        "slope_se_per_1000": 0.45343,
+        "r2": 0.01209,
+        "residual_std": 4.33737,
+        "metric_std": 4.35938,
+        "shift_p10_to_p90_elo": -1.16804,
+        "shift_in_metric_std": -0.2679,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 17.5579,
+          "std": 4.42885,
+          "min": 9.2676,
+          "max": 30.7822,
+          "median": 17.0173,
+          "percentiles": {
+            "p5": 11.0652,
+            "p10": 11.9986,
+            "p25": 13.9874,
+            "p50": 17.0173,
+            "p75": 20.539,
+            "p90": 23.1683,
+            "p95": 24.6634
+          },
+          "tail": {
+            "top_10pct": 23.1683,
+            "top_5pct": 24.6634,
+            "top_1pct": 29.3944,
+            "most_extreme": 30.7822
+          },
+          "most_extreme_by": {
+            "value": 30.7822,
+            "player": "danoco",
+            "steam64_id": "76561197994888003",
+            "faceit_elo": 3136.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 16.6799,
+          "std": 4.26782,
+          "min": 6.4634,
+          "max": 28.9344,
+          "median": 16.6578,
+          "percentiles": {
+            "p5": 9.44988,
+            "p10": 11.699,
+            "p25": 14.3442,
+            "p50": 16.6578,
+            "p75": 19.133,
+            "p90": 21.6245,
+            "p95": 23.3467
+          },
+          "tail": {
+            "top_10pct": 21.6245,
+            "top_5pct": 23.3467,
+            "top_1pct": 27.376,
+            "most_extreme": 28.9344
+          },
+          "most_extreme_by": {
+            "value": 28.9344,
+            "player": "birdfromsky",
+            "steam64_id": "76561197964604204",
+            "faceit_elo": 3441.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 17.1933,
+          "std": 4.35293,
+          "min": 6.7141,
+          "max": 27.5521,
+          "median": 17.0529,
+          "percentiles": {
+            "p5": 10.469,
+            "p10": 11.6503,
+            "p25": 13.803,
+            "p50": 17.0529,
+            "p75": 19.9337,
+            "p90": 23.3471,
+            "p95": 25.0913
+          },
+          "tail": {
+            "top_10pct": 23.3471,
+            "top_5pct": 25.0913,
+            "top_1pct": 26.9392,
+            "most_extreme": 27.5521
+          },
+          "most_extreme_by": {
+            "value": 27.5521,
+            "player": "AW",
+            "steam64_id": "76561198269361539",
+            "faceit_elo": 3728.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 16.2061,
+          "std": 4.31858,
+          "min": 7.9142,
+          "max": 30.2587,
+          "median": 15.3916,
+          "percentiles": {
+            "p5": 9.94402,
+            "p10": 11.0122,
+            "p25": 13.5044,
+            "p50": 15.3916,
+            "p75": 18.47,
+            "p90": 22.3472,
+            "p95": 23.7979
+          },
+          "tail": {
+            "top_10pct": 22.3472,
+            "top_5pct": 23.7979,
+            "top_1pct": 27.5006,
+            "most_extreme": 30.2587
+          },
+          "most_extreme_by": {
+            "value": 30.2587,
+            "player": "syrsoN",
+            "steam64_id": "76561197980122997",
+            "faceit_elo": 4211.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "clutch_rating": {
+      "family": "coherence",
+      "scope": "player",
+      "unit": "API units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.clutch",
+      "what": "Leetify clutch rating as the API sends it",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.001356,
+        "t": 0.03001,
+        "effect": "no",
+        "slope_per_elo": -3.962808341390744e-06,
+        "intercept": 0.12054057458633646,
+        "slope_per_1000": -0.00396281,
+        "slope_se_per_1000": 0.0035346,
+        "r2": 0.002559,
+        "residual_std": 0.033811,
+        "metric_std": 0.0338198,
+        "shift_p10_to_p90_elo": -0.00416927,
+        "shift_in_metric_std": -0.1233,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.10916,
+          "std": 0.0395368,
+          "min": 0.0458,
+          "max": 0.2398,
+          "median": 0.0993,
+          "percentiles": {
+            "p5": 0.05573,
+            "p10": 0.06534,
+            "p25": 0.0813,
+            "p50": 0.0993,
+            "p75": 0.1326,
+            "p90": 0.16452,
+            "p95": 0.18886
+          },
+          "tail": {
+            "top_10pct": 0.16452,
+            "top_5pct": 0.18886,
+            "top_1pct": 0.21138,
+            "most_extreme": 0.2398
+          },
+          "most_extreme_by": {
+            "value": 0.2398,
+            "player": "Cooper",
+            "steam64_id": "76561197967516987",
+            "faceit_elo": 2795.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.104978,
+          "std": 0.0313532,
+          "min": 0.0461,
+          "max": 0.2149,
+          "median": 0.1001,
+          "percentiles": {
+            "p5": 0.06306,
+            "p10": 0.0673,
+            "p25": 0.083,
+            "p50": 0.1001,
+            "p75": 0.1244,
+            "p90": 0.14102,
+            "p95": 0.15752
+          },
+          "tail": {
+            "top_10pct": 0.14102,
+            "top_5pct": 0.15752,
+            "top_1pct": 0.203272,
+            "most_extreme": 0.2149
+          },
+          "most_extreme_by": {
+            "value": 0.2149,
+            "player": "nin9",
+            "steam64_id": "76561198128463598",
+            "faceit_elo": 3474.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.103533,
+          "std": 0.033429,
+          "min": 0.0443,
+          "max": 0.2468,
+          "median": 0.1011,
+          "percentiles": {
+            "p5": 0.05546,
+            "p10": 0.06276,
+            "p25": 0.0803,
+            "p50": 0.1011,
+            "p75": 0.12325,
+            "p90": 0.14222,
+            "p95": 0.15596
+          },
+          "tail": {
+            "top_10pct": 0.14222,
+            "top_5pct": 0.15596,
+            "top_1pct": 0.188504,
+            "most_extreme": 0.2468
+          },
+          "most_extreme_by": {
+            "value": 0.2468,
+            "player": "easy",
+            "steam64_id": "76561198318025977",
+            "faceit_elo": 3886.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.106502,
+          "std": 0.0303654,
+          "min": 0.0426,
+          "max": 0.1786,
+          "median": 0.1052,
+          "percentiles": {
+            "p5": 0.05865,
+            "p10": 0.07026,
+            "p25": 0.085,
+            "p50": 0.1052,
+            "p75": 0.12515,
+            "p90": 0.1492,
+            "p95": 0.1579
+          },
+          "tail": {
+            "top_10pct": 0.1492,
+            "top_5pct": 0.1579,
+            "top_1pct": 0.176664,
+            "most_extreme": 0.1786
+          },
+          "most_extreme_by": {
+            "value": 0.1786,
+            "player": "b1t",
+            "steam64_id": "76561198246607476",
+            "faceit_elo": 4109.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "leetify_overall": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "website units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.mean (no match history)",
+      "what": "Overall Leetify rating (ranks.leetify, else (CT+T)/2*100)",
+      "band_constant": null,
+      "relationship": {
+        "n": 492,
+        "spearman_rho": 0.03201,
+        "t": 0.709,
+        "effect": "no",
+        "slope_per_elo": 5.613088860338391e-05,
+        "intercept": 0.7422356859184567,
+        "slope_per_1000": 0.0561309,
+        "slope_se_per_1000": 0.183482,
+        "r2": 0.000191,
+        "residual_std": 1.75513,
+        "metric_std": 1.75351,
+        "shift_p10_to_p90_elo": 0.0590553,
+        "shift_in_metric_std": 0.03368,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 123,
+          "small_sample": false,
+          "mean": 1.15106,
+          "std": 1.947,
+          "min": -2.72,
+          "max": 6.0,
+          "median": 0.84,
+          "percentiles": {
+            "p5": -1.383,
+            "p10": -1.092,
+            "p25": -0.255,
+            "p50": 0.84,
+            "p75": 2.28,
+            "p90": 3.9,
+            "p95": 5.064
+          },
+          "tail": {
+            "top_10pct": 3.9,
+            "top_5pct": 5.064,
+            "top_1pct": 5.9002,
+            "most_extreme": 6.0
+          },
+          "most_extreme_by": {
+            "value": 6.0,
+            "player": "Peppzor",
+            "steam64_id": "76561198288390068",
+            "faceit_elo": 2572.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.727317,
+          "std": 1.56566,
+          "min": -3.31,
+          "max": 5.37,
+          "median": 0.65,
+          "percentiles": {
+            "p5": -1.357,
+            "p10": -1.094,
+            "p25": -0.475,
+            "p50": 0.65,
+            "p75": 1.645,
+            "p90": 2.922,
+            "p95": 3.623
+          },
+          "tail": {
+            "top_10pct": 2.922,
+            "top_5pct": 3.623,
+            "top_1pct": 4.6146,
+            "most_extreme": 5.37
+          },
+          "most_extreme_by": {
+            "value": 5.37,
+            "player": "HEN1",
+            "steam64_id": "76561198018027263",
+            "faceit_elo": 3426.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.744797,
+          "std": 1.8267,
+          "min": -2.8,
+          "max": 7.16,
+          "median": 0.57,
+          "percentiles": {
+            "p5": -1.716,
+            "p10": -1.364,
+            "p25": -0.57,
+            "p50": 0.57,
+            "p75": 1.78,
+            "p90": 3.062,
+            "p95": 4.053
+          },
+          "tail": {
+            "top_10pct": 3.062,
+            "top_5pct": 4.053,
+            "top_1pct": 6.4152,
+            "most_extreme": 7.16
+          },
+          "most_extreme_by": {
+            "value": 7.16,
+            "player": "easy",
+            "steam64_id": "76561198318025977",
+            "faceit_elo": 3886.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 1.16715,
+          "std": 1.61712,
+          "min": -1.82,
+          "max": 6.28,
+          "median": 1.03,
+          "percentiles": {
+            "p5": -1.137,
+            "p10": -0.816,
+            "p25": 0.08,
+            "p50": 1.03,
+            "p75": 1.99,
+            "p90": 3.16,
+            "p95": 4.067
+          },
+          "tail": {
+            "top_10pct": 3.16,
+            "top_5pct": 4.067,
+            "top_1pct": 6.0208,
+            "most_extreme": 6.28
+          },
+          "most_extreme_by": {
+            "value": 6.28,
+            "player": "nota",
+            "steam64_id": "76561198975070027",
+            "faceit_elo": 4224.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "recent_mean_rating": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "website units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.mean, REPUTATION.trajectory.floorMean",
+      "what": "Mean rating of the recent matches",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": 0.03393,
+        "t": 0.7508,
+        "effect": "no",
+        "slope_per_elo": 7.139138430740024e-05,
+        "intercept": 0.7811840768555872,
+        "slope_per_1000": 0.0713914,
+        "slope_se_per_1000": 0.193233,
+        "r2": 0.0002791,
+        "residual_std": 1.84713,
+        "metric_std": 1.8455,
+        "shift_p10_to_p90_elo": 0.0751109,
+        "shift_in_metric_std": 0.0407,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 1.23648,
+          "std": 2.00372,
+          "min": -2.69467,
+          "max": 6.189,
+          "median": 1.09033,
+          "percentiles": {
+            "p5": -1.58185,
+            "p10": -0.9696,
+            "p25": -0.263167,
+            "p50": 1.09033,
+            "p75": 2.44767,
+            "p90": 3.95407,
+            "p95": 5.06118
+          },
+          "tail": {
+            "top_10pct": 3.95407,
+            "top_5pct": 5.06118,
+            "top_1pct": 6.02843,
+            "most_extreme": 6.189
+          },
+          "most_extreme_by": {
+            "value": 6.189,
+            "player": "Calyx",
+            "steam64_id": "76561198052546265",
+            "faceit_elo": 3361.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.814257,
+          "std": 1.7314,
+          "min": -3.212,
+          "max": 7.20633,
+          "median": 0.542333,
+          "percentiles": {
+            "p5": -1.26147,
+            "p10": -1.1346,
+            "p25": -0.4485,
+            "p50": 0.542333,
+            "p75": 1.67117,
+            "p90": 2.86287,
+            "p95": 4.2132
+          },
+          "tail": {
+            "top_10pct": 2.86287,
+            "top_5pct": 4.2132,
+            "top_1pct": 5.4824,
+            "most_extreme": 7.20633
+          },
+          "most_extreme_by": {
+            "value": 7.20633,
+            "player": "STYKO",
+            "steam64_id": "76561198016194159",
+            "faceit_elo": 3590.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.866686,
+          "std": 1.91527,
+          "min": -2.89133,
+          "max": 6.62167,
+          "median": 0.688333,
+          "percentiles": {
+            "p5": -1.64967,
+            "p10": -1.50327,
+            "p25": -0.457833,
+            "p50": 0.688333,
+            "p75": 1.94233,
+            "p90": 3.58687,
+            "p95": 4.3161
+          },
+          "tail": {
+            "top_10pct": 3.58687,
+            "top_5pct": 4.3161,
+            "top_1pct": 6.31819,
+            "most_extreme": 6.62167
+          },
+          "most_extreme_by": {
+            "value": 6.62167,
+            "player": "easy",
+            "steam64_id": "76561198318025977",
+            "faceit_elo": 3886.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 1.2538,
+          "std": 1.69265,
+          "min": -1.921,
+          "max": 6.83567,
+          "median": 1.27833,
+          "percentiles": {
+            "p5": -1.14147,
+            "p10": -0.7298,
+            "p25": -0.0455,
+            "p50": 1.27833,
+            "p75": 2.18483,
+            "p90": 3.20733,
+            "p95": 4.53057
+          },
+          "tail": {
+            "top_10pct": 3.20733,
+            "top_5pct": 4.53057,
+            "top_1pct": 6.0517,
+            "most_extreme": 6.83567
+          },
+          "most_extreme_by": {
+            "value": 6.83567,
+            "player": "nota",
+            "steam64_id": "76561198975070027",
+            "faceit_elo": 4224.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "strong_share_ge_2": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 2",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": -0.001674,
+        "t": -0.03701,
+        "effect": "no",
+        "slope_per_elo": -2.8457791402669696e-06,
+        "intercept": 0.3829179656045731,
+        "slope_per_1000": -0.00284578,
+        "slope_se_per_1000": 0.0156808,
+        "r2": 6.735e-05,
+        "residual_std": 0.149894,
+        "metric_std": 0.149746,
+        "shift_p10_to_p90_elo": -0.00299404,
+        "shift_in_metric_std": -0.01999,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 0.395902,
+          "std": 0.168316,
+          "min": 0.1,
+          "max": 0.866667,
+          "median": 0.366667,
+          "percentiles": {
+            "p5": 0.166667,
+            "p10": 0.166667,
+            "p25": 0.266667,
+            "p50": 0.366667,
+            "p75": 0.533333,
+            "p90": 0.633333,
+            "p95": 0.666667
+          },
+          "tail": {
+            "top_10pct": 0.633333,
+            "top_5pct": 0.666667,
+            "top_1pct": 0.759667,
+            "most_extreme": 0.866667
+          },
+          "most_extreme_by": {
+            "value": 0.866667,
+            "player": "Peppzor",
+            "steam64_id": "76561198288390068",
+            "faceit_elo": 2572.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.353659,
+          "std": 0.129918,
+          "min": 0.0,
+          "max": 0.7,
+          "median": 0.333333,
+          "percentiles": {
+            "p5": 0.2,
+            "p10": 0.2,
+            "p25": 0.266667,
+            "p50": 0.333333,
+            "p75": 0.433333,
+            "p90": 0.533333,
+            "p95": 0.566667
+          },
+          "tail": {
+            "top_10pct": 0.533333,
+            "top_5pct": 0.566667,
+            "top_1pct": 0.659333,
+            "most_extreme": 0.7
+          },
+          "most_extreme_by": {
+            "value": 0.7,
+            "player": "rage",
+            "steam64_id": "76561198076361503",
+            "faceit_elo": 3439.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.350678,
+          "std": 0.148296,
+          "min": 0.0333333,
+          "max": 0.766667,
+          "median": 0.333333,
+          "percentiles": {
+            "p5": 0.133333,
+            "p10": 0.166667,
+            "p25": 0.266667,
+            "p50": 0.333333,
+            "p75": 0.433333,
+            "p90": 0.533333,
+            "p95": 0.6
+          },
+          "tail": {
+            "top_10pct": 0.533333,
+            "top_5pct": 0.6,
+            "top_1pct": 0.752,
+            "most_extreme": 0.766667
+          },
+          "most_extreme_by": {
+            "value": 0.766667,
+            "player": "b0denmaster",
+            "steam64_id": "76561198276534844",
+            "faceit_elo": 3682.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.389973,
+          "std": 0.146292,
+          "min": 0.1,
+          "max": 0.766667,
+          "median": 0.366667,
+          "percentiles": {
+            "p5": 0.166667,
+            "p10": 0.2,
+            "p25": 0.3,
+            "p50": 0.366667,
+            "p75": 0.5,
+            "p90": 0.6,
+            "p95": 0.663333
+          },
+          "tail": {
+            "top_10pct": 0.6,
+            "top_5pct": 0.663333,
+            "top_1pct": 0.726,
+            "most_extreme": 0.766667
+          },
+          "most_extreme_by": {
+            "value": 0.766667,
+            "player": "m0NESY",
+            "steam64_id": "76561198074762801",
+            "faceit_elo": 4660.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "strong_share_ge_3": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 3 (current strongMatch)",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": 0.04687,
+        "t": 1.038,
+        "effect": "no",
+        "slope_per_elo": 6.311511719074765e-06,
+        "intercept": 0.2830836741382221,
+        "slope_per_1000": 0.00631151,
+        "slope_se_per_1000": 0.0150187,
+        "r2": 0.000361,
+        "residual_std": 0.143565,
+        "metric_std": 0.143444,
+        "shift_p10_to_p90_elo": 0.00664034,
+        "shift_in_metric_std": 0.04629,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 0.32377,
+          "std": 0.155728,
+          "min": 0.0,
+          "max": 0.8,
+          "median": 0.3,
+          "percentiles": {
+            "p5": 0.133333,
+            "p10": 0.166667,
+            "p25": 0.2,
+            "p50": 0.3,
+            "p75": 0.433333,
+            "p90": 0.533333,
+            "p95": 0.6
+          },
+          "tail": {
+            "top_10pct": 0.533333,
+            "top_5pct": 0.6,
+            "top_1pct": 0.7,
+            "most_extreme": 0.8
+          },
+          "most_extreme_by": {
+            "value": 0.8,
+            "player": "Peppzor",
+            "steam64_id": "76561198288390068",
+            "faceit_elo": 2572.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.282385,
+          "std": 0.130874,
+          "min": 0.0,
+          "max": 0.633333,
+          "median": 0.266667,
+          "percentiles": {
+            "p5": 0.1,
+            "p10": 0.133333,
+            "p25": 0.2,
+            "p50": 0.266667,
+            "p75": 0.366667,
+            "p90": 0.466667,
+            "p95": 0.5
+          },
+          "tail": {
+            "top_10pct": 0.466667,
+            "top_5pct": 0.5,
+            "top_1pct": 0.592667,
+            "most_extreme": 0.633333
+          },
+          "most_extreme_by": {
+            "value": 0.633333,
+            "player": "sk1tt",
+            "steam64_id": "76561198235230328",
+            "faceit_elo": 3405.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.291328,
+          "std": 0.145161,
+          "min": 0.0,
+          "max": 0.733333,
+          "median": 0.266667,
+          "percentiles": {
+            "p5": 0.0666667,
+            "p10": 0.106667,
+            "p25": 0.2,
+            "p50": 0.266667,
+            "p75": 0.366667,
+            "p90": 0.493333,
+            "p95": 0.563333
+          },
+          "tail": {
+            "top_10pct": 0.493333,
+            "top_5pct": 0.563333,
+            "top_1pct": 0.704,
+            "most_extreme": 0.733333
+          },
+          "most_extreme_by": {
+            "value": 0.733333,
+            "player": "b0denmaster",
+            "steam64_id": "76561198276534844",
+            "faceit_elo": 3682.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.327371,
+          "std": 0.13724,
+          "min": 0.0333333,
+          "max": 0.7,
+          "median": 0.3,
+          "percentiles": {
+            "p5": 0.133333,
+            "p10": 0.166667,
+            "p25": 0.233333,
+            "p50": 0.3,
+            "p75": 0.4,
+            "p90": 0.5,
+            "p95": 0.6
+          },
+          "tail": {
+            "top_10pct": 0.5,
+            "top_5pct": 0.6,
+            "top_1pct": 0.666667,
+            "most_extreme": 0.7
+          },
+          "most_extreme_by": {
+            "value": 0.7,
+            "player": "mantuu",
+            "steam64_id": "76561198016432560",
+            "faceit_elo": 4027.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "strong_share_ge_4": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 4",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": 0.03284,
+        "t": 0.7265,
+        "effect": "no",
+        "slope_per_elo": -1.0857450596225943e-06,
+        "intercept": 0.24803254732374982,
+        "slope_per_1000": -0.00108575,
+        "slope_se_per_1000": 0.0141211,
+        "r2": 1.209e-05,
+        "residual_std": 0.134985,
+        "metric_std": 0.134848,
+        "shift_p10_to_p90_elo": -0.00114231,
+        "shift_in_metric_std": -0.008471,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 0.262568,
+          "std": 0.147684,
+          "min": 0.0,
+          "max": 0.733333,
+          "median": 0.233333,
+          "percentiles": {
+            "p5": 0.0666667,
+            "p10": 0.1,
+            "p25": 0.166667,
+            "p50": 0.233333,
+            "p75": 0.333333,
+            "p90": 0.466667,
+            "p95": 0.565
+          },
+          "tail": {
+            "top_10pct": 0.466667,
+            "top_5pct": 0.565,
+            "top_1pct": 0.645667,
+            "most_extreme": 0.733333
+          },
+          "most_extreme_by": {
+            "value": 0.733333,
+            "player": "Peppzor",
+            "steam64_id": "76561198288390068",
+            "faceit_elo": 2572.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.222764,
+          "std": 0.124818,
+          "min": 0.0,
+          "max": 0.6,
+          "median": 0.2,
+          "percentiles": {
+            "p5": 0.0666667,
+            "p10": 0.0666667,
+            "p25": 0.133333,
+            "p50": 0.2,
+            "p75": 0.3,
+            "p90": 0.4,
+            "p95": 0.466667
+          },
+          "tail": {
+            "top_10pct": 0.4,
+            "top_5pct": 0.466667,
+            "top_1pct": 0.533333,
+            "most_extreme": 0.6
+          },
+          "most_extreme_by": {
+            "value": 0.6,
+            "player": "sk1tt",
+            "steam64_id": "76561198235230328",
+            "faceit_elo": 3405.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.231436,
+          "std": 0.138184,
+          "min": 0.0,
+          "max": 0.733333,
+          "median": 0.2,
+          "percentiles": {
+            "p5": 0.0333333,
+            "p10": 0.0666667,
+            "p25": 0.133333,
+            "p50": 0.2,
+            "p75": 0.3,
+            "p90": 0.4,
+            "p95": 0.496667
+          },
+          "tail": {
+            "top_10pct": 0.4,
+            "top_5pct": 0.496667,
+            "top_1pct": 0.696667,
+            "most_extreme": 0.733333
+          },
+          "most_extreme_by": {
+            "value": 0.733333,
+            "player": "b0denmaster",
+            "steam64_id": "76561198276534844",
+            "faceit_elo": 3682.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.259621,
+          "std": 0.124594,
+          "min": 0.0333333,
+          "max": 0.666667,
+          "median": 0.233333,
+          "percentiles": {
+            "p5": 0.07,
+            "p10": 0.106667,
+            "p25": 0.166667,
+            "p50": 0.233333,
+            "p75": 0.333333,
+            "p90": 0.4,
+            "p95": 0.523333
+          },
+          "tail": {
+            "top_10pct": 0.4,
+            "top_5pct": 0.523333,
+            "top_1pct": 0.626,
+            "most_extreme": 0.666667
+          },
+          "most_extreme_by": {
+            "value": 0.666667,
+            "player": "nota",
+            "steam64_id": "76561198975070027",
+            "faceit_elo": 4224.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "strong_share_ge_5": {
+      "family": "rating",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongShare",
+      "what": "Share of recent matches rated >= 5",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": 0.02579,
+        "t": 0.5705,
+        "effect": "no",
+        "slope_per_elo": -2.6757937765000393e-06,
+        "intercept": 0.2053102357378257,
+        "slope_per_1000": -0.00267579,
+        "slope_se_per_1000": 0.0132672,
+        "r2": 8.318e-05,
+        "residual_std": 0.126822,
+        "metric_std": 0.126698,
+        "shift_p10_to_p90_elo": -0.0028152,
+        "shift_in_metric_std": -0.02222,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 0.214754,
+          "std": 0.14136,
+          "min": 0.0,
+          "max": 0.633333,
+          "median": 0.2,
+          "percentiles": {
+            "p5": 0.035,
+            "p10": 0.0666667,
+            "p25": 0.1,
+            "p50": 0.2,
+            "p75": 0.266667,
+            "p90": 0.4,
+            "p95": 0.498333
+          },
+          "tail": {
+            "top_10pct": 0.4,
+            "top_5pct": 0.498333,
+            "top_1pct": 0.559667,
+            "most_extreme": 0.633333
+          },
+          "most_extreme_by": {
+            "value": 0.633333,
+            "player": "Peppzor",
+            "steam64_id": "76561198288390068",
+            "faceit_elo": 2572.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.176152,
+          "std": 0.109853,
+          "min": 0.0,
+          "max": 0.5,
+          "median": 0.166667,
+          "percentiles": {
+            "p5": 0.0333333,
+            "p10": 0.04,
+            "p25": 0.1,
+            "p50": 0.166667,
+            "p75": 0.233333,
+            "p90": 0.333333,
+            "p95": 0.396667
+          },
+          "tail": {
+            "top_10pct": 0.333333,
+            "top_5pct": 0.396667,
+            "top_1pct": 0.466667,
+            "most_extreme": 0.5
+          },
+          "most_extreme_by": {
+            "value": 0.5,
+            "player": "sk1tt",
+            "steam64_id": "76561198235230328",
+            "faceit_elo": 3405.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.181301,
+          "std": 0.133412,
+          "min": 0.0,
+          "max": 0.666667,
+          "median": 0.166667,
+          "percentiles": {
+            "p5": 0.0,
+            "p10": 0.0333333,
+            "p25": 0.1,
+            "p50": 0.166667,
+            "p75": 0.233333,
+            "p90": 0.366667,
+            "p95": 0.433333
+          },
+          "tail": {
+            "top_10pct": 0.366667,
+            "top_5pct": 0.433333,
+            "top_1pct": 0.637333,
+            "most_extreme": 0.666667
+          },
+          "most_extreme_by": {
+            "value": 0.666667,
+            "player": "b0denmaster",
+            "steam64_id": "76561198276534844",
+            "faceit_elo": 3682.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.210027,
+          "std": 0.11672,
+          "min": 0.0,
+          "max": 0.566667,
+          "median": 0.2,
+          "percentiles": {
+            "p5": 0.0666667,
+            "p10": 0.0666667,
+            "p25": 0.133333,
+            "p50": 0.2,
+            "p75": 0.266667,
+            "p90": 0.333333,
+            "p95": 0.46
+          },
+          "tail": {
+            "top_10pct": 0.333333,
+            "top_5pct": 0.46,
+            "top_1pct": 0.559333,
+            "most_extreme": 0.566667
+          },
+          "most_extreme_by": {
+            "value": 0.566667,
+            "player": "ZywOo",
+            "steam64_id": "76561198113666193",
+            "faceit_elo": 4000.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "step_effect": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "std devs",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.step",
+      "what": "Newest 10 matches vs. the older ones, pooled std devs",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": -0.09351,
+        "t": -2.077,
+        "effect": "weak",
+        "slope_per_elo": -5.9942742377945436e-05,
+        "intercept": 0.21972406329059258,
+        "slope_per_1000": -0.0599427,
+        "slope_se_per_1000": 0.0275129,
+        "r2": 0.009614,
+        "residual_std": 0.262998,
+        "metric_std": 0.264002,
+        "shift_p10_to_p90_elo": -0.0630658,
+        "shift_in_metric_std": -0.2389,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 0.0236121,
+          "std": 0.247656,
+          "min": -0.659319,
+          "max": 0.735591,
+          "median": 0.0151791,
+          "percentiles": {
+            "p5": -0.361963,
+            "p10": -0.26581,
+            "p25": -0.141628,
+            "p50": 0.0151791,
+            "p75": 0.209554,
+            "p90": 0.317242,
+            "p95": 0.357113
+          },
+          "tail": {
+            "top_10pct": 0.317242,
+            "top_5pct": 0.357113,
+            "top_1pct": 0.64724,
+            "most_extreme": 0.735591
+          },
+          "most_extreme_by": {
+            "value": 0.735591,
+            "player": "electroNic",
+            "steam64_id": "76561198044045107",
+            "faceit_elo": 3383.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.00175132,
+          "std": 0.271001,
+          "min": -0.63597,
+          "max": 0.841853,
+          "median": -0.015374,
+          "percentiles": {
+            "p5": -0.456389,
+            "p10": -0.32798,
+            "p25": -0.156927,
+            "p50": -0.015374,
+            "p75": 0.171764,
+            "p90": 0.321066,
+            "p95": 0.430414
+          },
+          "tail": {
+            "top_10pct": 0.321066,
+            "top_5pct": 0.430414,
+            "top_1pct": 0.684248,
+            "most_extreme": 0.841853
+          },
+          "most_extreme_by": {
+            "value": 0.841853,
+            "player": "ultimate",
+            "steam64_id": "76561198283989223",
+            "faceit_elo": 3597.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.0153716,
+          "std": 0.264594,
+          "min": -0.49734,
+          "max": 0.854778,
+          "median": -0.00338434,
+          "percentiles": {
+            "p5": -0.372327,
+            "p10": -0.293283,
+            "p25": -0.175863,
+            "p50": -0.00338434,
+            "p75": 0.185398,
+            "p90": 0.352003,
+            "p95": 0.496104
+          },
+          "tail": {
+            "top_10pct": 0.352003,
+            "top_5pct": 0.496104,
+            "top_1pct": 0.711159,
+            "most_extreme": 0.854778
+          },
+          "most_extreme_by": {
+            "value": 0.854778,
+            "player": "sinnopsyy",
+            "steam64_id": "76561198165327895",
+            "faceit_elo": 3854.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": -0.0389861,
+          "std": 0.270773,
+          "min": -0.818858,
+          "max": 0.776963,
+          "median": -0.000450367,
+          "percentiles": {
+            "p5": -0.513339,
+            "p10": -0.357006,
+            "p25": -0.215781,
+            "p50": -0.000450367,
+            "p75": 0.13302,
+            "p90": 0.241989,
+            "p95": 0.358504
+          },
+          "tail": {
+            "top_10pct": 0.241989,
+            "top_5pct": 0.358504,
+            "top_1pct": 0.564832,
+            "most_extreme": 0.776963
+          },
+          "most_extreme_by": {
+            "value": 0.776963,
+            "player": "myltsi",
+            "steam64_id": "76561198803032451",
+            "faceit_elo": 4402.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "floor_share": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.floor",
+      "what": "Share of recent matches at or above rating 0",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": 0.01889,
+        "t": 0.4177,
+        "effect": "no",
+        "slope_per_elo": 7.188809899986976e-06,
+        "intercept": 0.5190453465946433,
+        "slope_per_1000": 0.00718881,
+        "slope_se_per_1000": 0.0156782,
+        "r2": 0.0004298,
+        "residual_std": 0.149869,
+        "metric_std": 0.149748,
+        "shift_p10_to_p90_elo": 0.00756335,
+        "shift_in_metric_std": 0.05051,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 0.563115,
+          "std": 0.153491,
+          "min": 0.166667,
+          "max": 0.966667,
+          "median": 0.566667,
+          "percentiles": {
+            "p5": 0.335,
+            "p10": 0.366667,
+            "p25": 0.466667,
+            "p50": 0.566667,
+            "p75": 0.666667,
+            "p90": 0.796667,
+            "p95": 0.833333
+          },
+          "tail": {
+            "top_10pct": 0.796667,
+            "top_5pct": 0.833333,
+            "top_1pct": 0.9,
+            "most_extreme": 0.966667
+          },
+          "most_extreme_by": {
+            "value": 0.966667,
+            "player": "Surreal",
+            "steam64_id": "76561198044840457",
+            "faceit_elo": 3087.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.529539,
+          "std": 0.141306,
+          "min": 0.0333333,
+          "max": 0.866667,
+          "median": 0.533333,
+          "percentiles": {
+            "p5": 0.3,
+            "p10": 0.366667,
+            "p25": 0.433333,
+            "p50": 0.533333,
+            "p75": 0.6,
+            "p90": 0.7,
+            "p95": 0.766667
+          },
+          "tail": {
+            "top_10pct": 0.7,
+            "top_5pct": 0.766667,
+            "top_1pct": 0.826,
+            "most_extreme": 0.866667
+          },
+          "most_extreme_by": {
+            "value": 0.866667,
+            "player": "rage",
+            "steam64_id": "76561198076361503",
+            "faceit_elo": 3439.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.52439,
+          "std": 0.153233,
+          "min": 0.166667,
+          "max": 0.866667,
+          "median": 0.533333,
+          "percentiles": {
+            "p5": 0.3,
+            "p10": 0.333333,
+            "p25": 0.433333,
+            "p50": 0.533333,
+            "p75": 0.633333,
+            "p90": 0.733333,
+            "p95": 0.766667
+          },
+          "tail": {
+            "top_10pct": 0.733333,
+            "top_5pct": 0.766667,
+            "top_1pct": 0.859333,
+            "most_extreme": 0.866667
+          },
+          "most_extreme_by": {
+            "value": 0.866667,
+            "player": "aliStair",
+            "steam64_id": "76561198098346710",
+            "faceit_elo": 3825.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.564499,
+          "std": 0.14789,
+          "min": 0.233333,
+          "max": 0.966667,
+          "median": 0.566667,
+          "percentiles": {
+            "p5": 0.333333,
+            "p10": 0.366667,
+            "p25": 0.45,
+            "p50": 0.566667,
+            "p75": 0.666667,
+            "p90": 0.733333,
+            "p95": 0.796667
+          },
+          "tail": {
+            "top_10pct": 0.733333,
+            "top_5pct": 0.796667,
+            "top_1pct": 0.892667,
+            "most_extreme": 0.966667
+          },
+          "most_extreme_by": {
+            "value": 0.966667,
+            "player": "m0NESY",
+            "steam64_id": "76561198074762801",
+            "faceit_elo": 4660.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "floor_share_in_form": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "share 0-1",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.floor",
+      "what": "floor_share, only for players with mean rating >= 2",
+      "band_constant": null,
+      "relationship": {
+        "n": 129,
+        "spearman_rho": -0.1231,
+        "t": -1.398,
+        "effect": "no",
+        "slope_per_elo": -2.7928904329722087e-05,
+        "intercept": 0.814103167638081,
+        "slope_per_1000": -0.0279289,
+        "slope_se_per_1000": 0.0176972,
+        "r2": 0.01923,
+        "residual_std": 0.0944056,
+        "metric_std": 0.0949537,
+        "shift_p10_to_p90_elo": -0.029384,
+        "shift_in_metric_std": -0.3095,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 35,
+          "small_sample": false,
+          "mean": 0.732381,
+          "std": 0.107096,
+          "min": 0.566667,
+          "max": 0.966667,
+          "median": 0.733333,
+          "percentiles": {
+            "p5": 0.59,
+            "p10": 0.6,
+            "p25": 0.65,
+            "p50": 0.733333,
+            "p75": 0.8,
+            "p90": 0.866667,
+            "p95": 0.9
+          },
+          "tail": {
+            "top_10pct": 0.866667,
+            "top_5pct": 0.9,
+            "top_1pct": 0.944,
+            "most_extreme": 0.966667
+          },
+          "most_extreme_by": {
+            "value": 0.966667,
+            "player": "Surreal",
+            "steam64_id": "76561198044840457",
+            "faceit_elo": 3087.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 27,
+          "small_sample": false,
+          "mean": 0.695062,
+          "std": 0.0860847,
+          "min": 0.533333,
+          "max": 0.866667,
+          "median": 0.7,
+          "percentiles": {
+            "p5": 0.576667,
+            "p10": 0.6,
+            "p25": 0.633333,
+            "p50": 0.7,
+            "p75": 0.766667,
+            "p90": 0.8,
+            "p95": 0.823333
+          },
+          "tail": {
+            "top_10pct": 0.8,
+            "top_5pct": 0.823333,
+            "top_1pct": 0.858,
+            "most_extreme": 0.866667
+          },
+          "most_extreme_by": {
+            "value": 0.866667,
+            "player": "rage",
+            "steam64_id": "76561198076361503",
+            "faceit_elo": 3439.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 29,
+          "small_sample": false,
+          "mean": 0.7,
+          "std": 0.0877406,
+          "min": 0.5,
+          "max": 0.866667,
+          "median": 0.666667,
+          "percentiles": {
+            "p5": 0.6,
+            "p10": 0.6,
+            "p25": 0.633333,
+            "p50": 0.666667,
+            "p75": 0.733333,
+            "p90": 0.833333,
+            "p95": 0.853333
+          },
+          "tail": {
+            "top_10pct": 0.833333,
+            "top_5pct": 0.853333,
+            "top_1pct": 0.866667,
+            "most_extreme": 0.866667
+          },
+          "most_extreme_by": {
+            "value": 0.866667,
+            "player": "aliStair",
+            "steam64_id": "76561198098346710",
+            "faceit_elo": 3825.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 38,
+          "small_sample": false,
+          "mean": 0.711404,
+          "std": 0.0943689,
+          "min": 0.566667,
+          "max": 0.966667,
+          "median": 0.716667,
+          "percentiles": {
+            "p5": 0.566667,
+            "p10": 0.6,
+            "p25": 0.633333,
+            "p50": 0.716667,
+            "p75": 0.758333,
+            "p90": 0.82,
+            "p95": 0.871667
+          },
+          "tail": {
+            "top_10pct": 0.82,
+            "top_5pct": 0.871667,
+            "top_1pct": 0.942,
+            "most_extreme": 0.966667
+          },
+          "most_extreme_by": {
+            "value": 0.966667,
+            "player": "m0NESY",
+            "steam64_id": "76561198074762801",
+            "faceit_elo": 4660.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "reaction_cv": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "ratio",
+      "extreme_end": "low",
+      "informs": "REPUTATION.trajectory.spread",
+      "what": "Match-to-match variation of reaction time (sd / mean)",
+      "band_constant": null,
+      "relationship": {
+        "n": 491,
+        "spearman_rho": -0.02856,
+        "t": -0.6318,
+        "effect": "no",
+        "slope_per_elo": -4.6055829508855433e-07,
+        "intercept": 0.1921974471811046,
+        "slope_per_1000": -0.000460558,
+        "slope_se_per_1000": 0.00412983,
+        "r2": 2.543e-05,
+        "residual_std": 0.0394774,
+        "metric_std": 0.0394376,
+        "shift_p10_to_p90_elo": -0.000484553,
+        "shift_in_metric_std": -0.01229,
+        "moves_toward_extreme": true
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 122,
+          "small_sample": false,
+          "mean": 0.191299,
+          "std": 0.04141,
+          "min": 0.112574,
+          "max": 0.308916,
+          "median": 0.185548,
+          "percentiles": {
+            "p5": 0.128887,
+            "p10": 0.141852,
+            "p25": 0.162718,
+            "p50": 0.185548,
+            "p75": 0.215315,
+            "p90": 0.24865,
+            "p95": 0.262561
+          },
+          "tail": {
+            "top_10pct": 0.141852,
+            "top_5pct": 0.128887,
+            "top_1pct": 0.113313,
+            "most_extreme": 0.112574
+          },
+          "most_extreme_by": {
+            "value": 0.112574,
+            "player": "NAF",
+            "steam64_id": "76561198001151695",
+            "faceit_elo": 2811.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.19075,
+          "std": 0.0360864,
+          "min": 0.116726,
+          "max": 0.328636,
+          "median": 0.186692,
+          "percentiles": {
+            "p5": 0.143322,
+            "p10": 0.148936,
+            "p25": 0.168576,
+            "p50": 0.186692,
+            "p75": 0.207166,
+            "p90": 0.227671,
+            "p95": 0.258755
+          },
+          "tail": {
+            "top_10pct": 0.148936,
+            "top_5pct": 0.143322,
+            "top_1pct": 0.133871,
+            "most_extreme": 0.116726
+          },
+          "most_extreme_by": {
+            "value": 0.116726,
+            "player": "VLDN",
+            "steam64_id": "76561198099198308",
+            "faceit_elo": 3556.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.193091,
+          "std": 0.0394956,
+          "min": 0.129995,
+          "max": 0.328276,
+          "median": 0.185519,
+          "percentiles": {
+            "p5": 0.14314,
+            "p10": 0.148598,
+            "p25": 0.163806,
+            "p50": 0.185519,
+            "p75": 0.212365,
+            "p90": 0.249366,
+            "p95": 0.273045
+          },
+          "tail": {
+            "top_10pct": 0.148598,
+            "top_5pct": 0.14314,
+            "top_1pct": 0.132332,
+            "most_extreme": 0.129995
+          },
+          "most_extreme_by": {
+            "value": 0.129995,
+            "player": "Tauson",
+            "steam64_id": "76561198316706174",
+            "faceit_elo": 3762.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 123,
+          "small_sample": false,
+          "mean": 0.186916,
+          "std": 0.0407862,
+          "min": 0.102798,
+          "max": 0.313982,
+          "median": 0.182042,
+          "percentiles": {
+            "p5": 0.127865,
+            "p10": 0.141485,
+            "p25": 0.159499,
+            "p50": 0.182042,
+            "p75": 0.208947,
+            "p90": 0.241902,
+            "p95": 0.264896
+          },
+          "tail": {
+            "top_10pct": 0.141485,
+            "top_5pct": 0.127865,
+            "top_1pct": 0.106567,
+            "most_extreme": 0.102798
+          },
+          "most_extreme_by": {
+            "value": 0.102798,
+            "player": "Patsi",
+            "steam64_id": "76561198288540801",
+            "faceit_elo": 4092.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "divergence": {
+      "family": "trajectory",
+      "scope": "player",
+      "unit": "std devs",
+      "extreme_end": "high",
+      "informs": "REPUTATION.trajectory.divergence",
+      "what": "Non-FACEIT matches vs. FACEIT matches, pooled std devs",
+      "band_constant": null,
+      "relationship": {
+        "n": 77,
+        "spearman_rho": -0.3497,
+        "t": -3.233,
+        "effect": "yes",
+        "slope_per_elo": -0.00024997607178940125,
+        "intercept": 0.8193861799712959,
+        "slope_per_1000": -0.249976,
+        "slope_se_per_1000": 0.0778689,
+        "r2": 0.1208,
+        "residual_std": 0.301669,
+        "metric_std": 0.319604,
+        "shift_p10_to_p90_elo": -0.263,
+        "shift_in_metric_std": -0.8229,
+        "moves_toward_extreme": false
+      },
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 20,
+          "small_sample": false,
+          "mean": 0.0697848,
+          "std": 0.296014,
+          "min": -0.46275,
+          "max": 0.787092,
+          "median": 0.0652632,
+          "percentiles": {
+            "p5": -0.357522,
+            "p10": -0.217469,
+            "p25": -0.132852,
+            "p50": 0.0652632,
+            "p75": 0.211229,
+            "p90": 0.417715,
+            "p95": 0.548347
+          },
+          "tail": {
+            "top_10pct": 0.417715,
+            "top_5pct": 0.548347,
+            "top_1pct": 0.739343,
+            "most_extreme": 0.787092
+          },
+          "most_extreme_by": {
+            "value": 0.787092,
+            "player": "twenty3",
+            "steam64_id": "76561198809859276",
+            "faceit_elo": 3300.0
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 26,
+          "small_sample": false,
+          "mean": -0.0986201,
+          "std": 0.321012,
+          "min": -0.875965,
+          "max": 0.780146,
+          "median": -0.102544,
+          "percentiles": {
+            "p5": -0.472323,
+            "p10": -0.43809,
+            "p25": -0.321193,
+            "p50": -0.102544,
+            "p75": 0.105635,
+            "p90": 0.180714,
+            "p95": 0.241399
+          },
+          "tail": {
+            "top_10pct": 0.180714,
+            "top_5pct": 0.241399,
+            "top_1pct": 0.650403,
+            "most_extreme": 0.780146
+          },
+          "most_extreme_by": {
+            "value": 0.780146,
+            "player": "ICY",
+            "steam64_id": "76561198055109028",
+            "faceit_elo": 3444.0
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 15,
+          "small_sample": true,
+          "mean": -0.100856,
+          "std": 0.290001,
+          "min": -0.53918,
+          "max": 0.53999,
+          "median": -0.0935773,
+          "percentiles": {
+            "p5": -0.463137,
+            "p10": -0.401802,
+            "p25": -0.328414,
+            "p50": -0.0935773,
+            "p75": 0.0442632,
+            "p90": 0.224302,
+            "p95": 0.321815
+          },
+          "tail": {
+            "top_10pct": 0.224302,
+            "top_5pct": 0.321815,
+            "top_1pct": 0.496355,
+            "most_extreme": 0.53999
+          },
+          "most_extreme_by": {
+            "value": 0.53999,
+            "player": "FreeZe",
+            "steam64_id": "76561198219516767",
+            "faceit_elo": 3759.0
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 16,
+          "small_sample": true,
+          "mean": -0.26319,
+          "std": 0.300051,
+          "min": -0.766375,
+          "max": 0.279725,
+          "median": -0.367565,
+          "percentiles": {
+            "p5": -0.633199,
+            "p10": -0.550554,
+            "p25": -0.455055,
+            "p50": -0.367565,
+            "p75": -0.021582,
+            "p90": 0.147558,
+            "p95": 0.211487
+          },
+          "tail": {
+            "top_10pct": 0.147558,
+            "top_5pct": 0.211487,
+            "top_1pct": 0.266077,
+            "most_extreme": 0.279725
+          },
+          "most_extreme_by": {
+            "value": 0.279725,
+            "player": "m0NESY",
+            "steam64_id": "76561198074762801",
+            "faceit_elo": 4660.0
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "match_rating": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "website units",
+      "extreme_end": "high",
+      "informs": "THRESHOLDS.rating.strongMatch",
+      "what": "Leetify rating of one match",
+      "band_constant": null,
+      "relationship": null,
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 3660,
+          "small_sample": false,
+          "mean": 1.23648,
+          "std": 5.3759,
+          "min": -24.54,
+          "max": 29.0,
+          "median": 0.72,
+          "percentiles": {
+            "p5": -6.55,
+            "p10": -4.991,
+            "p25": -2.43,
+            "p50": 0.72,
+            "p75": 4.2375,
+            "p90": 8.052,
+            "p95": 10.64
+          },
+          "tail": {
+            "top_10pct": 8.052,
+            "top_5pct": 10.64,
+            "top_1pct": 16.8689,
+            "most_extreme": 29.0
+          },
+          "most_extreme_by": {
+            "value": 29.0,
+            "player": "nosraC",
+            "steam64_id": "76561198061787931",
+            "faceit_elo": 3345.0,
+            "match_id": "937f25fc-d2a1-4c55-b7e6-56bdeb127300",
+            "finished_at": "2026-09-20T07:31:02.000Z"
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 0.814257,
+          "std": 5.13466,
+          "min": -20.54,
+          "max": 40.59,
+          "median": 0.22,
+          "percentiles": {
+            "p5": -6.3755,
+            "p10": -5.01,
+            "p25": -2.66,
+            "p50": 0.22,
+            "p75": 3.49,
+            "p90": 7.03,
+            "p95": 9.8
+          },
+          "tail": {
+            "top_10pct": 7.03,
+            "top_5pct": 9.8,
+            "top_1pct": 16.5365,
+            "most_extreme": 40.59
+          },
+          "most_extreme_by": {
+            "value": 40.59,
+            "player": "STYKO",
+            "steam64_id": "76561198016194159",
+            "faceit_elo": 3590.0,
+            "match_id": "af2bf14e-0a25-4d7b-b931-de0a1daba789",
+            "finished_at": "2026-09-05T14:48:32.000Z"
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 0.866686,
+          "std": 5.13212,
+          "min": -16.72,
+          "max": 34.16,
+          "median": 0.26,
+          "percentiles": {
+            "p5": -6.44,
+            "p10": -5.01,
+            "p25": -2.45,
+            "p50": 0.26,
+            "p75": 3.65,
+            "p90": 7.461,
+            "p95": 9.881
+          },
+          "tail": {
+            "top_10pct": 7.461,
+            "top_5pct": 9.881,
+            "top_1pct": 16.5132,
+            "most_extreme": 34.16
+          },
+          "most_extreme_by": {
+            "value": 34.16,
+            "player": "mwlky",
+            "steam64_id": "76561198167125683",
+            "faceit_elo": 3816.0,
+            "match_id": "c6cebfa1-5152-4f07-99d7-75d57ea678eb",
+            "finished_at": "2026-09-23T20:09:04.000Z"
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 1.2538,
+          "std": 5.19238,
+          "min": -15.09,
+          "max": 38.53,
+          "median": 0.665,
+          "percentiles": {
+            "p5": -6.071,
+            "p10": -4.74,
+            "p25": -2.24,
+            "p50": 0.665,
+            "p75": 4.21,
+            "p90": 7.711,
+            "p95": 10.371
+          },
+          "tail": {
+            "top_10pct": 7.711,
+            "top_5pct": 10.371,
+            "top_1pct": 16.1243,
+            "most_extreme": 38.53
+          },
+          "most_extreme_by": {
+            "value": 38.53,
+            "player": "w0nderful",
+            "steam64_id": "76561199063068840",
+            "faceit_elo": 4337.0,
+            "match_id": "50ee90c3-090c-45d5-a790-999a7afdf457",
+            "finished_at": "2026-09-26T19:11:39.000Z"
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "match_preaim": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "deg",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.preaim",
+      "what": "Preaim in one match",
+      "band_constant": null,
+      "relationship": null,
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 3660,
+          "small_sample": false,
+          "mean": 9.17284,
+          "std": 3.44258,
+          "min": 0.0,
+          "max": 31.46,
+          "median": 8.78,
+          "percentiles": {
+            "p5": 4.41,
+            "p10": 5.189,
+            "p25": 6.78,
+            "p50": 8.78,
+            "p75": 11.03,
+            "p90": 13.572,
+            "p95": 15.392
+          },
+          "tail": {
+            "top_10pct": 5.189,
+            "top_5pct": 4.41,
+            "top_1pct": 2.9577,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "lux",
+            "steam64_id": "76561198074017668",
+            "faceit_elo": 3222.0,
+            "match_id": "90ecbd7f-f970-4bfa-b319-73033e4074d7",
+            "finished_at": "2026-09-26T09:47:57.000Z"
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 9.21558,
+          "std": 3.44614,
+          "min": 0.0,
+          "max": 30.16,
+          "median": 8.83,
+          "percentiles": {
+            "p5": 4.55,
+            "p10": 5.39,
+            "p25": 6.8025,
+            "p50": 8.83,
+            "p75": 11.08,
+            "p90": 13.591,
+            "p95": 15.5365
+          },
+          "tail": {
+            "top_10pct": 5.39,
+            "top_5pct": 4.55,
+            "top_1pct": 3.0345,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "apEX",
+            "steam64_id": "76561197989744167",
+            "faceit_elo": 3637.0,
+            "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+            "finished_at": "2026-09-27T20:23:21.000Z"
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 9.24514,
+          "std": 3.45224,
+          "min": 0.0,
+          "max": 34.59,
+          "median": 8.915,
+          "percentiles": {
+            "p5": 4.3345,
+            "p10": 5.23,
+            "p25": 6.8,
+            "p50": 8.915,
+            "p75": 11.1675,
+            "p90": 13.771,
+            "p95": 15.46
+          },
+          "tail": {
+            "top_10pct": 5.23,
+            "top_5pct": 4.3345,
+            "top_1pct": 2.9189,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "Brehze",
+            "steam64_id": "76561198054861139",
+            "faceit_elo": 3802.0,
+            "match_id": "b06adfc6-af0b-444c-9af8-bec437a9c675",
+            "finished_at": "2026-09-26T02:10:39.000Z"
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 8.74335,
+          "std": 3.37243,
+          "min": 0.0,
+          "max": 41.21,
+          "median": 8.29,
+          "percentiles": {
+            "p5": 4.0345,
+            "p10": 4.82,
+            "p25": 6.45,
+            "p50": 8.29,
+            "p75": 10.65,
+            "p90": 13.081,
+            "p95": 14.64
+          },
+          "tail": {
+            "top_10pct": 4.82,
+            "top_5pct": 4.0345,
+            "top_1pct": 2.9734,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "ZywOo",
+            "steam64_id": "76561198113666193",
+            "faceit_elo": 4000.0,
+            "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+            "finished_at": "2026-09-27T20:23:21.000Z"
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "match_reaction_ms": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "ms",
+      "extreme_end": "low",
+      "informs": "REPUTATION.mechanics.reaction",
+      "what": "Reaction time in one match",
+      "band_constant": null,
+      "relationship": null,
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 3660,
+          "small_sample": false,
+          "mean": 485.603,
+          "std": 105.38,
+          "min": 0.0,
+          "max": 1000.0,
+          "median": 469.0,
+          "percentiles": {
+            "p5": 344.0,
+            "p10": 367.0,
+            "p25": 414.0,
+            "p50": 469.0,
+            "p75": 547.0,
+            "p90": 625.0,
+            "p95": 672.0
+          },
+          "tail": {
+            "top_10pct": 367.0,
+            "top_5pct": 344.0,
+            "top_1pct": 297.0,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "lux",
+            "steam64_id": "76561198074017668",
+            "faceit_elo": 3222.0,
+            "match_id": "90ecbd7f-f970-4bfa-b319-73033e4074d7",
+            "finished_at": "2026-09-26T09:47:57.000Z"
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 476.893,
+          "std": 98.1944,
+          "min": 0.0,
+          "max": 1000.0,
+          "median": 469.0,
+          "percentiles": {
+            "p5": 344.0,
+            "p10": 367.0,
+            "p25": 406.0,
+            "p50": 469.0,
+            "p75": 531.0,
+            "p90": 602.0,
+            "p95": 648.0
+          },
+          "tail": {
+            "top_10pct": 367.0,
+            "top_5pct": 344.0,
+            "top_1pct": 313.0,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "apEX",
+            "steam64_id": "76561197989744167",
+            "faceit_elo": 3637.0,
+            "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+            "finished_at": "2026-09-27T20:23:21.000Z"
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 462.741,
+          "std": 98.2841,
+          "min": 0.0,
+          "max": 1000.0,
+          "median": 453.0,
+          "percentiles": {
+            "p5": 328.0,
+            "p10": 359.0,
+            "p25": 391.0,
+            "p50": 453.0,
+            "p75": 516.0,
+            "p90": 586.0,
+            "p95": 641.0
+          },
+          "tail": {
+            "top_10pct": 359.0,
+            "top_5pct": 328.0,
+            "top_1pct": 289.0,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "Brehze",
+            "steam64_id": "76561198054861139",
+            "faceit_elo": 3802.0,
+            "match_id": "b06adfc6-af0b-444c-9af8-bec437a9c675",
+            "finished_at": "2026-09-26T02:10:39.000Z"
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 453.384,
+          "std": 92.8555,
+          "min": 0.0,
+          "max": 1000.0,
+          "median": 438.0,
+          "percentiles": {
+            "p5": 328.0,
+            "p10": 352.0,
+            "p25": 391.0,
+            "p50": 438.0,
+            "p75": 500.0,
+            "p90": 570.0,
+            "p95": 617.0
+          },
+          "tail": {
+            "top_10pct": 352.0,
+            "top_5pct": 328.0,
+            "top_1pct": 297.0,
+            "most_extreme": 0.0
+          },
+          "most_extreme_by": {
+            "value": 0.0,
+            "player": "ZywOo",
+            "steam64_id": "76561198113666193",
+            "faceit_elo": 4000.0,
+            "match_id": "a148e2ec-fb47-4b45-9e29-760d6e1c85de",
+            "finished_at": "2026-09-27T20:23:21.000Z"
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "match_head_acc": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.headAcc",
+      "what": "Head accuracy in one match",
+      "band_constant": null,
+      "relationship": null,
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 3660,
+          "small_sample": false,
+          "mean": 23.2058,
+          "std": 8.73363,
+          "min": 0.0,
+          "max": 83.33,
+          "median": 22.22,
+          "percentiles": {
+            "p5": 10.6385,
+            "p10": 13.04,
+            "p25": 17.37,
+            "p50": 22.22,
+            "p75": 28.57,
+            "p90": 34.48,
+            "p95": 38.4725
+          },
+          "tail": {
+            "top_10pct": 34.48,
+            "top_5pct": 38.4725,
+            "top_1pct": 48.9852,
+            "most_extreme": 83.33
+          },
+          "most_extreme_by": {
+            "value": 83.33,
+            "player": "Alv",
+            "steam64_id": "76561198036066702",
+            "faceit_elo": 3165.0,
+            "match_id": "31a80f01-eaee-4f8e-bf5a-c3bd8f9a5987",
+            "finished_at": "2026-06-04T10:14:25.000Z"
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 23.9549,
+          "std": 9.35684,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 22.935,
+          "percentiles": {
+            "p5": 11.044,
+            "p10": 13.56,
+            "p25": 17.6675,
+            "p50": 22.935,
+            "p75": 28.95,
+            "p90": 35.48,
+            "p95": 40.0
+          },
+          "tail": {
+            "top_10pct": 35.48,
+            "top_5pct": 40.0,
+            "top_1pct": 51.72,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "try",
+            "steam64_id": "76561198365118288",
+            "faceit_elo": 3406.0,
+            "match_id": "4d15320f-3e16-428b-a1f7-e862fba600be",
+            "finished_at": "2026-10-06T23:29:53.000Z"
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 23.1497,
+          "std": 9.08013,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 22.45,
+          "percentiles": {
+            "p5": 10.34,
+            "p10": 12.958,
+            "p25": 17.39,
+            "p50": 22.45,
+            "p75": 28.0,
+            "p90": 33.33,
+            "p95": 38.4015
+          },
+          "tail": {
+            "top_10pct": 33.33,
+            "top_5pct": 38.4015,
+            "top_1pct": 48.7985,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "s1n",
+            "steam64_id": "76561198190463461",
+            "faceit_elo": 3727.0,
+            "match_id": "ecb1626e-2f69-48b7-9f18-575013e07b55",
+            "finished_at": "2026-10-01T17:37:25.000Z"
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 23.945,
+          "std": 9.25882,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 22.92,
+          "percentiles": {
+            "p5": 10.61,
+            "p10": 13.33,
+            "p25": 17.74,
+            "p50": 22.92,
+            "p75": 29.03,
+            "p90": 35.71,
+            "p95": 40.4075
+          },
+          "tail": {
+            "top_10pct": 35.71,
+            "top_5pct": 40.4075,
+            "top_1pct": 50.0,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "kelieN",
+            "steam64_id": "76561198811683421",
+            "faceit_elo": 4087.0,
+            "match_id": "04e6e724-3561-4078-8622-2a0a059f8dde",
+            "finished_at": "2026-10-04T08:28:59.000Z"
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "match_spray_acc": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.sprayAcc",
+      "what": "Spray accuracy in one match",
+      "band_constant": null,
+      "relationship": null,
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 3660,
+          "small_sample": false,
+          "mean": 42.4737,
+          "std": 16.0748,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 41.9,
+          "percentiles": {
+            "p5": 18.7425,
+            "p10": 25.0,
+            "p25": 33.33,
+            "p50": 41.9,
+            "p75": 50.0,
+            "p90": 60.0,
+            "p95": 66.67
+          },
+          "tail": {
+            "top_10pct": 60.0,
+            "top_5pct": 66.67,
+            "top_1pct": 100.0,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "MATYS",
+            "steam64_id": "76561199046478501",
+            "faceit_elo": 2891.0,
+            "match_id": "6c3c2b6a-3b7a-486a-9bf3-e4db70b08e72",
+            "finished_at": "2026-10-04T16:50:27.000Z"
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 42.3443,
+          "std": 16.2112,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 41.67,
+          "percentiles": {
+            "p5": 18.18,
+            "p10": 25.0,
+            "p25": 33.33,
+            "p50": 41.67,
+            "p75": 50.0,
+            "p90": 61.9,
+            "p95": 69.113
+          },
+          "tail": {
+            "top_10pct": 61.9,
+            "top_5pct": 69.113,
+            "top_1pct": 100.0,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "try",
+            "steam64_id": "76561198365118288",
+            "faceit_elo": 3406.0,
+            "match_id": "429d9fa9-ba9a-48c5-83cf-59c8a81ff93e",
+            "finished_at": "2026-09-12T09:50:57.000Z"
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 43.3267,
+          "std": 15.8366,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 42.86,
+          "percentiles": {
+            "p5": 19.3905,
+            "p10": 25.81,
+            "p25": 33.33,
+            "p50": 42.86,
+            "p75": 52.17,
+            "p90": 61.364,
+            "p95": 69.57
+          },
+          "tail": {
+            "top_10pct": 61.364,
+            "top_5pct": 69.57,
+            "top_1pct": 100.0,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "Wicadia",
+            "steam64_id": "76561198812513923",
+            "faceit_elo": 3868.0,
+            "match_id": "6362718d-8aea-4611-ac40-bb121df81710",
+            "finished_at": "2026-10-09T10:34:13.000Z"
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 42.434,
+          "std": 16.7049,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 42.22,
+          "percentiles": {
+            "p5": 15.702,
+            "p10": 24.959,
+            "p25": 33.33,
+            "p50": 42.22,
+            "p75": 50.0,
+            "p90": 61.11,
+            "p95": 68.6015
+          },
+          "tail": {
+            "top_10pct": 61.11,
+            "top_5pct": 68.6015,
+            "top_1pct": 100.0,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "ZywOo",
+            "steam64_id": "76561198113666193",
+            "faceit_elo": 4000.0,
+            "match_id": "85c6706b-ef80-4767-b053-d356d28eba96",
+            "finished_at": "2026-09-19T18:18:49.000Z"
+          }
+        }
+      ],
+      "at_elo": []
+    },
+    "match_spotted_acc": {
+      "family": "single match",
+      "scope": "match",
+      "unit": "%",
+      "extreme_end": "high",
+      "informs": "REPUTATION.mechanics.spottedAcc",
+      "what": "Spotted accuracy in one match",
+      "band_constant": null,
+      "relationship": null,
+      "by_band": [
+        {
+          "band": "1128-3388",
+          "n": 3660,
+          "small_sample": false,
+          "mean": 39.1156,
+          "std": 7.50801,
+          "min": 0.0,
+          "max": 75.0,
+          "median": 39.13,
+          "percentiles": {
+            "p5": 27.27,
+            "p10": 30.0,
+            "p25": 34.38,
+            "p50": 39.13,
+            "p75": 43.84,
+            "p90": 48.283,
+            "p95": 51.2505
+          },
+          "tail": {
+            "top_10pct": 48.283,
+            "top_5pct": 51.2505,
+            "top_1pct": 57.3382,
+            "most_extreme": 75.0
+          },
+          "most_extreme_by": {
+            "value": 75.0,
+            "player": "afro",
+            "steam64_id": "76561198035581101",
+            "faceit_elo": 3221.0,
+            "match_id": "b04b2406-2ad7-4deb-b3c2-62761f162504",
+            "finished_at": "2026-09-19T12:48:42.000Z"
+          }
+        },
+        {
+          "band": "3389-3669",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 39.2303,
+          "std": 7.44843,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 38.96,
+          "percentiles": {
+            "p5": 28.0,
+            "p10": 30.43,
+            "p25": 34.62,
+            "p50": 38.96,
+            "p75": 43.66,
+            "p90": 48.08,
+            "p95": 50.79
+          },
+          "tail": {
+            "top_10pct": 48.08,
+            "top_5pct": 50.79,
+            "top_1pct": 58.2086,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "EliGE",
+            "steam64_id": "76561198066693739",
+            "faceit_elo": 3542.0,
+            "match_id": "df5b0682-3e5a-4e28-873c-782807d8be91",
+            "finished_at": "2026-09-30T15:39:45.000Z"
+          }
+        },
+        {
+          "band": "3670-3938",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 40.0624,
+          "std": 7.45616,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 39.805,
+          "percentiles": {
+            "p5": 28.99,
+            "p10": 31.469,
+            "p25": 35.2225,
+            "p50": 39.805,
+            "p75": 44.44,
+            "p90": 48.96,
+            "p95": 52.152
+          },
+          "tail": {
+            "top_10pct": 48.96,
+            "top_5pct": 52.152,
+            "top_1pct": 58.54,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "kl1m",
+            "steam64_id": "76561198125068631",
+            "faceit_elo": 3900.0,
+            "match_id": "24a13ff8-f6ff-4c0f-8cd6-c023906f9608",
+            "finished_at": "2026-06-04T16:42:53.000Z"
+          }
+        },
+        {
+          "band": "3944-4825",
+          "n": 3690,
+          "small_sample": false,
+          "mean": 40.4998,
+          "std": 7.60858,
+          "min": 0.0,
+          "max": 100.0,
+          "median": 40.26,
+          "percentiles": {
+            "p5": 28.89,
+            "p10": 31.34,
+            "p25": 35.71,
+            "p50": 40.26,
+            "p75": 45.16,
+            "p90": 50.0,
+            "p95": 53.04
+          },
+          "tail": {
+            "top_10pct": 50.0,
+            "top_5pct": 53.04,
+            "top_1pct": 59.5255,
+            "most_extreme": 100.0
+          },
+          "most_extreme_by": {
+            "value": 100.0,
+            "player": "SunPayus",
+            "steam64_id": "76561198309839541",
+            "faceit_elo": 4060.0,
+            "match_id": "f1611b9f-7f26-4e77-b1c9-b9ce6cf87120",
+            "finished_at": "2026-06-15T20:39:23.000Z"
+          }
+        }
+      ],
+      "at_elo": []
+    }
+  }
+}
