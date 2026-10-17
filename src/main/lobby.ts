@@ -8,7 +8,7 @@
 import { MAX_LOOKUPS } from "../shared/lobby-size";
 import { isSameMatch } from "../shared/match-identity";
 import type { PlayerReputation } from "../shared/reputation-types";
-import type { EvidenceClass, LobbyRow, MatchState, PlayerDetail } from "../shared/types";
+import type { EvidenceClass, LobbyRow, MatchState, PlayerDetail, RosterPlayer } from "../shared/types";
 import { groupPlayers } from "./steam/friends";
 
 /** What a lookup says about one player. */
@@ -155,7 +155,12 @@ export class LobbyService {
 
   /** The IDs that get looked up, order-insensitive: a team switch or a reorder is not a roster change. */
   private rosterSig(m: MatchState): string {
-    return m.players.slice(0, this.limit).map((p) => p.steamId ?? "").sort().join(",");
+    return this.lookedUp(m).map((p) => p.steamId ?? "").sort().join(",");
+  }
+
+  /** The players that get looked up: the first `limit` of the lobby, plus any added by hand, which come on top. */
+  private lookedUp(m: MatchState | null): RosterPlayer[] {
+    return (m?.players ?? []).filter((p, i) => i < this.limit || p.via === "manual");
   }
 
   /** Update the local player's Steam ID (called when a match starts). */
@@ -201,7 +206,7 @@ export class LobbyService {
 
   rows(): LobbyRow[] {
     return (this.match?.players ?? []).map((p, i) => {
-      if (i >= this.limit)
+      if (i >= this.limit && p.via !== "manual")
         return { ...p, classification: null, totalMatches: 0, status: "skipped", detail: null, reputation: null,
                  note: `Not checked: only the first ${this.limit} players of a lobby are looked up`, groupId: null, groupName: null };
       if (!p.steamId) return { ...p, classification: null, totalMatches: 0, status: "no-steam-id", detail: null, reputation: null, note: null, groupId: null, groupName: null };
@@ -226,7 +231,7 @@ export class LobbyService {
     const ttl = this.opts.ttlMs ?? 6 * 60 * 60 * 1000; // 6 hours default
     const ids: string[] = [];
     const seen = new Set<string>();
-    for (const p of (this.match?.players ?? []).slice(0, this.limit)) {
+    for (const p of this.lookedUp(this.match)) {
       if (!p.steamId) continue;
       if (seen.has(p.steamId)) continue;
       seen.add(p.steamId);

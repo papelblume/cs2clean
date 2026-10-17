@@ -380,6 +380,18 @@ describe("SteamSource before CS2's game-state feed has said anything", () => {
     src.stop();
   });
 
+  it("works with CS2 closed", async () => {
+    const { src, matches } = make(lastMatch, { running: () => false });
+    src.start();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(src.addPlayer(id(5))).toBe("added");
+    await vi.advanceTimersByTimeAsync(10);
+    expect(matches.at(-1)!.players.map((p) => p.steamId)).toEqual([id(5)]);
+    await vi.advanceTimersByTimeAsync(30_000); // it stays: nothing cleared the match's players
+    expect(matches.at(-1)!.players.map((p) => p.steamId)).toEqual([id(5)]);
+    src.stop();
+  });
+
   it("is no Steam ID only when Steam's account can't be read either", async () => {
     const { src, matches } = make(lastMatch, { running: () => true, local: null });
     src.start();
@@ -502,16 +514,30 @@ describe("SteamSource: a map Steam lists no players for, and players added by ha
     src.stop();
   });
 
+  it("lists players added by hand with no match behind them, and drops them when a match begins", async () => {
+    const { src, hold, matches } = make(() => []);
+    src.start();
+    await hold({}, 10_000); // the game's main menu
+    expect(src.addPlayer(id(5))).toBe("added");
+    expect(src.addPlayer(id(5))).toBe("duplicate");
+    await vi.advanceTimersByTimeAsync(10);
+    // Just them: no row for us, and nothing that makes a match of it.
+    expect(matches.at(-1)!.players.map((p) => [p.name, p.steamId, p.via, p.isLocal])).toEqual([["Unknown player", id(5), "manual", false]]);
+    expect(matches.at(-1)!.players[0].slot).toBeGreaterThan(0);
+    expect(src.addPlayer(ME)).toBe("added"); // checking our own profile is fine when we aren't listed
+
+    await hold({ map: "de_dust2", mode: "casual", phase: "warmup" }, 10_000); // a map loads: the old list goes
+    expect(matches.at(-1)!.players).toEqual([]);
+    src.stop();
+  });
+
   it("lists players added by hand, keeps them for the map, and forgets them with it", async () => {
     const { src, post, hold, matches } = make(() => []);
     src.start();
-    await hold({}, 10_000);
-    expect(src.addPlayer(id(5))).toBe("no-match"); // the feed says we're in the menu
-
     await hold(community, 10_000);
     expect(src.addPlayer(id(5))).toBe("added");
     expect(src.addPlayer(id(5))).toBe("duplicate");
-    expect(src.addPlayer(ME)).toBe("duplicate"); // that's us
+    expect(src.addPlayer(ME)).toBe("duplicate"); // that's us, and we're listed
     await vi.advanceTimersByTimeAsync(10);
     expect(matches.at(-1)!.players.map((p) => [p.name, p.steamId])).toEqual([["Nova", ME], ["Unknown player", id(5)]]);
 
@@ -525,12 +551,41 @@ describe("SteamSource: a map Steam lists no players for, and players added by ha
     src.stop();
   });
 
-  it("stops at the number of other players a lobby looks up", async () => {
-    const { src, hold } = make(() => []);
+  it("adds players on top of a full lobby, up to a few at a time, and lets them be removed", async () => {
+    const t = Math.floor(Date.now() / 1000);
+    const { src, hold, matches } = make(() => [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => E(n + 100, t - 5)));
     src.start();
-    await hold(community, 10_000);
-    for (let n = 1; n <= 9; n++) expect(src.addPlayer(id(n))).toBe("added");
-    expect(src.addPlayer(id(10))).toBe("full");
+    await hold({ map: "de_dust2", mode: "competitive", phase: "warmup" }, 10_000);
+    expect(matches.at(-1)!.players).toHaveLength(10); // us and nine others: a full lobby
+
+    for (let n = 1; n <= 5; n++) expect(src.addPlayer(id(n))).toBe("added");
+    expect(src.addPlayer(id(6))).toBe("full");
+    await vi.advanceTimersByTimeAsync(10);
+    const players = matches.at(-1)!.players;
+    expect(players).toHaveLength(15);
+    expect(players.slice(10).map((p) => [p.steamId, p.via])).toEqual([1, 2, 3, 4, 5].map((n) => [id(n), "manual"])); // after the lobby's own
+    expect(new Set(players.map((p) => p.slot)).size).toBe(15);                                                       // slots are unique
+
+    expect(src.removePlayer(id(3))).toBe(true);
+    expect(src.removePlayer(id(3))).toBe(false);
+    expect(src.addPlayer(id(6))).toBe("added"); // room again
+    await vi.advanceTimersByTimeAsync(10);
+    expect(matches.at(-1)!.players.slice(10).map((p) => p.steamId)).toEqual([1, 2, 4, 5, 6].map(id));
+    src.stop();
+  });
+
+  it("doesn't list someone twice when Steam names the player we added", async () => {
+    const t = Math.floor(Date.now() / 1000);
+    let list: CoplayEntry[] = [];
+    const { src, hold, matches } = make(() => list);
+    src.start();
+    await hold({ map: "de_dust2", mode: "casual", phase: "live" }, 10_000);
+    expect(src.addPlayer(id(7))).toBe("added");
+    list = [E(7, t), E(8, t), E(9, t)];
+    await hold({ map: "de_dust2", mode: "casual", phase: "live" }, 25_000);
+    const ids = matches.at(-1)!.players.map((p) => p.steamId);
+    expect(ids.filter((x) => x === id(7))).toHaveLength(1);
+    expect(matches.at(-1)!.players.find((p) => p.steamId === id(7))!.via).toBeUndefined(); // Steam's, not a manual one
     src.stop();
   });
 });

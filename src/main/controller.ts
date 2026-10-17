@@ -6,6 +6,7 @@ import { cleanHotkeys, DEFAULT_HOTKEYS, duplicateHotkey, HOTKEY_NAMES, hotkeyPro
 import { cycleStep, listOrder, visibleOrder } from "../shared/lobby-order";
 import { isSameMatch } from "../shared/match-identity";
 import { pressViewKey } from "../shared/overlay-keys";
+import { MAX_MANUAL } from "../shared/lobby-size";
 import { parseSteamInput } from "../shared/steam-id";
 import type { AppState, LobbyRow, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
@@ -316,7 +317,9 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   // ------------------------------------------------------------------ match
 
   private onMatch(m: MatchState): void {
-    const inMatch = m.players.length > 0;
+    // Players added by hand are a list of their own with no match behind them: no overlay popping up, no siren, no
+    // "match" in the window. A real match has us (or anyone else) in it.
+    const inMatch = m.players.some((p) => p.via !== "manual");
     const prev = this.state.match;
     const current = inMatch ? m : null;
     if (!isSameMatch(this.lastMatch, current)) {
@@ -341,7 +344,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     }
     if (this.state.game.rosterUnavailable !== (m.rosterUnavailable === true))
       this.state.game = { ...this.state.game, rosterUnavailable: m.rosterUnavailable === true };
-    this.lobby.setMatch(inMatch ? m : null);
+    this.lobby.setMatch(m.players.length > 0 ? m : null);
     this.lobby.setLocalSteamId(m.localSteamId);
   }
 
@@ -375,11 +378,15 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     }
     this.update({ notice: {
       duplicate: "That player is already in the list.",
-      full: "The list is full: only the first 10 players of a match are looked up.",
-      "no-match": "Join a match first: players can only be added to a match in progress.",
+      full: `You can add up to ${MAX_MANUAL} players at a time. Remove one first.`,
       unsupported: "This game source can't add players by hand.",
     }[result] });
     return false;
+  }
+
+  /** Takes a player added by hand off the list. */
+  removePlayer(steamId: string): void {
+    this.deps.source.removePlayer(steamId);
   }
 
   /** Siren once per HIGH player per match (the overlay plays it when alert.seq changes). */

@@ -46,6 +46,23 @@ describe("LobbyService", () => {
     expect(lookup).toHaveBeenCalledTimes(1);
   });
 
+  it("looks up players added by hand on top of the lobby's size", async () => {
+    const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
+    const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, maxPlayers: 2 });
+    const manual = (slot: number, id: string) => ({ ...player(slot, id), via: "manual" as const });
+    lobby.setMatch({ ...match(A, B, C), players: [player(0, A), player(1, B), player(2, C), manual(3, D)] });
+    expect(lobby.rows().map((r) => r.status)).toEqual(["loading", "loading", "skipped", "loading"]); // C is over the cap, D was added
+    await vi.advanceTimersByTimeAsync(50);
+    expect(lookup.mock.calls.flatMap((c) => c[0]).sort()).toEqual([A, B, D]);
+    expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "ok", "skipped", "ok"]);
+
+    // Adding another one is a roster change: it gets looked up too.
+    lobby.setMatch({ ...match(A, B, C), players: [player(0, A), player(1, B), player(2, C), manual(3, D), manual(4, E)] });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(lookup.mock.calls.flatMap((c) => c[0])).toContain(E);
+    expect(lobby.rows()[4].status).toBe("ok");
+  });
+
   it("shows the error and retries", async () => {
     let fail = true;
     const lookup = vi.fn(async (ids: string[]) => {

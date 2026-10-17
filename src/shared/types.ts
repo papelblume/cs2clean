@@ -23,7 +23,7 @@ export interface RosterPlayer {
   isLocal: boolean;
   /** How a friend was found when that was a guess: "profile" is the mini-profile fallback, whose text can be ten minutes
    * old. Absent for everyone Steam's players list, `status` or the friends list placed in the match. */
-  via?: "profile";
+  via?: "profile" | "manual";
 }
 
 /** Map phase from the game: warm-up, then live once the match starts. */
@@ -211,10 +211,13 @@ export interface Bridge {
   testSiren(): Promise<void>;
   openPlayer(steamId: string): Promise<void>;
   /**
-   * Adds a player to the current match by SteamID64, SteamID2/3 or a Steam or Leetify profile link, so the lobby checks
-   * them like anyone else. False (with a notice) when the text names no player or the player can't be added.
+   * Adds a player by SteamID64, SteamID2/3 or a Steam or Leetify profile link, so the lobby checks them like anyone
+   * else, in a match or not (they are the whole list when there is no match). False (with a notice) when the text
+   * names no player or the player can't be added.
    */
   addPlayer(input: string): Promise<boolean>;
+  /** Takes a player added by hand off the list. */
+  removePlayer(steamId: string): Promise<void>;
   /** Opens leetify.com (the "Data Provided by Leetify" link). */
   openLeetify(): Promise<void>;
   /** Opens leetify.com/app/developer (the API key page). */

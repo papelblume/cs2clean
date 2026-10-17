@@ -711,9 +711,14 @@ describe("Controller", () => {
     class ManualSource extends FakeSource {
       added: string[] = [];
       result: AddPlayerResult = "added";
+      removed: string[] = [];
       addPlayer(steamId: string): AddPlayerResult {
         this.added.push(steamId);
         return this.result;
+      }
+      removePlayer(steamId: string): boolean {
+        this.removed.push(steamId);
+        return true;
       }
     }
     const ID = "76561198000000007";
@@ -739,7 +744,7 @@ describe("Controller", () => {
       expect(c.state.notice).toMatch(/isn't a SteamID64/);
       expect(src.added).toEqual([]);
 
-      for (const [result, text] of [["duplicate", /already in the list/], ["full", /list is full/], ["no-match", /Join a match first/]] as const) {
+      for (const [result, text] of [["duplicate", /already in the list/], ["full", /up to 5 players at a time/]] as const) {
         src.result = result;
         expect(await c.addPlayer(ID)).toBe(false);
         expect(c.state.notice).toMatch(text);
@@ -769,6 +774,34 @@ describe("Controller", () => {
       expect(await c.addPlayer("https://steamcommunity.com/id/some_name")).toBe(false);
       expect(c.state.notice).toMatch(/SteamID64 instead/);
       expect(src.added).toEqual(["76561198000000009"]); // nothing was added by the failures
+      c.stop();
+    });
+
+    it("lists added players with no match behind them as a list of their own: no match, no overlay, no siren", async () => {
+      const src = new FakeSource();
+      const { c, server } = setup({}, src);
+      server.s.profiles[P(3).steamId] = VERY_HIGH();
+      c.start();
+      src.send({ players: [{ ...P(3), via: "manual" }] }); // what the source announces in the menu or with CS2 closed
+      await vi.advanceTimersByTimeAsync(100);
+      expect(c.state.match).toBeNull();
+      expect(c.state.lobby.rows.map((r) => [r.steamId, r.classification])).toEqual([[P(3).steamId, "VERY_HIGH"]]);
+      expect(c.state.overlay.visible).toBe(false);
+      expect(c.state.alert.seq).toBe(0);
+
+      src.send({ players: [P(0), P(1), { ...P(3), via: "manual" }] }); // a match begins: now it is one, and the siren is on
+      await vi.advanceTimersByTimeAsync(100);
+      expect(c.state.match).not.toBeNull();
+      expect(c.state.alert.seq).toBe(1);
+      c.stop();
+    });
+
+    it("takes an added player off the list through the source", () => {
+      const src = new ManualSource();
+      const { c } = setup({}, src);
+      c.start();
+      c.removePlayer(ID);
+      expect(src.removed).toEqual([ID]);
       c.stop();
     });
 

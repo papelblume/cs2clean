@@ -177,6 +177,7 @@ function simulated(): Bridge {
     testSiren: async () => set({ alert: { seq: state.alert.seq + 1, names: [] } }),
     openPlayer: async () => {},
     addPlayer: async (input) => input.trim() !== "",
+    removePlayer: async () => {},
     openLeetify: async () => {},
     openDeveloperPage: async () => {},
     openSteamDeveloper: async () => {},

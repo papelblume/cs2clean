@@ -484,6 +484,7 @@ if (!app.requestSingleInstanceLock()) {
       if (url) void shell.openExternal(url);
     });
     ipcMain.handle("player:add", (_e, input: unknown) => (typeof input === "string" ? controller.addPlayer(input) : false));
+    ipcMain.handle("player:remove", (_e, steamId: unknown) => { if (typeof steamId === "string") controller.removePlayer(steamId); });
     ipcMain.handle("leetify:open", () => {
       void shell.openExternal("https://leetify.com/");
     });

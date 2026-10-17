@@ -168,7 +168,10 @@ function ApiKeysCard({ s }: { s: AppState }) {
 
 function MatchCard({ s }: { s: AppState }) {
   const rows = s.lobby.rows;
-  const title = s.match ? [mapName(s.match.map), modeName(s.match.mode)].filter(Boolean).join(" · ") || "Your match" : "Your match";
+  // Players added by hand with no match behind them: a list of checked players, not "your match".
+  const checkedOnly = !s.match && rows.length > 0;
+  const title = checkedOnly ? "Checked players"
+    : s.match ? [mapName(s.match.map), modeName(s.match.mode)].filter(Boolean).join(" · ") || "Your match" : "Your match";
   return (
     <section className="card">
       <div className="card-head">
@@ -187,7 +190,7 @@ function MatchCard({ s }: { s: AppState }) {
           {s.lobby.error && <p className="error small">{s.lobby.error}</p>}
           {s.game.hint && <p className="muted small">{s.game.hint}</p>}
           <LobbyTable rows={rows} />
-          <p className="muted small hint">
+          {!checkedOnly && (<p className="muted small hint">
             {s.overlay.mode === "none" ? null : (
               <>In game, <kbd>{s.overlay.hotkey}</kbd> shows this list, <kbd>{s.overlay.detailHotkey}</kbd> the details
                 of flagged players, and <kbd>{s.overlay.cycleHotkey}</kbd> / <kbd>{s.overlay.previousHotkey}</kbd> step forward / back
@@ -199,11 +202,11 @@ function MatchCard({ s }: { s: AppState }) {
                 {s.overlay.visible ? "Hide overlay" : "Show overlay"}
               </button>
             )}
-          </p>
-          {s.game.source === "steam" && (
+          </p>)}
+          {s.game.source === "steam" && !checkedOnly && (
             <p className="muted small">
               Players come from Steam's list of people you recently played with, so teams aren't known. Only the
-              first 10 players of a lobby are looked up.
+              first 10 players of a lobby are looked up; players you add are always checked.
             </p>
           )}
         </>
@@ -276,10 +279,14 @@ function LobbyLine({ r }: { r: LobbyRow }) {
         {r.name}{r.isLocal && <span className="you">you</span>}
         {r.groupName && <span className="group-badge" title={`${r.groupName} in this lobby`}>{r.groupName}</span>}
         {r.via === "profile" && <span className="group-badge" title="Found from Steam's profile page, which can be ten minutes out of date: this friend may not be in your match">maybe</span>}
+        {r.via === "manual" && <span className="group-badge" title="Added by hand">added</span>}
       </button>
       <PlayerClass r={r} />
       {r.steamId && r.status !== "skipped" && (
         <button className="leetify-link" onClick={() => bridge.openPlayer(r.steamId!)}>View on Leetify</button>
+      )}
+      {r.via === "manual" && r.steamId && (
+        <button className="leetify-link" title="Take this player off the list" onClick={() => void bridge.removePlayer(r.steamId!)}>Remove</button>
       )}
     </div>
   );

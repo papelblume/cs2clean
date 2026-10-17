@@ -15,6 +15,7 @@ import type { GameState } from "../steam/gsi";
 import type { FriendsWindow } from "../steam/friends-window";
 import { othersToFind, pickFriends, pickMatchPlayers } from "../steam/pick";
 import { matchFriends, type FriendMatch, type UiResult } from "../steam/steam-ui";
+import { MAX_MANUAL } from "../../shared/lobby-size";
 import { GameSource, type AddPlayerResult } from "./source";
 
 export interface SteamSourceDeps {
@@ -255,29 +256,46 @@ export class SteamSource extends GameSource {
       && this.now - this.mapSince >= ROSTER_GRACE_MS && this.scansInMap >= ROSTER_MIN_SCANS;
   }
 
+  /**
+   * Adds a player to look up, whether or not a match is on: with one they join its list (on top of its size); without
+   * one they are the whole list. They go when the match's players do (a new map, CS2 closing), or by removePlayer.
+   */
   addPlayer(steamId: string): AddPlayerResult {
-    if (!this.inMap) return "no-match";
-    const local = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
-    if (steamId === local || this.roster.some((p) => p.steamId === steamId)) return "duplicate";
-    if (this.roster.length >= this.others) return "full";
-    this.manual.push({ slot: 0, name: "Unknown player", steamId, side: null, isLocal: false });
+    if (this.currentMatch().players.some((p) => p.steamId === steamId)) return "duplicate";
+    if (this.manual.length >= MAX_MANUAL) return "full";
+    this.manual.push({ slot: 0, name: "Unknown player", steamId, side: null, isLocal: false, via: "manual" });
     this.scheduleMatch();
     return "added";
   }
 
+  removePlayer(steamId: string): boolean {
+    const before = this.manual.length;
+    this.manual = this.manual.filter((p) => p.steamId !== steamId);
+    if (this.manual.length === before) return false;
+    this.scheduleMatch();
+    return true;
+  }
+
   /**
-   * The match's players: the ones we are sure of, the ones added by hand, then the mini-profile fallback's guesses
-   * (marked `via: "profile"`).
+   * The match's players Steam knows of: the ones we are sure of, then the mini-profile fallback's guesses (marked
+   * `via: "profile"`). Without the ones added by hand: those are not part of the lobby's size (see manualRows).
    */
   private get roster(): RosterPlayer[] {
     const base = this.baseRoster;
     const seen = new Set(base.map((p) => p.steamId));
-    const manual = this.manual.filter((p) => !seen.has(p.steamId));
-    for (const p of manual) seen.add(p.steamId);
     const guesses: RosterPlayer[] = this.profileFriends
       .filter((f) => !seen.has(f.steamId))
       .map((f) => ({ slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false, via: "profile" as const }));
-    return [...base, ...manual, ...guesses].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
+    return [...base, ...guesses].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
+  }
+
+  /**
+   * The players added by hand, numbered after `taken` (the rows already listed), minus anyone those already have. They
+   * come on top of the lobby's size, so a full lobby doesn't stop anyone from checking one more player.
+   */
+  private manualRows(taken: RosterPlayer[]): RosterPlayer[] {
+    const seen = new Set(taken.map((p) => p.steamId));
+    return this.manual.filter((p) => !seen.has(p.steamId)).map((p, i) => ({ ...p, slot: Math.max(taken.length, 1) + i })); // slot 0 is us
   }
 
   /** The user ran `status`: remember who it lists and look again now, so the friends in it show up straight away. */
@@ -558,17 +576,15 @@ export class SteamSource extends GameSource {
   protected currentMatch(): MatchState {
     const localSteamId = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
     const roster = this.roster;
-    const rosterUnavailable = this.rosterUnavailable;
-    if (!this.inMap || roster.length === 0)
-      return { map: this.game?.map ?? null, mode: this.game?.mode ?? null, phase: this.game?.phase ?? null, localSteamId, players: [], rosterUnavailable };
+    const base = { map: this.game?.map ?? null, mode: this.game?.mode ?? null, phase: this.game?.phase ?? null, localSteamId, rosterUnavailable: this.rosterUnavailable };
+    // In a match: in a map by the game's own word, or Steam named players for the one it may be in.
+    const inMatch = this.inMap && (roster.length > 0 || this.gsiLive);
     const me: RosterPlayer = { slot: 0, name: this.localName ?? "You", steamId: localSteamId, side: null, isLocal: true };
-    return {
-      map: this.game?.map ?? null,
-      mode: this.game?.mode ?? null,
-      phase: this.game?.phase ?? null,
-      localSteamId,
-      players: [me, ...roster],
-      rosterUnavailable,
-    };
+    const withMe = inMatch ? [me, ...roster] : [];
+    const manual = this.manualRows(withMe);
+    // In a match, we are listed once there is anyone else to list. With no match behind them, the players added by hand
+    // are the whole list, without a row for us.
+    if (!inMatch || (roster.length === 0 && manual.length === 0)) return { ...base, players: inMatch ? [] : manual };
+    return { ...base, players: [...withMe, ...manual] };
   }
 }

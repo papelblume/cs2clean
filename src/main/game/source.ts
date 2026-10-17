@@ -22,8 +22,8 @@ export interface GameSourceEvents {
   line: [RecordedLine];
 }
 
-/** What addPlayer did: "unsupported" (this source has no manual players), "no-match" (the game isn't in a map). */
-export type AddPlayerResult = "added" | "duplicate" | "full" | "no-match" | "unsupported";
+/** What addPlayer did: "unsupported" (this source has no manual players), "full" (MAX_MANUAL are already added). */
+export type AddPlayerResult = "added" | "duplicate" | "full" | "unsupported";
 
 export abstract class GameSource extends EventEmitter<GameSourceEvents> {
   abstract readonly kind: GameSourceKind;
@@ -40,6 +40,11 @@ export abstract class GameSource extends EventEmitter<GameSourceEvents> {
   /** Adds a player the roster is missing (a community server's players aren't listed anywhere). Most sources can't. */
   addPlayer(_steamId: string): AddPlayerResult {
     return "unsupported";
+  }
+
+  /** Takes a player added by hand off again; false when there was none by that ID. */
+  removePlayer(_steamId: string): boolean {
+    return false;
   }
 
   protected currentMatch(): MatchState {
