@@ -180,6 +180,7 @@ Then open `http://localhost:5173` with query params:
 npm run leetify:probe    # test the Leetify API client directly
 npm run coplay           # run the Steam coplay reader standalone
 npm run friends-ui       # show the friends list status lines and which friends would be added
+npm run console-status   # watch CS2's console.log (-condebug): run `status` in CS2 to see which lobby names are your friends
 ```
 
 ## Checks
