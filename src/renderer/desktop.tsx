@@ -179,6 +179,7 @@ function MatchCard({ s }: { s: AppState }) {
       {rows.length > 0 ? (
         <>
           {s.lobby.error && <p className="error small">{s.lobby.error}</p>}
+          {s.game.hint && <p className="muted small">{s.game.hint}</p>}
           <LobbyTable rows={rows} />
           <p className="muted small hint">
             {s.overlay.mode === "none" ? null : (

@@ -176,6 +176,29 @@ export function cefHint(c: CefCapability, autoOpen: boolean): string | null {
   }
 }
 
+export interface HintInput {
+  cef: CefCapability;
+  log: ConsoleLogCapability;
+  /** The user has run `status` in this match. */
+  statusSeen: boolean;
+  /** The "open Steam's friends list for me" setting. */
+  autoOpen: boolean;
+}
+
+/**
+ * The line shown while friends are playing CS2 and a slot of the match is empty: what would find them. Nothing when
+ * the friends list will do it by itself (the debug port answers and its window is, or will be, open) and once
+ * `status` has been run. Otherwise it points at `status`, with what it needs when that isn't set up yet.
+ */
+export function friendsHint(i: HintInput): string | null {
+  const automatic = i.cef.state === "reachable" && (i.cef.friendsWindow === true || i.autoOpen);
+  if (automatic || i.statusSeen) return null;
+  if (i.log.state === "active")
+    return "Friends of yours are playing CS2. Run `status` in the CS2 console to find the ones in your match (tip: `bind <key> status` once, then press that key).";
+  const cef = cefHint(i.cef, i.autoOpen);
+  return `Friends of yours are playing CS2, but can't be found automatically. ${cef ? `${cef} ` : ""}Or launch CS2 with -condebug and run \`status\` in its console.`;
+}
+
 /** The capabilities as lines for `npm run friends-ui`. */
 export function describeCapabilities(cef: CefCapability, log: ConsoleLogCapability, autoOpen: boolean): string[] {
   const lines = [

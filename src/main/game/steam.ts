@@ -6,7 +6,10 @@
 // Nothing here opens, reads or changes the CS2 process.
 
 import type { MatchState, RosterPlayer } from "../../shared/types";
+import type { LobbyPlayer, StatusBlock } from "../steam/console-log";
 import type { CoplayResult, FriendInGame } from "../steam/coplay";
+import type { FriendNames } from "../steam/friend-names";
+import { matchLobbyNames, type NameCandidate } from "../steam/name-match";
 import type { GameState } from "../steam/gsi";
 import type { FriendsWindow } from "../steam/friends-window";
 import { othersToFind, pickFriends, pickMatchPlayers } from "../steam/pick";
@@ -27,6 +30,16 @@ export interface SteamSourceDeps {
   /** One line on why Steam's friends list can't be read, from the capabilities (steam/capabilities.ts); null when
    * nothing needs saying. Optional: without it a generic line is logged. */
   friendsListHint?: () => Promise<string | null>;
+  /** Starts watching CS2's console.log for `status` player lists (steam/console-log.ts); returns a stop function.
+   * Optional: without it `status` isn't read. */
+  listenStatus?: (onBlock: (b: StatusBlock) => void) => () => void;
+  /** The names and Steam IDs of all the user's Steam friends from the Web API (steam/friend-names.ts), matched against
+   * a `status` list besides the friends the Steam client says are playing CS2. They include friends who appear
+   * offline. Optional. */
+  friendNames?: (localSteamId: string | null) => Promise<FriendNames>;
+  /** The line to show while friends are playing CS2 and a slot is empty: what would find them (steam/capabilities.ts);
+   * null when nothing needs saying. Optional: without it no hint is shown. */
+  friendsHint?: (ctx: { statusSeen: boolean; sessionStartMs: number | null }) => Promise<string | null>;
   /** Why game-state data may be missing (e.g. CS2's folder wasn't found), or null. */
   gsiProblem?: string | null;
   /** Our Steam ID from the linked account, used until the game reports it. */
@@ -43,6 +56,7 @@ const GSI_SILENT_MS = 35_000; // CS2 sends a heartbeat every 10 s while running.
 const START_OPEN_FIRST_MS = 12_000;
 const START_OPEN_RETRY_MS = 15_000;
 const START_OPEN_TRIES = 8;
+const HINT_EVERY_MS = 15_000; // how often the hint is worked out while it is needed
 
 export class SteamSource extends GameSource {
   readonly kind = "steam" as const;
@@ -54,6 +68,19 @@ export class SteamSource extends GameSource {
    * match, these are topped up into the free slots and re-checked on every scan. */
   private uiFriends: FriendMatch[] = [];
   private uiWarned = false;
+  /** The last `status` player list of this match (steam/console-log.ts); null until the user runs `status`. */
+  private lobby: LobbyPlayer[] | null = null;
+  /** Friends matched to names in that list (steam/name-match.ts). Kept apart from `players` like `uiFriends`: they stay
+   * for the whole match, and come first among the friends because a name in the list is exact. */
+  private statusFriends = new Map<string, { steamId: string; name: string }>();
+  private stopStatus: (() => void) | null = null;
+  private namesWarned = false;
+  /** A `status` list arrived while a scan was running: scan again as soon as it ends, not after the usual wait. */
+  private statusRescan = false;
+  /** When CS2's current session began, as far as we know (the first game-state post since it wasn't running). */
+  private sessionStart: number | null = null;
+  private lastHint: string | null = null;
+  private hintAt: number | null = null;
   private startOpenTimer: NodeJS.Timeout | null = null;
   private startOpenTries = 0;
   /** Coplay time (s) of the current match's group; null until found. */
@@ -76,6 +103,7 @@ export class SteamSource extends GameSource {
 
   start(): void {
     this.stopListening = this.deps.listen((s) => this.onGameState(s));
+    this.stopStatus = this.deps.listenStatus?.((b) => this.onStatusBlock(b)) ?? null;
     this.watchdog = setInterval(() => this.checkRunning(), 5_000);
     this.setProblem(this.deps.gsiProblem ?? null);
     if (this.deps.friendsWindow) this.startOpenTimer = setTimeout(() => void this.openFriendsWindowAtStart(), START_OPEN_FIRST_MS);
@@ -84,6 +112,8 @@ export class SteamSource extends GameSource {
 
   stop(): void {
     this.stopListening?.();
+    this.stopStatus?.();
+    this.stopStatus = null;
     if (this.timer) clearTimeout(this.timer);
     if (this.watchdog) clearInterval(this.watchdog);
     if (this.startOpenTimer) clearTimeout(this.startOpenTimer);
@@ -101,6 +131,7 @@ export class SteamSource extends GameSource {
   private onGameState(s: GameState): void {
     const prevMap = this.game?.map ?? null;
     const firstPost = this.gsiAt === 0;
+    if (!this.running) this.sessionStart = this.now;
     this.gsiAt = this.now;
     this.game = s;
     if (!this.running) this.setGameRunning(true);
@@ -154,15 +185,34 @@ export class SteamSource extends GameSource {
   private clearRoster(): void {
     this.players = [];
     this.uiFriends = [];
+    this.statusFriends.clear();
+    this.lobby = null;
+    this.hintAt = null;
+    this.setHint(null);
   }
 
-  /** The match's players: the players list first, then friends found through the friends list, up to the mode's size. */
+  /**
+   * The match's players: the players list first, then friends found by name in a `status` list, then friends found
+   * through the friends list's status lines, each friend once, up to the mode's size.
+   */
   private get roster(): RosterPlayer[] {
-    const known = new Set(this.players.map((p) => p.steamId));
-    const friends: RosterPlayer[] = this.uiFriends
-      .filter((f) => !known.has(f.steamId))
-      .map((f) => ({ slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false }));
+    const seen = new Set(this.players.map((p) => p.steamId));
+    const friends: RosterPlayer[] = [];
+    for (const f of [...this.statusFriends.values(), ...this.uiFriends]) {
+      if (seen.has(f.steamId)) continue;
+      seen.add(f.steamId);
+      friends.push({ slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false });
+    }
     return [...this.players, ...friends].slice(0, this.others).map((p, i) => ({ ...p, slot: i + 1 }));
+  }
+
+  /** The user ran `status`: remember who it lists and look again now, so the friends in it show up straight away. */
+  private onStatusBlock(b: StatusBlock): void {
+    if (!this.inMap || b.players.length === 0) return; // not in a match, or not connected to a server
+    this.lobby = b.players;
+    this.hintAt = null;
+    if (this.scanning) this.statusRescan = true; // the scan in progress may have read the friends before this list
+    else this.schedule(0);
   }
 
   private checkRunning(): void {
@@ -170,6 +220,7 @@ export class SteamSource extends GameSource {
       // CS2 closed.
       this.game = null;
       this.matchStart = null;
+      this.sessionStart = null;
       this.clearRoster();
       this.setGameRunning(false);
     }
@@ -179,6 +230,12 @@ export class SteamSource extends GameSource {
     this.running = running;
     this.emit("running", running);
     this.scheduleMatch();
+  }
+
+  private setHint(h: string | null): void {
+    if (h === this.lastHint) return;
+    this.lastHint = h;
+    this.emit("hint", h);
   }
 
   private setProblem(p: string | null): void {
@@ -252,8 +309,10 @@ export class SteamSource extends GameSource {
         for (const f of friends)
           byId.set(f.steamId, { slot: 0, name: f.name ?? "Unknown player", steamId: f.steamId, side: null, isLocal: false });
         this.players = [...byId.values()].slice(0, others).map((p, i) => ({ ...p, slot: i + 1 }));
+        await this.updateStatusFriends(res.friends ?? [], local, others);
         this.openFriendsWindowInWarmup(res.friends ?? [], others);
         await this.updateUiFriends(res.friends ?? [], local);
+        await this.updateHint(res.friends ?? [], others);
       }
       // Players found but CS2 never sent game state: it was most likely started before the cfg existed.
       const noGsi = this.gsiAt === 0 && this.players.length > 0
@@ -265,7 +324,9 @@ export class SteamSource extends GameSource {
       this.setProblem(e instanceof Error ? e.message : String(e));
     } finally {
       this.scanning = false;
-      this.schedule(this.nextDelay());
+      const again = this.statusRescan;
+      this.statusRescan = false;
+      this.schedule(again ? 0 : this.nextDelay());
     }
   }
 
@@ -291,8 +352,59 @@ export class SteamSource extends GameSource {
       return;
     }
     this.uiWarned = false;
-    const exclude = new Set([...this.players.map((p) => p.steamId), local].filter((x): x is string => !!x));
+    const exclude = new Set([...this.players.map((p) => p.steamId), ...this.statusFriends.keys(), local].filter((x): x is string => !!x));
     this.uiFriends = matchFriends(friends, r.snapshot, { exclude, previous: this.uiFriends });
+  }
+
+  /**
+   * Friends in our match by name: the players the last `status` listed, matched to friends (steam/name-match.ts).
+   * The names come from the Steam client (friends playing CS2) and, when there is a key, the Web API (all friends).
+   * A friend found stays for the match, and every name in the list that belongs to a player we already know is used up
+   * first, so a stranger and a friend with the same name can't be mixed up.
+   */
+  private async updateStatusFriends(inCs2: FriendInGame[], local: string | null, others: number): Promise<void> {
+    if (!this.lobby || this.roster.length >= others) return;
+    const candidates: NameCandidate[] = [...inCs2.map((f) => ({ steamId: f.steamId, name: f.name })), ...(await this.webFriendNames(local))];
+    // Friends the friends list found are not "known" here: a name in the list confirms them (and moves them up).
+    const have = [...this.players, ...this.statusFriends.values()];
+    const { matches } = matchLobbyNames(this.lobby, candidates, {
+      exclude: new Set([...have.map((p) => p.steamId), local].filter((x): x is string => !!x)),
+      knownNames: have.map((p) => p.name),
+      localName: this.localName,
+    });
+    for (const m of matches) this.statusFriends.set(m.steamId, { steamId: m.steamId, name: m.name });
+  }
+
+  private async webFriendNames(local: string | null): Promise<NameCandidate[]> {
+    const get = this.deps.friendNames;
+    if (!get) return [];
+    try {
+      const r = await get(local);
+      if ((r.error === "private" || r.error === "bad-key") && !this.namesWarned) {
+        this.namesWarned = true;
+        console.warn(`[cs2clean] Friends can't be matched by name through the Steam Web API: ${r.error === "private" ? "your Steam friends list isn't public" : "Steam turned the API key down"}.`);
+      }
+      return r.friends;
+    } catch {
+      return [];
+    }
+  }
+
+  /** The hint about finding friends: while friends are playing CS2 and a slot is empty, and not more than every 15 s. */
+  private async updateHint(inCs2: FriendInGame[], others: number): Promise<void> {
+    const make = this.deps.friendsHint;
+    if (!make) return;
+    const roster = this.roster;
+    const inRoster = new Set(roster.map((p) => p.steamId));
+    if (roster.length >= others || !inCs2.some((f) => !inRoster.has(f.steamId))) {
+      this.setHint(null);
+      return;
+    }
+    if (this.hintAt != null && this.now - this.hintAt < HINT_EVERY_MS) return; // keep what is shown
+    this.hintAt = this.now;
+    let line: string | null = null;
+    try { line = await make({ statusSeen: this.lobby != null, sessionStartMs: this.sessionStart }); } catch { /* no hint */ }
+    this.setHint(line);
   }
 
   private async warnFriendsListUnreadable(reason: string): Promise<void> {

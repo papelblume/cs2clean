@@ -77,7 +77,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       leetify: { hasKey: !!key, reachable: null, fallback: { working: null, reason: null } },
       steam: { hasKey: !!steamKey },
       notice: null,
-      game: { source: deps.source.kind, running: false, problem: null },
+      game: { source: deps.source.kind, running: false, problem: null, hint: null },
       match: null,
       lobby: { rows: [], updatedAt: null, error: null, cycle: [] },
       overlay: { ...deps.overlay, siren: this.settings.siren ?? true },
@@ -94,6 +94,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const src = this.deps.source;
     src.on("running", (running) => this.update({ game: { ...this.state.game, running } }));
     src.on("problem", (problem) => this.update({ game: { ...this.state.game, problem } }));
+    src.on("hint", (hint) => this.update({ game: { ...this.state.game, hint } }));
     src.on("match", (m: MatchState) => this.onMatch(m));
     src.start();
   }

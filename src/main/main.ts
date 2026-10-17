@@ -30,7 +30,9 @@ import { CS2_GAME_ID, type GameSource } from "./game/source";
 import { SteamSource } from "./game/steam";
 import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
-import { cefHint, detectCef, systemCefIo } from "./steam/capabilities";
+import { cefHint, detectCef, findCs2ConsoleLog, friendsHint, systemCefIo, systemConsoleLog } from "./steam/capabilities";
+import { watchStatusBlocks } from "./steam/console-log";
+import { FriendNameDirectory } from "./steam/friend-names";
 import { FriendsWindowOpener } from "./steam/friends-window";
 import { DEFAULT_DEBUG_PORT, findFriendsTarget, listDebugTargets, readFriendUi } from "./steam/steam-ui";
 
@@ -119,6 +121,19 @@ const debugPort = (): number => Number(process.env.CS2CLEAN_DEBUG_PORT) || DEFAU
 /** The "open Steam's friends list for me" setting; the controller exists once the app is ready. */
 const autoOpenFriendsList = (): boolean => controller?.state.autoOpenFriendsList ?? true;
 
+// The Steam Web API key for matching `status` names to all friends (the Settings key, else STEAM_API_KEY), read from
+// the settings file at most once a minute, and the Steam ID the friends list is asked about.
+let nameLocal: string | null = null;
+let webKey: { at: number; key: string | null } | null = null;
+const friendNameDirectory = new FriendNameDirectory(
+  () => {
+    if (!webKey || Date.now() - webKey.at > 60_000)
+      webKey = { at: Date.now(), key: settingsStore().load().steamApiKey || process.env.STEAM_API_KEY?.trim() || null };
+    return webKey.key;
+  },
+  () => nameLocal,
+);
+
 function steamSource(): SteamSource {
   const token = gsiToken();
   let gsiProblem: string | null = null;
@@ -146,6 +161,24 @@ function steamSource(): SteamSource {
       enabled: autoOpenFriendsList,
     }),
     friendsListHint: async () => cefHint(await detectCef(systemCefIo()), autoOpenFriendsList()),
+    // The user runs `status` in CS2's console (CS2 launched with -condebug): the players it lists are matched to friends.
+    listenStatus: (onBlock) => {
+      const path = findCs2ConsoleLog();
+      if (!path) return () => {};
+      const w = watchStatusBlocks(path, onBlock);
+      return () => w.stop();
+    },
+    friendNames: (local) => {
+      nameLocal = local;
+      return friendNameDirectory.get();
+    },
+    // While friends are playing CS2 and the match has an empty slot, say what would find them.
+    friendsHint: async (ctx) => friendsHint({
+      cef: await detectCef(systemCefIo()),
+      log: systemConsoleLog(ctx.sessionStartMs),
+      statusSeen: ctx.statusSeen,
+      autoOpen: autoOpenFriendsList(),
+    }),
     listen: (onState) => {
       const server = startGsiServer(token, onState);
       return () => server.close();

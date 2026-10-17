@@ -17,6 +17,8 @@ export interface GameSourceEvents {
   match: [MatchState];
   running: [boolean];
   problem: [string | null];
+  /** A suggestion that isn't a problem (e.g. how to find friends in the match), or null when there is none. */
+  hint: [string | null];
   line: [RecordedLine];
 }
 

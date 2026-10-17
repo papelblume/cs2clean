@@ -68,6 +68,7 @@ function Body({ s }: { s: AppState }) {
       ))}
       {s.lobby.error && <p className="ov-msg ov-error">{s.lobby.error}</p>}
       {s.game.problem && <p className="ov-msg ov-note">{s.game.problem}</p>}
+      {s.game.hint && <p className="ov-msg ov-note">{s.game.hint}</p>}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   CEF_FLAG_FILE, cefHint, debugPortFromArgs, describeCapabilities, detectCef, detectConsoleLog, findCs2ConsoleLog,
-  scanSteamProcesses, systemConsoleLog, type CefIo, type CefState, type SteamProcesses,
+  friendsHint, scanSteamProcesses, systemConsoleLog, type CefIo, type CefState, type ConsoleLogState, type SteamProcesses,
 } from "../src/main/steam/capabilities";
 
 // Steam's web helper command line, as read from /proc on Linux Mint (shortened: the parts that matter).
@@ -145,5 +145,45 @@ describe("wording", () => {
     expect(lines[0]).toMatch(/reachable, friends list window closed/);
     expect(lines.join("\n")).toContain("/s/console.log): missing");
     expect(lines.join("\n")).toContain("-condebug");
+  });
+});
+
+describe("the hint about finding friends", () => {
+  const cef = (state: CefState, friendsWindow: boolean | null = null) => ({ state, port: 8080, friendsWindow });
+  const log = (state: ConsoleLogState) => ({ state, path: "/s/console.log" });
+  const hint = (c: ReturnType<typeof cef>, l: ConsoleLogState, o: { statusSeen?: boolean; autoOpen?: boolean } = {}) =>
+    friendsHint({ cef: c, log: log(l), statusSeen: o.statusSeen ?? false, autoOpen: o.autoOpen ?? true });
+
+  it("says nothing when the friends list will find them by itself", () => {
+    expect(hint(cef("reachable", true), "missing")).toBeNull();
+    expect(hint(cef("reachable", false), "missing", { autoOpen: true })).toBeNull();     // the app opens the window
+    expect(hint(cef("reachable", true), "active")).toBeNull();                          // no need to ask for more
+  });
+
+  it("says nothing once `status` has been run", () => {
+    expect(hint(cef("off"), "active", { statusSeen: true })).toBeNull();
+    expect(hint(cef("off"), "missing", { statusSeen: true })).toBeNull();
+  });
+
+  it("asks for `status` when console.log is being written", () => {
+    const h = hint(cef("off"), "active")!;
+    expect(h).toContain("Run `status` in the CS2 console");
+    expect(h).toContain("bind <key> status");
+    expect(h).not.toContain("-condebug");
+  });
+
+  it("says what `status` needs when console.log isn't being written, and what the friends list needs", () => {
+    for (const l of ["missing", "inactive", "not-found"] as const) {
+      const h = hint(cef("off"), l)!;
+      expect(h, l).toContain("-condebug");
+      expect(h, l).toContain(CEF_FLAG_FILE);
+      expect(h, l).toContain("`status`");
+    }
+    expect(hint(cef("restart-steam"), "missing")).toMatch(/Quit Steam/);
+  });
+
+  it("asks to open the window when the app isn't allowed to, and the friends list is otherwise ready", () => {
+    expect(hint(cef("reachable", false), "missing", { autoOpen: false })).toMatch(/friends list window is closed/);
+    expect(hint(cef("reachable", false), "active", { autoOpen: false })).toContain("Run `status`");
   });
 });

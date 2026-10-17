@@ -1,6 +1,6 @@
 // The app's API as the windows see it. Inside the app it comes from the preload script; in a plain
 // browser (`npm run dev:ui`) a simulation stands in, so every screen can be looked at without the app.
-// Pick a screen with ?screen=nokey | lobby | detail | player | waiting | problem (default: lobby).
+// Pick a screen with ?screen=nokey | lobby | detail | player | waiting | problem | hint (default: lobby).
 
 import { DEFAULT_HOTKEYS, hotkeyProblem } from "../shared/hotkeys";
 import { cycleStep, visibleOrder } from "../shared/lobby-order";
@@ -90,7 +90,7 @@ const TRUSTED: PlayerReputation = { score: 100, tier: "TRUSTED", confidence: 1, 
 
 function simulated(): Bridge {
   const screen = new URLSearchParams(location.search).get("screen") ?? "lobby";
-  const inGame = screen === "lobby" || screen === "detail" || screen === "player";
+  const inGame = screen === "lobby" || screen === "detail" || screen === "player" || screen === "hint";
   // ?fallback=off previews the window with the csst.at fallback unavailable.
   const fallbackOff = new URLSearchParams(location.search).get("fallback") === "off";
   const rows: LobbyRow[] = inGame ? ROSTER.map(([name, side, classification, totalMatches, status], slot) => ({
@@ -119,6 +119,9 @@ function simulated(): Bridge {
       running: inGame || screen === "waiting",
       problem: screen === "problem"
         ? "Steam isn't running (or isn't signed in). Start Steam and try again."
+        : null,
+      hint: screen === "hint"
+        ? "Friends of yours are playing CS2. Run `status` in the CS2 console to find the ones in your match (tip: `bind <key> status` once, then press that key)."
         : null,
     },
     match: inGame ? { map: "de_mirage", mode: "premier", phase: "warmup" } : null,

@@ -136,6 +136,8 @@ export interface AppState {
     running: boolean;
     /** Why live data isn't available, in plain words (e.g. no Overwolf developer approval yet). */
     problem: string | null;
+    /** A suggestion that isn't a problem, e.g. how to find friends of yours in the match; null when there is none. */
+    hint: string | null;
   };
   match: { map: string | null; mode: string | null; phase: MatchPhase | null } | null;
   lobby: {
