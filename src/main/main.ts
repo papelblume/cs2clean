@@ -29,7 +29,8 @@ import { ReplaySource } from "./game/replay";
 import { CS2_GAME_ID, type GameSource } from "./game/source";
 import { SteamSource } from "./game/steam";
 import type { CoplayResult } from "./steam/coplay";
-import { installGsiConfig, newGsiToken, startGsiServer } from "./steam/gsi";
+import { installGsiConfig, newGsiToken, readActiveSteamId, startGsiServer } from "./steam/gsi";
+import { isCs2Running } from "./steam/process";
 import { cefHint, detectCef, findCs2ConsoleLog, friendsHint, profileFallbackWanted, systemCefIo, systemConsoleLog, type CefCapability, type ConsoleLogCapability } from "./steam/capabilities";
 import { MiniprofileStatus } from "./steam/miniprofile";
 import { watchStatusBlocks } from "./steam/console-log";
@@ -158,6 +159,9 @@ function steamSource(): SteamSource {
   }
   return new SteamSource({
     scan: scanCoplay,
+    // Known before CS2's game-state feed says anything, and whether CS2 runs at all (a closed game has no match).
+    localSteamId: readActiveSteamId,
+    cs2Running: isCs2Running,
     // Friends in the same match are found through Steam's friends list when Steam was started with -cef-enable-debugging.
     uiStatus: () => readFriendUi(debugPort()),
     // ... and Steam's friends list window is opened when it is closed (the "open it for me" setting), once when the app

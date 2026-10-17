@@ -79,6 +79,25 @@ export function steamPath(): string | null {
   }
 }
 
+/**
+ * Our own SteamID64 from Steam's config/loginusers.vdf: the account Steam last signed in (MostRecent). Known before CS2
+ * says anything, so we are not "no Steam ID" while the game-state feed is still silent.
+ */
+export function parseLoginUsers(vdf: string): string | null {
+  for (const m of vdf.matchAll(/"(7656\d{13})"\s*\{([^}]*)\}/g)) if (/"MostRecent"\s+"1"/i.test(m[2])) return m[1];
+  return null;
+}
+
+export function readActiveSteamId(): string | null {
+  const steam = steamPath();
+  if (!steam) return null;
+  try {
+    return parseLoginUsers(readFileSync(join(steam, "config", "loginusers.vdf"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 /** CS2's cfg folder, found through Steam's library list. */
 export function findCs2CfgDir(): string | null {
   if (process.platform !== "win32" && process.platform !== "linux") return null;

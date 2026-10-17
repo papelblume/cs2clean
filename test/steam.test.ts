@@ -2,7 +2,8 @@ import { request } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SteamSource } from "../src/main/game/steam";
 import type { CoplayEntry, CoplayResult, FriendInGame } from "../src/main/steam/coplay";
-import { gsiConfig, libraryPaths, parseGsi, startGsiServer, type GameState } from "../src/main/steam/gsi";
+import { gsiConfig, libraryPaths, parseGsi, parseLoginUsers, startGsiServer, type GameState } from "../src/main/steam/gsi";
+import { isCs2Running } from "../src/main/steam/process";
 import { expectedOthers, othersToFind, pickFriends, pickMatchPlayers } from "../src/main/steam/pick";
 import type { MatchState } from "../src/shared/types";
 import { ago, flagged } from "../src/renderer/parts";
@@ -294,6 +295,134 @@ describe("SteamSource", () => {
     await vi.advanceTimersByTimeAsync(5_000);   // complete: slow interval now
     expect(scans.length).toBe(n);
     src.stop();
+  });
+});
+
+describe("SteamSource before CS2's game-state feed has said anything", () => {
+  beforeEach(() => vi.useFakeTimers({ now: 1_800_000_000_000 }));
+  afterEach(() => vi.useRealTimers());
+  const now = () => Math.floor(Date.now() / 1000);
+
+  function make(entries: () => CoplayEntry[], o: { running?: () => boolean | Promise<boolean>; local?: string | null } = {}) {
+    let scans = 0;
+    const src = new SteamSource({
+      scan: async (): Promise<CoplayResult> => (scans++, { localName: "Nova", entries: entries(), friends: [] }),
+      listen: () => () => {},
+      cs2Running: o.running ? async () => o.running!() : undefined,
+      localSteamId: () => (o.local === undefined ? ME : o.local),
+      fastMs: 1000,
+      slowMs: 10_000,
+    });
+    const matches: MatchState[] = [];
+    const problems: (string | null)[] = [];
+    src.on("match", (m) => matches.push(m));
+    src.on("problem", (p) => problems.push(p));
+    return { src, matches, problems, scans: () => scans };
+  }
+  /** What Steam's list still holds six minutes after the last match: its players, and ourselves. */
+  const lastMatch = () => [0, 1, 2, 3].map((n) => E(n, now() - 360));
+
+  it("shows no match, and nothing left of the last one, while CS2 isn't running", async () => {
+    const { src, matches, problems, scans } = make(lastMatch, { running: () => false });
+    src.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(matches.at(-1)!.players).toEqual([]);
+    expect(problems.at(-1)).toBeNull(); // not "CS2 isn't sending game state": there is no CS2
+    expect(scans()).toBe(0);            // Steam's list isn't even read
+    src.stop();
+  });
+
+  it("lists the match of a CS2 that is running but sends no game state, with our own Steam ID and without a second copy of us", async () => {
+    const { src, matches, problems } = make(lastMatch, { running: () => true });
+    src.start();
+    await vi.advanceTimersByTimeAsync(2_000);
+    const m = matches.at(-1)!;
+    expect(m.localSteamId).toBe(ME);
+    expect(m.players.map((p) => [p.name, p.steamId, p.isLocal])).toEqual([["Nova", ME, true], ["p1", id(1), false], ["p2", id(2), false], ["p3", id(3), false]]);
+    expect(problems.at(-1)).toMatch(/isn't sending game state/); // this one is true
+    src.stop();
+  });
+
+  it("leaves out the previous match when CS2 starts while the app watches, and takes the new one", async () => {
+    let up = false;
+    let list = lastMatch();
+    const { src, matches } = make(() => list, { running: () => up });
+    src.start();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(matches.at(-1)!.players).toEqual([]);
+
+    up = true;
+    await vi.advanceTimersByTimeAsync(1_500); // noticed within a poll
+    expect(matches.at(-1)!.players).toEqual([]); // the old players are not this game's
+    list = [...lastMatch(), ...[11, 12, 13].map((n) => E(n, now()))];
+    await vi.advanceTimersByTimeAsync(21_000); // without game state the list is read every 20 s
+    expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p11", "p12", "p13"]);
+    src.stop();
+  });
+
+  it("forgets the match when CS2 closes", async () => {
+    let up = true;
+    const { src, matches } = make(lastMatch, { running: () => up });
+    src.start();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(matches.at(-1)!.players.length).toBeGreaterThan(1);
+    up = false;
+    await vi.advanceTimersByTimeAsync(21_000); // noticed on the next read of the list, within 20 s
+    expect(matches.at(-1)!.players).toEqual([]);
+    src.stop();
+  });
+
+  it("acts as before when it can't tell whether CS2 runs", async () => {
+    const { src, matches } = make(lastMatch, { running: () => { throw new Error("pgrep not found"); } });
+    src.start();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(matches.at(-1)!.players.map((p) => p.name)).toEqual(["Nova", "p1", "p2", "p3"]);
+    src.stop();
+  });
+
+  it("is no Steam ID only when Steam's account can't be read either", async () => {
+    const { src, matches } = make(lastMatch, { running: () => true, local: null });
+    src.start();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(matches.at(-1)!.players[0]).toMatchObject({ isLocal: true, steamId: null });
+    src.stop();
+  });
+});
+
+describe("our own Steam ID and whether CS2 runs", () => {
+  const vdf = `"users"
+{
+	"76561198000000001"
+	{
+		"AccountName"		"old"
+		"PersonaName"		"Old"
+		"MostRecent"		"0"
+		"Timestamp"		"1600000000"
+	}
+	"76561198000000002"
+	{
+		"AccountName"		"me"
+		"PersonaName"		"[-jesus-]"
+		"MostRecent"		"1"
+		"Timestamp"		"1700000000"
+	}
+}`;
+
+  it("reads the account Steam signed in last from loginusers.vdf", () => {
+    expect(parseLoginUsers(vdf)).toBe("76561198000000002");
+    expect(parseLoginUsers(vdf.replace('"MostRecent"\t\t"1"', '"MostRecent"\t\t"0"'))).toBeNull();
+    expect(parseLoginUsers("")).toBeNull();
+  });
+
+  it("asks tasklist on Windows and pgrep elsewhere", async () => {
+    const fake = (stdout: string, code?: number | string) => (_c: string, _a: string[], _o: unknown, cb: (e: any, out: string) => void) =>
+      cb(code === undefined ? null : Object.assign(new Error("x"), { code }), stdout);
+    await expect(isCs2Running(fake('"cs2.exe","4242","Console","1","1,000 K"\r\n'), "win32")).resolves.toBe(true);
+    await expect(isCs2Running(fake("INFO: No tasks are running which match the specified criteria.\r\n"), "win32")).resolves.toBe(false);
+    await expect(isCs2Running(fake("", "ENOENT"), "win32")).rejects.toThrow();
+    await expect(isCs2Running(fake("4242\n"), "linux")).resolves.toBe(true);
+    await expect(isCs2Running(fake("", 1), "linux")).resolves.toBe(false);   // pgrep: no match
+    await expect(isCs2Running(fake("", "ENOENT"), "linux")).rejects.toThrow(); // no pgrep: can't tell
   });
 });
 

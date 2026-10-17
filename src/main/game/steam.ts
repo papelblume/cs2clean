@@ -49,8 +49,13 @@ export interface SteamSourceDeps {
   friendsHint?: (ctx: { statusSeen: boolean; sessionStartMs: number | null }) => Promise<string | null>;
   /** Why game-state data may be missing (e.g. CS2's folder wasn't found), or null. */
   gsiProblem?: string | null;
-  /** Our Steam ID from the linked account, used until the game reports it. */
+  /** Our Steam ID from the signed-in Steam account, used until the game reports it. */
   localSteamId?: () => string | null;
+  /**
+   * Whether the CS2 process is up (steam/process.ts). Only asked while the game-state feed hasn't said anything: without
+   * it a closed game would show the last match, since Steam's list keeps it. Rejects when it can't tell; absent: assume up.
+   */
+  cs2Running?: () => Promise<boolean>;
   now?: () => number;
   /** Scan intervals (ms). */
   fastMs?: number;
@@ -118,6 +123,8 @@ export class SteamSource extends GameSource {
   private scanning = false;
   private running = false;
   private lastProblem: string | null | undefined = undefined;
+  /** The CS2 process is (assumed) up; only consulted before the game-state feed has posted. See deps.cs2Running. */
+  private processUp = true;
 
   constructor(private deps: SteamSourceDeps) {
     super();
@@ -319,7 +326,30 @@ export class SteamSource extends GameSource {
 
   /** In a map by the game's own report; without the game-state feed, assume yes and rely on recency. */
   private get inMap(): boolean {
-    return this.gsiLive ? !!this.game?.map : this.gsiAt === 0;
+    return this.gsiLive ? !!this.game?.map : this.gsiAt === 0 && this.processUp;
+  }
+
+  /**
+   * Before CS2's first post, asks whether CS2 runs at all. Closed: no match, and nothing left of the last one. Started
+   * while we watch: only players Steam reports from then on belong to it (Steam's list still holds the previous match).
+   * A game that was already running when the app started keeps the plain recency window.
+   */
+  private async checkProcess(): Promise<void> {
+    if (this.gsiAt !== 0 || !this.deps.cs2Running) return;
+    let up = true;
+    try {
+      up = await this.deps.cs2Running();
+    } catch {
+      /* can't tell: assume it is, as before */
+    }
+    if (up === this.processUp) return;
+    this.processUp = up;
+    if (up) this.matchStart = this.now;
+    else {
+      this.matchStart = null;
+      this.groupStart = null;
+      this.clearRoster();
+    }
   }
 
   private schedule(delay: number): void {
@@ -329,7 +359,7 @@ export class SteamSource extends GameSource {
 
   private nextDelay(): number {
     const fast = this.deps.fastMs ?? 8_000, slow = this.deps.slowMs ?? 60_000;
-    if (!this.inMap) return slow;
+    if (!this.inMap) return this.gsiAt === 0 && !this.processUp ? fast : slow; // waiting for CS2 to start: look often (it's cheap)
     const complete = this.baseRoster.length >= this.others; // guesses and players added by hand don't count
     if (!this.gsiLive) return 20_000;
     return complete ? slow : fast;
@@ -338,9 +368,13 @@ export class SteamSource extends GameSource {
   private async scan(): Promise<void> {
     this.timer = null;
     if (this.scanning) return;
-    if (!this.inMap) return this.schedule(this.nextDelay());
     this.scanning = true;
     try {
+      await this.checkProcess();
+      if (!this.inMap) {
+        this.scheduleMatch();
+        return;
+      }
       const others = this.others; // the mode could change while Steam is read; one answer for the whole scan
       const local = this.game?.localSteamId ?? this.deps.localSteamId?.() ?? null;
       const res = await this.deps.scan(local);
