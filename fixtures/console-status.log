@@ -1,0 +1,20 @@
+10/16 08:08:47 [Client] ---------players--------
+10/16 08:08:47 [Client]   id     time ping loss      state   rate name
+10/16 08:08:47 [Client]    0    42:54   13    0     active 786432 'Player01'
+10/16 08:08:47 [Client]    1    42:50   21    0     active 786432 'Player02'
+10/16 08:08:47 [Client]    2    32:00   23    0     active 1000000 'Player03'
+10/16 08:08:47 [Client]    3    42:31   18    0     active 786432 'Player04'
+10/16 08:08:47 [Client]    4    41:12   40    0     active 786432 'Player05'
+10/16 08:08:47 [Client]    5    42:54   15    0     active 786432 'Player06'
+10/16 08:08:47 [Client]    6    39:07   27    0     active 786432 'Player07'
+10/16 08:08:47 [Client]    7    42:41   12    0     active 786432 'Player08'
+10/16 08:08:47 [Client]    9    42:12   33    0     active 786432 'Player09'
+10/16 08:08:47 [Client]   10    40:55   19    0     active 786432 'Player10'
+10/16 08:08:47 [Client]   11    42:48   25    0     active 1000000 'Player11'
+10/16 08:08:47 [Client]   12    36:20   30    0     active 786432 'Player12'
+10/16 08:08:47 [Client]   13    42:19   17    0     active 786432 'Player13'
+10/16 08:08:47 [Client]   25    09:41   22    0     active 786432 'Player14'
+10/16 08:08:47 [Client]   26    00:06   31    0     active 786432 'Player15'
+10/16 08:08:47 [Client] 65535 [NoChan]    0    0 challenging      0 ''
+10/16 08:08:47 [Client]   24      BOT    0    0     active      0 'DemoRecorder'
+10/16 08:08:47 [Client] #end
