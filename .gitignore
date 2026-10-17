@@ -36,6 +36,7 @@ latest*.yml
 # Local recordings and runtime data
 recordings/
 *.log
+!fixtures/*.log
 
 # Test / coverage output
 coverage/
