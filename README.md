@@ -90,7 +90,7 @@ The desktop window always lists every player in your match with their name, clas
 
 **Data.** Player data is retrieved from Leetify's public API. When Leetify has no profile for a player, the app tries csst.at. Players with a private profile are shown from their lifetime stats only, without match history, so their numbers carry less weight. Players with no data on either site can't be shown.
 
-**Stat levels.** Each stat is rated Low, Medium or High. High is roughly a median Pro's level (Tier 1/2/3 Team) or better; Medium is roughly an average FACEIT Level 7 player's level or better. The cut-offs come from Leetify's Data Library (September 2026 FACEIT averages) and analysis of 623 professional players' Leetify stats.
+**Stat levels.** Each stat is rated Low, Medium or High. High is roughly the median Pro's level or better (across Tier 1/2/3 Teams, median elo 3670, see [docs/pro-metrics](docs/pro-metrics)); Medium is roughly an average FACEIT Level 7 player's level or better. The cut-offs come from Leetify's Data Library (September 2026 FACEIT averages) and analysis of 623 professional players' Leetify stats.
 
 **Reputation and class.** The reputation score (100 = nothing unusual) and a player's overall class compare their stats with the pros' and with the average player of their rank. They show how unusual the numbers are, not what the player did. Top players, pros and smurfs score high, and careful cheaters can look normal. A ban on record is the only hard evidence.
 
