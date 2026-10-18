@@ -71,7 +71,7 @@ export function ratingDisplay(v: number | null | undefined, digits = 2): string 
 export function ttdLevel(ms: number | null | undefined): string {
   if (ms == null) return "";
   if (ms <= 470) return "HIGH";
-  if (ms <= 585) return "MEDIUM";
+  if (ms <= 565) return "MEDIUM";
   return "LOW";
 }
 
@@ -79,7 +79,7 @@ export function ttdLevel(ms: number | null | undefined): string {
 export function cspLevel(deg: number | null | undefined): string {
   if (deg == null) return "";
   if (deg <= 8.8) return "HIGH";
-  if (deg <= 9.8) return "MEDIUM";
+  if (deg <= 9.4) return "MEDIUM";
   return "LOW";
 }
 
@@ -87,7 +87,7 @@ export function cspLevel(deg: number | null | undefined): string {
 export function hsAccuracyLevel(pct: number | null | undefined): string {
   if (pct == null) return "";
   if (pct >= 23) return "HIGH";
-  if (pct >= 17.5) return "MEDIUM";
+  if (pct >= 19) return "MEDIUM";
   return "LOW";
 }
 
@@ -113,7 +113,7 @@ export function headshotFact(m: PlayerMetrics): { label: string; value: string; 
 export function sprayAccuracyLevel(pct: number | null | undefined): string {
   if (pct == null) return "";
   if (pct >= 43) return "HIGH";
-  if (pct >= 35.5) return "MEDIUM";
+  if (pct >= 37) return "MEDIUM";
   return "LOW";
 }
 
@@ -121,7 +121,7 @@ export function sprayAccuracyLevel(pct: number | null | undefined): string {
 export function spottedAccuracyLevel(pct: number | null | undefined): string {
   if (pct == null) return "";
   if (pct >= 40) return "HIGH";
-  if (pct >= 34) return "MEDIUM";
+  if (pct >= 35) return "MEDIUM";
   return "LOW";
 }
 

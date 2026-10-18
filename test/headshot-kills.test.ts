@@ -95,8 +95,9 @@ describe("the headshot row of a card", () => {
   });
 
   it("stays Headshot accuracy, with its own tier, on a card with Leetify data", () => {
-    // The card's tiers: HIGH from the median pro (23%), MEDIUM from the average FACEIT Level 10 player (22%).
-    expect(headshotFact(metricsOf({ stats: { accuracy_head: 17 } }))).toEqual({ label: "Headshot accuracy", value: "17.0%", level: "LOW" });
+    // The card's tiers: HIGH from the median pro (23%), MEDIUM from the average FACEIT Level 7 player (19%).
+    expect(headshotFact(metricsOf({ stats: { accuracy_head: 18 } }))).toEqual({ label: "Headshot accuracy", value: "18.0%", level: "LOW" });
+    expect(headshotFact(metricsOf({ stats: { accuracy_head: 19 } }))).toEqual({ label: "Headshot accuracy", value: "19.0%", level: "MEDIUM" });
     expect(headshotFact(metricsOf({ stats: { accuracy_head: 22 } }))).toEqual({ label: "Headshot accuracy", value: "22.0%", level: "MEDIUM" });
     expect(headshotFact(metricsOf({ stats: { accuracy_head: 23 } }))).toEqual({ label: "Headshot accuracy", value: "23.0%", level: "HIGH" });
   });
