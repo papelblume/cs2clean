@@ -1,9 +1,8 @@
 // Keeps the lobby rows (roster + class) up to date. Looks up only Steam IDs it hasn't seen recently, so a
 // roster update (kills, team switch) doesn't cause a new request.
 //
-// For small lobbies (Competitive/Premier: 10, Wingman: 4): all lookups happen in one burst.
-// For large lobbies (Casual/Deathmatch/Arms Race/Retakes: up to 20): lookups are queued —
-// a burst of ~10, then ~1 request every 1–2 seconds — so the Leetify rate limit isn't hit.
+// At most MAX_LOOKUPS lobby players (plus the few added by hand) are ever looked up, so all of them go out in one call;
+// the Leetify client limits how many run at once.
 
 import { MAX_LOOKUPS } from "../shared/lobby-size";
 import { isSameMatch } from "../shared/match-identity";
@@ -56,13 +55,6 @@ interface Cached {
 
 const UNKNOWN_NAME = "Unknown player";
 
-/** How many lookups to send in the initial burst for large lobbies. */
-const BURST_SIZE = 10;
-
-/** Interval between individual lookups after the initial burst (ms). */
-const QUEUE_INTERVAL_MIN = 1000;
-const QUEUE_INTERVAL_MAX = 2000;
-
 export interface LobbyOptions {
   /** Wait this long after a roster change before asking, so a filling lobby costs one request (ms). */
   debounceMs?: number;
@@ -95,10 +87,6 @@ export class LobbyService {
   private backingOff = false;
   private inFlight = false;
   private failed = new Map<string, string | null>();
-  /** Queue of Steam IDs waiting to be looked up (for large lobbies). */
-  private queue: string[] = [];
-  /** How many items from the queue have been sent to Leetify. */
-  private queueSent = 0;
   /** Epoch of the match in which the local player has already been looked up. */
   private localPlayerDoneFor: number | null = null;
   error: string | null = null;
@@ -131,8 +119,6 @@ export class LobbyService {
     const fresh = match !== null && this.isNewMatch(prev, match);
     if (fresh) {
       this.matchEpoch++;
-      this.queue = [];
-      this.queueSent = 0;
       this.localPlayerDoneFor = null;
       this.friendshipComputedFor = null;
       this.friendshipPass++;
@@ -188,8 +174,6 @@ export class LobbyService {
     this.failed.clear();
     this.error = null;
     this.updatedAt = null;
-    this.queue = [];
-    this.queueSent = 0;
     this.localPlayerDoneFor = null;
     this.friendshipGroups.clear();
     this.privatePlayers.clear();
@@ -226,7 +210,7 @@ export class LobbyService {
     });
   }
 
-  /** Steam IDs that still need lookups: cache misses plus any remaining queue items. */
+  /** Steam IDs that still need lookups: the players of the current roster that are not cached (or whose entry is stale). */
   private pendingIds(): string[] {
     const ttl = this.opts.ttlMs ?? 6 * 60 * 60 * 1000; // 6 hours default
     const ids: string[] = [];
@@ -243,13 +227,6 @@ export class LobbyService {
       const c = this.cache.get(p.steamId);
       if (!c || this.now - c.at > (c.recheckAfterMs ?? ttl)) {
         ids.push(p.steamId);
-      }
-    }
-    // Append any remaining queue items not yet sent.
-    for (let i = this.queueSent; i < this.queue.length; i++) {
-      if (!seen.has(this.queue[i])) {
-        ids.push(this.queue[i]);
-        seen.add(this.queue[i]);
       }
     }
     return ids;
@@ -284,23 +261,7 @@ export class LobbyService {
     this.inFlight = true;
     const epoch = this.matchEpoch; // a match that begins while this lookup is out must not count as done
 
-    // For large queues, process in batches.
-    const isQueued = this.queue.length > BURST_SIZE;
-    let batch: string[];
-    if (isQueued && this.queueSent < this.queue.length) {
-      // Take up to BURST_SIZE from the queue, or all remaining.
-      const take = Math.min(BURST_SIZE, this.queue.length - this.queueSent);
-      batch = this.queue.slice(this.queueSent, this.queueSent + take);
-      this.queueSent += take;
-    } else {
-      batch = ids.slice(0, isQueued ? 1 : ids.length);
-      // If not queued, add all remaining to the queue for future processing.
-      if (!isQueued && ids.length > BURST_SIZE) {
-        const remaining = ids.slice(BURST_SIZE);
-        this.queue.push(...remaining);
-        batch = ids.slice(0, BURST_SIZE);
-      }
-    }
+    const batch = ids;
 
     let retryIn: number | null = null;
     try {

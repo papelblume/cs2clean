@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MatchState } from "../src/shared/types";
 import { LobbyService, type LobbyAnswer } from "../src/main/lobby";
+import { MAX_LOOKUPS, MAX_MANUAL } from "../src/shared/lobby-size";
 
 // The Steam Web API call behind the friendship groups; the tests count and steer it.
 const groupPlayers = vi.hoisted(() =>
@@ -399,6 +400,67 @@ describe("LobbyService", () => {
       lobby.setMatch(matchOn("de_dust2", A, B));
       await vi.advanceTimersByTimeAsync(1000);
       expect(lookup).toHaveBeenCalledTimes(2); // B's new answer is a settled one: the usual six hours apply
+    });
+  });
+
+  // A full lobby is MAX_LOOKUPS players, and players the user adds by hand come on top of them. When that came to more than
+  // ten IDs at one time, the overflow was parked in a queue that nothing ever drained, so a player removed again was
+  // asked about once a second for the rest of the match.
+  describe("more players than a lobby holds", () => {
+    const sid = (n: number) => `7656119800000${String(n).padStart(4, "0")}`;
+    const lobbyIds = Array.from({ length: MAX_LOOKUPS }, (_, i) => sid(100 + i));
+    const manual = (slot: number, steamId: string) => ({ ...player(slot, steamId), via: "manual" as const });
+    /** A full lobby, with the given players added by hand after it. */
+    const withManual = (...ids: string[]): MatchState => ({
+      ...matchOn("de_dust2", ...lobbyIds),
+      players: [...lobbyIds.map((id, i) => player(i, id)), ...ids.map((id, i) => manual(lobbyIds.length + i, id))],
+    });
+
+    it("stops asking about a player who was added by hand while the whole lobby was unknown, and removed again", async () => {
+      const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: lobbyIds[0] });
+      lobby.setMatch(withManual(sid(200))); // one more than a full lobby, all unknown: they are asked about together
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(lookup.mock.calls.flatMap((c) => c[0]).sort()).toEqual([...lobbyIds, sid(200)].sort());
+
+      const asked = lookup.mock.calls.length;
+      lobby.setMatch(withManual()); // "Remove": the player is off the list
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(lookup).toHaveBeenCalledTimes(asked); // it used to ask about the removed player every debounce, for good
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("looks up a full lobby and the most players that can be added by hand on top of it, each once", async () => {
+      const added = Array.from({ length: MAX_MANUAL }, (_, i) => sid(200 + i));
+      const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: lobbyIds[0] });
+      lobby.setMatch(withManual(...added));
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(lookup.mock.calls.flatMap((c) => c[0]).sort()).toEqual([...lobbyIds, ...added].sort()); // all of them, none twice
+      expect(lobby.rows().every((r) => r.status === "ok")).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("looks up a player added by hand while the lobby's lookup is still out, once that is back", async () => {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      const lookup = vi.fn(async (ids: string[], onEarly?: (a: LobbyAnswer[]) => void) => {
+        if (ids.length > 1) { onEarly?.(ids.slice(0, 7).map(ok)); await gate; } // seven answered, three still out (a slow csst.at scrape)
+        return ids.map(ok);
+      });
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: lobbyIds[0] });
+      lobby.setMatch(withManual());
+      await vi.advanceTimersByTimeAsync(50);
+      lobby.setMatch(withManual(sid(200))); // added by hand meanwhile
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(lookup).toHaveBeenCalledTimes(1); // one lookup at a time: the three aren't asked twice, the new player waits
+      expect(lobby.rows()[MAX_LOOKUPS].status).toBe("loading");
+
+      release();
+      await vi.advanceTimersByTimeAsync(50);
+      expect(lookup).toHaveBeenCalledTimes(2);
+      expect(lookup.mock.calls[1][0]).toEqual([sid(200)]);
+      expect(lobby.rows().every((r) => r.status === "ok")).toBe(true);
     });
   });
 
