@@ -14,6 +14,28 @@ export function Logo({ size = 28 }: { size?: number }) {
   );
 }
 
+/** A trash can, for taking something off a list. Draws in the current text colour. */
+export function TrashIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6" />
+      <path d="M5.5 6l1 13.5A2 2 0 0 0 8.5 21.4h7a2 2 0 0 0 2-1.9L18.5 6" />
+      <path d="M10 10.5v6M14 10.5v6" />
+    </svg>
+  );
+}
+
+/** A disclosure arrow: points down when `open`, right when closed. Draws in the current text colour. */
+export function ChevronIcon({ open, size = 18 }: { open: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" className={`chevron${open ? "" : " closed"}`}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 /** The brand wordmark: "CS2" in accent colour, "Clean" in the default colour. */
 export function Wordmark({ domain }: { domain?: string | null }) {
   if (domain && domain.trim()) {

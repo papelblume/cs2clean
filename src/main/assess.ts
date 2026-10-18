@@ -109,7 +109,8 @@ export function metricsOf(p: LeetifyProfile): PlayerMetrics {
     spottedAccuracy: opt(st.accuracy_enemy_spotted),
     counterStrafing: opt(st.counter_strafing_good_shots_ratio),
     ctOpeningDuel: opt(st.ct_opening_duel_success_percentage), tOpeningDuel: opt(st.t_opening_duel_success_percentage),
-    premier: opt(p.ranks?.premier), totalMatches: opt(p.total_matches),
+    premier: opt(p.ranks?.premier), faceit: opt(p.ranks?.faceit), faceitElo: opt(p.ranks?.faceit_elo),
+    totalMatches: opt(p.total_matches),
     winrate: opt(p.winrate),
   };
 }

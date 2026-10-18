@@ -74,6 +74,10 @@ export interface PlayerMetrics {
   ctOpeningDuel: number | null;
   tOpeningDuel: number | null;
   premier: number | null;
+  /** ranks.faceit: the FACEIT skill level, 1 to 10. */
+  faceit: number | null;
+  /** ranks.faceit_elo: the FACEIT Elo. */
+  faceitElo: number | null;
   /** The matches the profile covers. */
   totalMatches: number | null;
   /** Win rate (0-1 fraction, e.g. 0.55 = 55%). */

@@ -3,9 +3,11 @@ import { createRoot } from "react-dom/client";
 import { DEFAULT_HOTKEYS, hotkeyFromEvent, type HotkeyName } from "../shared/hotkeys";
 import type { AppState, LobbyRow } from "../shared/types";
 import { bridge } from "./bridge";
-import { DISCLAIMER, Logo, mapName, SideEmblem, Wordmark } from "./brand";
+import { ChevronIcon, DISCLAIMER, Logo, mapName, SideEmblem, TrashIcon, Wordmark } from "./brand";
 import leetifyBadge from "../../assets/Leetify-Badge-White-Small.png";
 import { PlayerClass } from "./parts";
+import { GroupStack } from "./group-stack";
+import { PlayerRanks } from "./ranks";
 import { groupColor } from "./group-color";
 import { useAppState } from "./useAppState";
 import "./style.css";
@@ -80,10 +82,16 @@ function LeetifyDot({ s }: { s: AppState }) {
 
 // ------------------------------------------------------------------ API keys
 
+const API_KEYS_OPEN = "cs2clean.apiKeysOpen";
+
 function ApiKeysCard({ s }: { s: AppState }) {
   const [leetifyKey, setLeetifyKey] = useState("");
   const [steamKey, setSteamKey] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  // Open unless the user closed it: the choice is remembered between launches.
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem(API_KEYS_OPEN) !== "0"; } catch { return true; }
+  });
 
   const saveLeetify = async () => {
     setBusy("leetify");
@@ -103,62 +111,79 @@ function ApiKeysCard({ s }: { s: AppState }) {
     }
   };
 
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try { localStorage.setItem(API_KEYS_OPEN, next ? "1" : "0"); } catch { /* storage unavailable: it just won't be remembered */ }
+  };
+
   return (
     <section className="card">
-      <h2>API Keys</h2>
+      <h2 className={`collapsible${open ? "" : " collapsed"}`}>
+        <button type="button" className="collapse-toggle" aria-expanded={open} aria-controls="api-keys-body" onClick={toggle}>
+          <span>API Keys</span>
+          <ChevronIcon open={open} />
+        </button>
+      </h2>
 
-      {s.leetify.hasKey ? (
-        <div className="account">
-          <div className="account-text">
-            <strong>Leetify API key</strong>
-            <span className="muted small">Saved. Used for every player lookup.</span>
-          </div>
-          <button className="button quiet small-button" onClick={bridge.clearApiKey}>Remove</button>
-        </div>
-      ) : (
-        <>
-          <p className="small">
-            Player classes come from Leetify's public API. It works without a key at stricter rate limits; a free key
-            from <button className="leetify-link" onClick={() => bridge.openDeveloperPage()}>leetify.com/app/developer</button> makes lookups reliable.
-          </p>
-          <div className="row">
-            <input
-              className="key-input" type="password" autoComplete="off" spellCheck={false} placeholder="Leetify API key"
-              value={leetifyKey} onChange={(e) => setLeetifyKey(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && leetifyKey.trim() && !busy && void saveLeetify()}
-            />
-            <button className="button primary" disabled={!leetifyKey.trim() || busy === "leetify"} onClick={() => void saveLeetify()}>
-              {busy === "leetify" ? "Checking…" : "Save key"}
-            </button>
-          </div>
-        </>
-      )}
+      {open && (
+        <div id="api-keys-body">
+          {s.leetify.hasKey ? (
+            <div className="account">
+              <div className="account-text">
+                <strong>Leetify API key</strong>
+                <span className="muted small">Saved. Used for every player lookup.</span>
+              </div>
+              <button className="button quiet small-button" onClick={bridge.clearApiKey}>Remove</button>
+            </div>
+          ) : (
+            <>
+              <p className="small">
+                Player classes come from Leetify's public API. It works without a key at stricter rate limits; a free key
+                from <button className="leetify-link" onClick={() => bridge.openDeveloperPage()}>leetify.com/app/developer</button> makes lookups reliable.
+              </p>
+              <div className="row">
+                <input
+                  className="key-input" type="password" autoComplete="off" spellCheck={false} placeholder="Leetify API key"
+                  value={leetifyKey} onChange={(e) => setLeetifyKey(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && leetifyKey.trim() && !busy && void saveLeetify()}
+                />
+                <button className="button primary" disabled={!leetifyKey.trim() || busy === "leetify"} onClick={() => void saveLeetify()}>
+                  {busy === "leetify" ? "Checking…" : "Save key"}
+                </button>
+              </div>
+            </>
+          )}
 
-      {s.steam.hasKey ? (
-        <div className="account">
-          <div className="account-text">
-            <strong>Steam Web API key</strong>
-            <span className="muted small">Saved. Groups friends in your lobby.</span>
-          </div>
-          <button className="button quiet small-button" onClick={bridge.clearSteamApiKey}>Remove</button>
+          <hr className="key-sep" />
+
+          {s.steam.hasKey ? (
+            <div className="account">
+              <div className="account-text">
+                <strong>Steam Web API key</strong>
+                <span className="muted small">Saved. Groups friends in your lobby.</span>
+              </div>
+              <button className="button quiet small-button" onClick={bridge.clearSteamApiKey}>Remove</button>
+            </div>
+          ) : (
+            <>
+              <p className="small">
+                Groups players by Steam friendship in your lobby. Optional — get a key at
+                <button className="leetify-link" onClick={() => bridge.openSteamDeveloper()}>steamcommunity.com/dev/apikey</button>
+              </p>
+              <div className="row">
+                <input
+                  className="key-input" type="password" autoComplete="off" spellCheck={false} placeholder="Steam Web API key"
+                  value={steamKey} onChange={(e) => setSteamKey(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && steamKey.trim() && !busy && void saveSteam()}
+                />
+                <button className="button primary" disabled={!steamKey.trim() || busy === "steam"} onClick={() => void saveSteam()}>
+                  {busy === "steam" ? "Saving…" : "Save key"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      ) : (
-        <>
-          <p className="small">
-            Groups players by Steam friendship in your lobby. Optional — get a key at
-            <button className="leetify-link" onClick={() => bridge.openSteamDeveloper()}>steamcommunity.com/dev/apikey</button>
-          </p>
-          <div className="row">
-            <input
-              className="key-input" type="password" autoComplete="off" spellCheck={false} placeholder="Steam Web API key"
-              value={steamKey} onChange={(e) => setSteamKey(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && steamKey.trim() && !busy && void saveSteam()}
-            />
-            <button className="button primary" disabled={!steamKey.trim() || busy === "steam"} onClick={() => void saveSteam()}>
-              {busy === "steam" ? "Saving…" : "Save key"}
-            </button>
-          </div>
-        </>
       )}
     </section>
   );
@@ -252,6 +277,9 @@ function AddPlayerForm() {
 }
 
 function LobbyTable({ rows }: { rows: LobbyRow[] }) {
+  // How many players of the lobby are in each group of friends (the group can span both teams).
+  const groupSizes = new Map<string, number>();
+  for (const r of rows) if (r.groupId) groupSizes.set(r.groupId, (groupSizes.get(r.groupId) ?? 0) + 1);
   const teams: [string, LobbyRow[]][] = [
     ["Counter-Terrorists", rows.filter((r) => r.side === "CT")],
     ["Terrorists", rows.filter((r) => r.side === "T")],
@@ -262,31 +290,38 @@ function LobbyTable({ rows }: { rows: LobbyRow[] }) {
       {teams.filter(([, list]) => list.length).map(([label, list]) => (
         <div key={label} className="team">
           <div className="team-label">{label}</div>
-          {list.map((r) => <LobbyLine key={r.slot} r={r} />)}
+          {list.map((r) => <LobbyLine key={r.slot} r={r} groupSize={r.groupId ? groupSizes.get(r.groupId) ?? 0 : 0} />)}
         </div>
       ))}
     </div>
   );
 }
 
-function LobbyLine({ r }: { r: LobbyRow }) {
+function LobbyLine({ r, groupSize }: { r: LobbyRow; groupSize: number }) {
   const groupStyle = r.groupId ? { borderLeftColor: groupColor(r.groupId) } : undefined;
   return (
     <div className={`player${r.isLocal ? " is-local" : ""}`} style={groupStyle}>
-      <SideEmblem side={r.side} />
+      {r.side && <SideEmblem side={r.side} />}
+      <GroupStack size={groupSize} label={r.groupName} />
       <button className="player-name" disabled={!r.steamId} title={r.steamId ? "View on Leetify" : undefined}
         onClick={() => r.steamId && bridge.openPlayer(r.steamId)}>
-        {r.name}{r.isLocal && <span className="you">you</span>}
-        {r.groupName && <span className="group-badge" title={`${r.groupName} in this lobby`}>{r.groupName}</span>}
-        {r.via === "profile" && <span className="group-badge" title="Found from Steam's profile page, which can be ten minutes out of date: this friend may not be in your match">maybe</span>}
-        {r.via === "manual" && <span className="group-badge" title="Added by hand">added</span>}
+        {r.name}
       </button>
+      <PlayerRanks m={r.detail?.metrics} />
+      {(r.isLocal || r.via) && (
+        <span className="player-tags">
+          {r.isLocal && <span className="you">you</span>}
+          {r.via === "profile" && <span className="group-badge" title="Found from Steam's profile page, which can be ten minutes out of date: this friend may not be in your match">maybe</span>}
+          {r.via === "manual" && <span className="group-badge" title="Added by hand">added</span>}
+        </span>
+      )}
+      <span className="row-spacer" />
       <PlayerClass r={r} />
       {r.steamId && r.status !== "skipped" && (
         <button className="leetify-link" onClick={() => bridge.openPlayer(r.steamId!)}>View on Leetify</button>
       )}
       {r.via === "manual" && r.steamId && (
-        <button className="leetify-link" title="Take this player off the list" onClick={() => void bridge.removePlayer(r.steamId!)}>Remove</button>
+        <button className="icon-button" title="Take this player off the list" aria-label="Remove player" onClick={() => void bridge.removePlayer(r.steamId!)}><TrashIcon /></button>
       )}
     </div>
   );

@@ -238,7 +238,7 @@ function load(win: BrowserWindow, page: "index" | "overlay") {
 
 function createDesktopWindow() {
   desktop = new BrowserWindow({
-    width: 460, height: 720, minWidth: 380, minHeight: 520,
+    width: 600, height: 740, minWidth: 530, minHeight: 520,
     title: "CS2Clean", backgroundColor: "#0d1014", show: false,
     icon: join(root, "assets", "icon.png"),
     autoHideMenuBar: true,

@@ -89,9 +89,13 @@ input:focus { border-color: var(--accent); outline: none; }
 .player { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px; border-left: 3px solid transparent; }
 .player:nth-child(odd) { background: var(--bg-2); }
 .player.is-local { box-shadow: inset 2px 0 0 var(--accent); }
-.player-name { flex: 1; min-width: 0; text-align: left; font: inherit; color: var(--text); background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-name { flex: 0 1 auto; min-width: 0; text-align: left; font: inherit; color: var(--text); background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-name:disabled { cursor: default; }
 .player-name:hover:not(:disabled) { color: var(--accent); }
+.group-stack { display: block; flex: none; height: 22px; width: auto; }
+.row-spacer { flex: 1 1 0; min-width: 0; }
+.player-tags { display: inline-flex; align-items: center; flex: none; white-space: nowrap; }
+.player-tags > :first-child { margin-left: 0; }
 .you { font-size: 0.7rem; color: var(--accent); margin-left: 6px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 .group-badge { font-size: 0.65rem; color: var(--muted); margin-left: 6px; padding: 1px 5px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font-weight: 600; }
 .emblem, .emblem-none { flex: none; display: inline-block; }
@@ -156,7 +160,7 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 .ov-row { display: flex; align-items: center; gap: 7px; padding: 3px 6px; border-radius: 6px; }
 .ov-row { border-left: 3px solid transparent; }
 .ov-row.is-local { background: rgba(240, 161, 58, 0.1); }
-.ov-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-name { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-group-badge { font-size: 0.62rem; color: var(--muted); margin-left: 4px; padding: 1px 4px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); font-weight: 600; white-space: nowrap; }
 .ov .badge { font-size: 0.7rem; padding: 1px 7px 1px 6px; }
 .ov .skeleton { width: 58px; height: 15px; }
@@ -206,9 +210,56 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 .key-input::placeholder { color: var(--muted); }
 
 /* Leetify attribution (Leetify's developer guidelines: legible, and a link by underline, bold or their pink) */
+h2.collapsible.collapsed { margin-bottom: 0; }
+.collapse-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; cursor: pointer; }
+.collapse-toggle:hover { color: var(--accent); }
+.chevron { flex: none; color: var(--muted); transition: transform 0.15s ease; }
+.chevron.closed { transform: rotate(-90deg); }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 5px; border: 0; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; }
+.icon-button:hover { color: var(--high); background: color-mix(in srgb, var(--high) 14%, transparent); }
+.key-sep { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 .leetify-link { font: inherit; font-size: 0.78rem; font-weight: 700; color: #f84982; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
 .footer-row { display: flex; align-items: flex-end; justify-content: flex-end; margin-bottom: 6px; }
 .footer-row .leetify-link img { height: 45px; display: block; }
 .ov-credit { flex-basis: 100%; font-size: 0.68rem; color: var(--muted); }
 .ov-name .you { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
 .matches.low { opacity: 0.55; font-style: italic; }
+
+/* ---------------------------------------------------------------- ranks: Premier rating, FACEIT level and Elo */
+/* One size variable drives the whole group: the Premier badge is sized in em, as Leetify's is. The ranks follow the name
+   directly (.row-spacer pushes the class to the right), with no gap between the Premier badge and the FACEIT group. */
+.ranks { --h: 20px; display: inline-flex; align-items: center; gap: calc(var(--h) * 0.25); flex: none; }
+.ranks-compact { --h: 18px; }
+.faceit { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.faceit-icon { display: block; width: calc(var(--h) * 1.5); height: calc(var(--h) * 1.5); flex: none; }
+.faceit-level { font: 700 0.7rem var(--display); letter-spacing: 0.04em; color: #ff5500; border: 1px solid color-mix(in srgb, #ff5500 55%, transparent); border-radius: 4px; padding: 0 4px; }
+.faceit-elo { font-size: calc(var(--h) * 0.7); font-weight: 600; color: #ff7a3d; font-variant-numeric: tabular-nums; }
+
+/* Leetify's cs-rating (their stylesheet, without Angular's attribute selectors). Everything is in em: the font-size of
+   .cs-rating is the height of the badge. Tiers are 5,000 rating points each, 0 = grey ... 6 = gold (30,000+). */
+.cs-rating { display: inline-flex; isolation: isolate; font-size: var(--h, 19px); }
+.cs-rating .vertical-lines { width: .53125em; flex: none; z-index: 1; }
+.cs-rating .label-outer {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 2.21875em; height: 1em; padding-left: .0833333333em; margin-left: -.25em;
+  border: .0625em solid transparent; border-radius: .09375em; transform: skew(-10deg);
+  font-family: Poppins, "Inter Variable", system-ui, ui-sans-serif, Ubuntu, "Open Sans", "Segoe UI Variable", "Segoe UI", Roboto, Calibri, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700; text-align: center; white-space: nowrap;
+}
+.cs-rating .label-wrapper { display: block; height: .5416666667em; line-height: .2708333333em; }
+.cs-rating .label-large { font-size: .5416666667em; }
+.cs-rating .label-small { font-size: .4583333333em; }
+.cs-rating.tier-0 .vertical-lines path { fill: #b1c4d9; }
+.cs-rating.tier-0 .label-outer { background-color: #2c2f37; border-color: #b1c4d999; color: #eef2f7; }
+.cs-rating.tier-1 .vertical-lines path { fill: #5e98d9; }
+.cs-rating.tier-1 .label-outer { background-color: #061c36; border-color: #5e98d999; color: #8bc1ff; }
+.cs-rating.tier-2 .vertical-lines path { fill: #4c6aff; }
+.cs-rating.tier-2 .label-outer { background-color: #060e37; border-color: #4c6aff99; color: #8a9dfe; }
+.cs-rating.tier-3 .vertical-lines path { fill: #8847ff; }
+.cs-rating.tier-3 .label-outer { background-color: #180638; border-color: #8847ff99; color: #b48bff; }
+.cs-rating.tier-4 .vertical-lines path { fill: #d32ce6; }
+.cs-rating.tier-4 .label-outer { background-color: #320638; border-color: #d32ce699; color: #f177ff; }
+.cs-rating.tier-5 .vertical-lines path { fill: #eb4b4b; }
+.cs-rating.tier-5 .label-outer { background-color: #380606; border-color: #eb4b4b99; color: #ff8686; }
+.cs-rating.tier-6 .vertical-lines path { fill: gold; }
+.cs-rating.tier-6 .label-outer { background-color: #383006; border-color: #ffd70099; color: #ffdf35; }
