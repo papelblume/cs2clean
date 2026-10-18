@@ -262,7 +262,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   }
 
   /**
-   * Previous hotkey (F5): the same walk backwards. Starts at the last player, then each press goes one back,
+   * Previous hotkey (Shift+F6): the same walk backwards. Starts at the last player, then each press goes one back,
    * and the overlay hides again before the first.
    */
   previousPlayer(): void {

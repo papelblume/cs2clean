@@ -36,4 +36,17 @@ describe("reading a pasted player", () => {
       "https://steamcommunity.com/groups/foo", "https://steamcommunity.com/id/", "https://leetify.com/app/profile/not-an-id", "STEAM_0:2:5"])
       expect(parseSteamInput(bad), bad).toBeNull();
   });
+
+  it("rejects a link with a malformed %-escape instead of throwing", () => {
+    for (const bad of ["https://steamcommunity.com/id/%E0%A4%A", "steamcommunity.com/id/100%", "https://steamcommunity.com/profiles/%",
+      "https://leetify.com/app/profile/%zz", "https://steamcommunity.com/%E0%A4%A/id/some_name"]) {
+      expect(() => parseSteamInput(bad), bad).not.toThrow();
+      expect(parseSteamInput(bad), bad).toBeNull();
+    }
+  });
+
+  it("still reads well-formed %-escapes, and ignores a malformed one after the part that names the player", () => {
+    expect(parseSteamInput("https://steamcommunity.com/id/%73ome_name")).toEqual({ kind: "vanity", name: "some_name" });
+    expect(parseSteamInput(`https://steamcommunity.com/profiles/${ID}/%E0%A4%A`)).toEqual({ kind: "id", steamId: ID });
+  });
 });

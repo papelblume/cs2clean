@@ -32,13 +32,25 @@ export function parseSteamInput(text: string): SteamInput | null {
     return null;
   }
   const host = url.hostname.toLowerCase().replace(/^www\./, "");
-  const [a, b, c] = url.pathname.split("/").filter(Boolean).map((s) => decodeURIComponent(s));
+  const [a, b, c] = url.pathname.split("/").filter(Boolean).map(decodeSegment);
   if (host === "steamcommunity.com") {
     if (a === "profiles" && b && ID64.test(b)) return { kind: "id", steamId: b };
     if (a === "id" && b && /^[A-Za-z0-9_-]{2,64}$/.test(b)) return { kind: "vanity", name: b };
   }
   if (host === "leetify.com" && a === "app" && b === "profile" && c && ID64.test(c)) return { kind: "id", steamId: c };
   return null;
+}
+
+/**
+ * A path segment with its %-escapes decoded. A malformed one (a stray "%", say) is left as it is rather than thrown
+ * over: it then fits none of the patterns above, so the link is rejected like any other that names no player.
+ */
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }
 
 function accountId(n: bigint): SteamInput | null {

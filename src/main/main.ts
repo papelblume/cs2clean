@@ -17,7 +17,8 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, safeStorage, screen, shell, utilityProcess } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_HOTKEYS, type Hotkeys } from "../shared/hotkeys";
+import type { Hotkeys } from "../shared/hotkeys";
+import { OVERWOLF_HOTKEYS } from "../shared/overwolf-hotkeys";
 import type { AppState } from "../shared/types";
 import { Controller, type Settings, type SettingsStore } from "./controller";
 import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
@@ -40,10 +41,14 @@ import { DEFAULT_DEBUG_PORT, findFriendsTarget, listDebugTargets, readFriendUi }
 
 // Overwolf's overlay keeps the default hotkeys (none is bound in CS2 by default); the app's own overlay
 // window uses the ones chosen in Settings.
-const HOTKEY = { label: DEFAULT_HOTKEYS.lobby, code: "F2", accelerator: DEFAULT_HOTKEYS.lobby };
-const DETAIL_HOTKEY = { label: DEFAULT_HOTKEYS.detail, code: "F7", accelerator: DEFAULT_HOTKEYS.detail };
-const CYCLE_HOTKEY = { label: DEFAULT_HOTKEYS.cycle, code: "F6", accelerator: DEFAULT_HOTKEYS.cycle };
-const PREVIOUS_HOTKEY = { label: DEFAULT_HOTKEYS.previous, code: "Shift+F6", accelerator: DEFAULT_HOTKEYS.previous };
+// const HOTKEY = { label: DEFAULT_HOTKEYS.lobby, code: "F2", accelerator: DEFAULT_HOTKEYS.lobby };
+// const DETAIL_HOTKEY = { label: DEFAULT_HOTKEYS.detail, code: "F7", accelerator: DEFAULT_HOTKEYS.detail };
+// const CYCLE_HOTKEY = { label: DEFAULT_HOTKEYS.cycle, code: "F6", accelerator: DEFAULT_HOTKEYS.cycle };
+// const PREVIOUS_HOTKEY = { label: DEFAULT_HOTKEYS.previous, code: "Shift+F6", accelerator: DEFAULT_HOTKEYS.previous };
+const HOTKEY = OVERWOLF_HOTKEYS.lobby;
+const DETAIL_HOTKEY = OVERWOLF_HOTKEYS.detail;
+const CYCLE_HOTKEY = OVERWOLF_HOTKEYS.cycle;
+const PREVIOUS_HOTKEY = OVERWOLF_HOTKEYS.previous;
 
 const root = join(__dirname, "..", "..");
 const rendererDir = join(root, "dist", "renderer");

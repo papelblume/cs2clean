@@ -147,7 +147,7 @@ function simulated(): Bridge {
     state = { ...state, ...patch };
     listeners.forEach((l) => l(state));
   };
-  /** The same walk through the players as the real controller's F6 / F5. */
+  /** The same walk through the players as the real controller's F6 / Shift+F6. */
   const step = (dir: 1 | -1) => {
     const o = state.overlay;
     const next = cycleStep(state.lobby.cycle, o.focusSlot, dir, o.visible && o.view === "player");
