@@ -193,6 +193,46 @@ describe("assessReputation", () => {
   });
 });
 
+describe("lopsided with one rating", () => {
+  // csst.at sends aim and utility but no positioning, and no match history.
+  const csst = (rating: NonNullable<LeetifyProfile["rating"]>): LeetifyProfile => ({
+    privacy_mode: "private", source: "csst.at", total_matches: 30, ranks: { leetify: 12.1 }, rating,
+    stats: { preaim: 3.99, reaction_time_ms: 332, headshot_kill_percentage: 37.3, spray_accuracy: 32.7, counter_strafing_good_shots_ratio: 83.3 },
+  });
+  const lopsided = (rating: NonNullable<LeetifyProfile["rating"]>) => assessReputation(csst(rating)).trace!.signals.find((s) => s.id === "lopsided");
+
+  it("compares the aim rating with utility alone when positioning is missing", () => {
+    const s = lopsided({ aim: 98.8, utility: 10.7 })!;
+    expect(s.value).toBe(1);
+    expect(s.text).toBe("Aim rating 98.8 but utility 10.7");
+  });
+
+  it("does the same the other way round, with positioning alone", () => {
+    const s = lopsided({ aim: 98.8, positioning: 12 })!;
+    expect(s.value).toBe(1);
+    expect(s.text).toBe("Aim rating 98.8 but positioning 12");
+  });
+
+  it("asks for a bigger gap than with both ratings, because one rating varies more than their mean", () => {
+    // A lead of 36: past the start of the range with both ratings (34), inside the moved range with one (39).
+    expect(assessReputation(csst({ aim: 96, positioning: 60, utility: 60 })).trace!.signals.find((s) => s.id === "lopsided")!.value).toBeGreaterThan(0);
+    expect(lopsided({ aim: 96, utility: 60 })!.value).toBe(0);
+    // And a lead of 49 is half way up the moved range [39, 59].
+    expect(lopsided({ aim: 98, utility: 49 })!.value).toBeCloseTo(0.5);
+  });
+
+  it("has no lopsided signal without either rating", () => {
+    expect(lopsided({ aim: 98.8 })).toBeUndefined();
+    expect(lopsided({ utility: 10 })).toBeUndefined();
+  });
+
+  it("lets the aim rating, reaction time and preaim of that csst.at player reach VERY_SUSPICIOUS with the utility gap", () => {
+    const r = assessReputation(csst({ aim: 98.8, utility: 10.7 }));
+    expect(r.tier).toBe("VERY_SUSPICIOUS");
+    expect(r.score).toBe(24);
+  });
+});
+
 describe("combineClass", () => {
   it("takes the more severe class and never lowers one", () => {
     expect(combineClass("NORMAL", assessReputation(RAGER))).toBe("VERY_HIGH");

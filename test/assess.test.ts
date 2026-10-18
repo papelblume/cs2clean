@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assessProfile, THRESHOLDS } from "../src/main/assess";
 import { ratingScale } from "../src/main/matches";
+import type { LeetifyProfile } from "../src/main/leetify";
 import { around, AVERAGE, ELEVATED, GOOD, HIGH, profile, VERY_HIGH } from "./profiles";
 
 const cls = (p: Parameters<typeof assessProfile>[0]) => assessProfile(p).classification;
@@ -90,3 +91,25 @@ describe("assessProfile", () => {
     expect(ratingScale([3.1, -4.2, 0.4])).toBe(1);
   });
 });
+
+describe("assessProfile on csst.at data", () => {
+  // csst.at shows at most the last 30 matches, so 30 there is a full sample; from the API it is thin data.
+  const extreme = (source?: "csst.at"): LeetifyProfile => ({
+    privacy_mode: "private", source, total_matches: 30, ranks: { leetify: 12.1 }, rating: { aim: 98.8, utility: 10.7 },
+  });
+
+  it("counts 30 matches as full confidence and can reach VERY_HIGH", () => {
+    const a = assessProfile(extreme("csst.at"));
+    expect(a.confidence).toBe(1);
+    expect(a.classification).toBe("VERY_HIGH");
+    expect(a.detail!.score).toBeGreaterThanOrEqual(90);
+  });
+
+  it("still discounts 30 matches from the API, and fewer from csst.at in proportion", () => {
+    const api = assessProfile(extreme());
+    expect(api.confidence).toBeCloseTo(0.6);
+    expect(api.classification).toBe("HIGH");
+    expect(assessProfile({ ...extreme("csst.at"), total_matches: 12 }).confidence).toBeCloseTo(0.4);
+  });
+});
+

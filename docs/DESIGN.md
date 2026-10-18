@@ -209,6 +209,9 @@ different Node. The main process just re-exports it from `leetify-hero.ts` (that
 rating, preaim, reaction time, headshot kills (csst.at's "HS kills", the share of kills that were headshots: not the
 API's headshot accuracy, so it goes into `stats.headshot_kill_percentage`, is shown as "Headshot kills" and scored on its own range),
 spray accuracy, counter-strafing ratio, and total games from the HTML by matching element IDs like `leetify-aim-{steamId}`.
+The profile is marked `source: "csst.at"`: csst.at shows at most the last 30 matches, so assess.ts counts 30 matches there
+as a full sample (50 for the API). csst.at sends no positioning rating, so the reputation's `lopsided` signal compares the
+aim rating with utility alone (against a range moved up by 5 points, because one rating varies more than the mean of two).
 
 ### Scoring System
 
@@ -236,7 +239,7 @@ Two independent scores computed from the same Leetify profile:
 **Question**: "How implausible do the numbers look, given the player's skill and rank?"
 
 **Signal families**:
-- **Mechanics**: extreme values for rank (aim rating and reaction time count most, then preaim, headshot accuracy, headshot kills (csst.at data only), spray and spotted accuracy, opening duels, counter-strafing). The ranges are the pros' stats; a lower Premier rating or FACEIT level slides them down by half the gap to the average player of that rank (`src/main/rank-means.ts`, Leetify's Performance Metric Tool, September 2026). Premier 20k and up counts as the top, because those averages are skewed by cheating accounts.
+- **Mechanics**: extreme values for rank (aim rating and reaction time count most, then preaim, headshot accuracy, headshot kills (csst.at data only), spray and spotted accuracy, opening duels, counter-strafing). The ranges are the pros' stats; a lower Premier rating or FACEIT level slides them down by half the gap to the average player of that rank (`src/main/rank-means.ts`, Leetify's Performance Metric Tool, September 2026). Premier 20k and up counts as the top, because those averages are skewed by cheating accounts. A FACEIT ELO above the median pro's (3670) gives the reaction, aim rating and spotted accuracy ranges extra room, following the pros' trend with ELO (`ELO_TREND`).
 - **Coherence**: stats that contradict each other (high aim but low positioning/utility, high headshot accuracy but low stopping)
 - **Trajectory**: sudden improvements, unnaturally steady reaction times, FACEIT vs non-FACEIT divergence
 

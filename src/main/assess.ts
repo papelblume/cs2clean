@@ -40,6 +40,8 @@ export const THRESHOLDS = {
   weights: { rating: 0.5, aim: 0.35, clutch: 0.15 },
   /** Matches (the profile's total, else the recent ones) for full confidence; fewer discount the score. */
   fullSample: 50,
+  /** csst.at shows at most the last 30 matches, so there 30 is all there is to see: a full sample. */
+  csstSample: 30,
   /** A signal (0..1) counts as ELEVATED / HIGH / VERY_HIGH from these values... */
   signalTier: [0.45, 0.7, 0.88],
   /** ...and the combined score (0..1) from these. */
@@ -124,7 +126,7 @@ export function assessProfile(p: LeetifyProfile): Assessment {
   const series = matchSeries(p);
   const recent = series.matches;
   const total = num(p.total_matches) ? p.total_matches : recent.length;
-  const confidence = clamp01(total / T.fullSample);
+  const confidence = clamp01(total / (p.source === "csst.at" ? T.csstSample : T.fullSample));
   const noneWithTotal = (note: string): Assessment => ({ classification: "INSUFFICIENT_DATA", totalMatches: total, confidence: 0, name, note, detail: null, trace: null });
 
   const metrics = metricsOf(p);

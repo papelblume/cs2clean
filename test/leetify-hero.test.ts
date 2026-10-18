@@ -69,6 +69,10 @@ const EXAMPLE_HTML = `<span id="leetify-extra-meta-76561198715645651"
 const STEAM_ID = "76561198715645651";
 
 describe("parseCsstAtHtml", () => {
+  it("marks the profile as csst.at data", () => {
+    expect(parseCsstAtHtml(EXAMPLE_HTML, STEAM_ID)!.source).toBe("csst.at");
+  });
+
   it("returns null for empty HTML", () => {
     expect(parseCsstAtHtml("", STEAM_ID)).toBeNull();
   });

@@ -104,6 +104,13 @@ export const REPUTATION = {
     /** ...and aim minus the mean of positioning and utility, in rating points. Pros are lopsided by nature (median 26, top 10% 34, top 1% 42, most 54). */
     aimLead: [34, 54],
     /**
+     * With only one of the two ratings (csst.at sends utility but no positioning) the lead is against that one alone.
+     * One rating varies more from player to player than the mean of both: among pros about 8-9 points (from the
+     * percentiles of positioning and utility in the pro report) against about 6 for the mean, so the tails sit
+     * about 5 points further out and the range moves up by that much.
+     */
+    aimLeadOneRating: 5,
+    /**
      * High headshot accuracy (same range as headAcc) while this many percent of shots are NOT taken standing still.
      * Pros: median 17, top 1% 29, the most 37, so beyond 28 even the best pros' own numbers don't explain it.
      */
@@ -337,9 +344,14 @@ export function assessReputation(p: LeetifyProfile): Reputation {
 
   // Coherence: numbers that don't fit together the way a human's do.
   const C = T.coherence;
-  if (aim !== null && pos !== null && util !== null)
-    add("lopsided", "coherence", ramp(aim - (pos + util) / 2, C.aimLead) * ramp(aim, C.aimGate),
-      `Aim rating ${f1(aim)} but positioning ${f1(pos)} and utility ${f1(util)}`);
+  const others = [pos, util].filter((v): v is number => v !== null);
+  if (aim !== null && others.length > 0) {
+    const lead = aim - others.reduce((a, b) => a + b, 0) / others.length;
+    const range = others.length === 2 ? C.aimLead : move(C.aimLead, C.aimLeadOneRating);
+    add("lopsided", "coherence", ramp(lead, range) * ramp(aim, C.aimGate),
+      pos !== null && util !== null ? `Aim rating ${f1(aim)} but positioning ${f1(pos)} and utility ${f1(util)}`
+        : `Aim rating ${f1(aim)} but ${pos !== null ? `positioning ${f1(pos)}` : `utility ${f1(util!)}`}`);
+  }
   if (head !== null && stopping !== null)
     add("moving", "coherence", ramp(head, move(C.movingHeadAcc, slide("headAcc"))) * ramp(100 - stopping, C.notStopped),
       `Headshot accuracy ${f1(head)}% although only ${f1(stopping)}% of shots are taken standing still`);

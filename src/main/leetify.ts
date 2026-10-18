@@ -77,6 +77,8 @@ export interface LeetifyProfile {
   name?: string | null;
   /** "public" or "private". A private profile still carries the aggregate ratings and stats below. */
   privacy_mode?: string | null;
+  /** Set when the profile was scraped from csst.at instead of coming from Leetify's API. csst.at shows at most the last 30 matches. */
+  source?: "csst.at" | null;
   total_matches?: number | null;
   winrate?: number | null;
   first_match_date?: string | null;

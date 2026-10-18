@@ -73,6 +73,7 @@ export function parseCsstAtHtml(html: string, steamId: string): LeetifyProfile |
     steam64_id: steamId,
     name: null,
     privacy_mode: "private",
+    source: "csst.at",
     total_matches: games,
     winrate: null,
     ranks: { leetify: ranksLeetify },
