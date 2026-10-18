@@ -10,110 +10,46 @@ https://github.com/user-attachments/assets/e75a84d9-3591-409e-a9bc-52b89796e756
 **Know your lobby before the first round.**
 
 
-A desktop companion and in-game overlay for CS2 that automatically checks player reputations using Leetify's Public API. When a match loads, CS2Clean looks up the first 10 players in your lobby and shows each one's judged reputation score (0–100, 100 = nothing unusual) and risk classification: **Normal**, **Elevated**, **High**, or **Very high**.
+A desktop companion and in-game overlay for CS2 that automatically checks player reputations using Leetify's Public API. When a match loads, CS2Clean looks up the first 10 players in your lobby and shows each one's stats, reputation score (0–100, 100 = nothing unusual) and overall class: **Normal**, **Elevated**, **High**, **Very high**, or **Not enough data**.
+
+**Contents:** [What it does](#what-it-does) · [Is it safe?](#is-it-safe) · [Installation](#installation) · [First run](#first-run) · [Keyboard shortcuts](#keyboard-shortcuts) · [How players are rated](#how-players-are-rated) · [API keys](#api-keys) · [Finding friends](#finding-friends-in-your-match) · [Community servers](#community-servers-and-offline-matches) · [Troubleshooting](#troubleshooting) · [More documentation](#more-documentation) · [Credits](#credits) · [License](#license)
+
 ## What it does
+
 - **Lobby check** — when a match loads, reads the player list from Steam and looks up each player on Leetify
-- **In-game overlay** — a transparent, click-through window on top of the game showing player cards with reputation scores, classifications, aim/clutch ratings, and Leetify's own stats. It appears automatically in warm-up and hides when the match goes live
-- **Siren alert** — plays an audible alert when a High or Very high player is detected
-- **Player cards** — detailed view for each player: performance score, reputation tier, reasons for flags, and (for public profiles) recent match history
-- **Two scores, different questions** — the performance class measures how far above average a player performs; the reputation score measures how implausible their stats look for their rank. One strong number alone never flags a player. A ban on record is the only hard evidence.
-- **Friend badges (optional)** — with a Steam Web API key, lobby players who are linked by Steam friendships share a colored bar and an "N friends" badge, in the window and in the overlay. A link can run through a third player (A–B and B–C make a group of three), so the badge tells you who is connected, not that all of them are friends with each other
-- **Friends in your match** — Steam's players list leaves out people who are already your friends. The app finds them in up to three ways, from exact to a guess, and says in the window what would help when it can't (see [Finding friends in your match](#finding-friends-in-your-match))
+- **In-game overlay** — a transparent, click-through window on top of the game showing player cards with reputation scores, classifications, and Leetify's stats (aim, clutch, positioning, accuracy, etc.). It appears automatically in warm-up and hides when the match goes live
+- **Siren alert** — plays an audible alert when a High or Very high player is detected; turn it on or off in Settings
+- **Player cards** — detailed view for each player: class, reputation score, reasons for flags, and (for public profiles) recent match history
+- **Ranks at a glance** — each player's Premier rating, FACEIT level and FACEIT Elo, shown right after their name in the window, the overlay list and the player cards
+- **Stats, not accusations** — each stat is rated Low, Medium or High, and the reputation score and overall class show how unusual a player's numbers look for their rank. One strong number alone never flags a player (see [How players are rated](#how-players-are-rated))
+- **Friend badges (optional)** — with a Steam Web API key (see [API keys](#api-keys)), players in your lobby who are friends on Steam share a colored bar and group badge, in the window and in the overlay. Friendships can run through a third player (A–B and B–C make a group of three), so the badge shows who is connected, not that everyone knows everyone
+- **Friends in your match** — Steam's "played with" list does not include players from your friends list, so the app attempts to find who you're playing with using three different methods. See [Finding friends in your match](#finding-friends-in-your-match)
 - **Configurable hotkeys** — all overlay keys can be changed in Settings
 - **Start with Windows** — optional auto-start, minimized to the taskbar (Windows only)
-- **Siren toggle** — turn the alert sound on or off in Settings
-- **Friends list auto-open** — the app opens Steam's friends list window when it needs it (Settings turns this off)
-- **No game injection** — nothing reads or modifies CS2's memory. The overlay is an ordinary transparent window kept on top of the game
 
 The app checks for updates on startup (at most once per day). You can also trigger a manual check from Settings.
 
+## Is it safe?
 
-## How it works
+CS2Clean doesn't touch the game itself. In plain terms:
 
-| Data source | What it provides |
-|-------------|-----------------|
-| **Steam's coplay list** | Who is in your match (Steam > View > Players). CS2 reports the roster to Steam when the match loads. |
-| **Steam's friends list** *(optional)* | Steam's players list leaves out your friends. With Steam's debug port on, the app reads the status line Steam's friends list shows for each friend ("Competitive - Office [ 5 : 0 ]", read-only, over a local port) and adds friends whose line equals yours. |
-| **CS2's `console.log`** *(optional)* | With CS2 launched with `-condebug`, the player list the `status` command prints in the CS2 console (read-only: the app only reads the file). Names that match your friends are added. |
-| **Steam profile pages** *(fallback)* | Only when neither of the above is in use: a friend's public Steam profile popup shows the map they are on, up to 10 minutes late. Matches are added as guesses, marked "maybe". |
-| **CS2 Game State Integration (GSI)** | When warm-up starts, when the match goes live, the map name, and your own Steam ID. The app writes a config file into CS2's `cfg` folder and listens on `127.0.0.1:37215`. |
-| **Leetify Public API** | Player ratings, stats, and match history. Two scores are computed from this data: a performance class and a 0–100 reputation score. |
-| **Steam Web API** *(optional)* | Each lobby player's friends list, to mark who is friends with whom, and the names of all your friends, to match the `status` list. Needs your own Steam Web API key. |
-| **GitHub** | The number of the latest release, for the update banner. |
+- **No injection.** No code is injected into CS2, and nothing reads or changes its memory. The overlay is an ordinary transparent window kept on top of CS2.
+- **How it knows what's happening.** It uses Steam's players list and CS2's own *Game State Integration*, a feature Valve built into CS2 for apps like this. To use it, CS2Clean adds a small config file to CS2's `cfg` folder, and CS2 then sends basic match information (warm-up, live, the map) to the app on your own PC.
+- **What leaves your PC.** Lookups of the SteamIDs of the players in your lobby, sent to Leetify, to csst.at for players Leetify doesn't have, and to Steam's friends lookup if you want to see what players are queued together. Your API keys stay on your PC, encrypted with your system's keychain when one is available. Details: [How it works](docs/HOW-IT-WORKS.md#privacy).
 
-**Privacy note:** The Leetify and Steam Web API keys are each encrypted with your OS keychain (Windows DPAPI, Linux desktop keyring) and stored in the app's settings file. If no keychain is available, they are stored as plain text. Besides Leetify, the app contacts `api.steampowered.com` (only if you saved a Steam key; it sends that key, the SteamIDs of the players in your lobby and, when you run `status`, your own SteamID to read your friends' names), `steamcommunity.com` (only when the profile-page fallback is used; it asks for the public profile popup of friends who are playing CS2), `csst.at` (only for players Leetify doesn't know; the first time, the Chrome that the helper drives is also downloaded from `github.com/ulixee/chrome-versions`) and `api.github.com` (the update check). Steam's debug port and CS2's `console.log` are only read on your PC, and the app only ever asks the system to open `steam://open/friends`.
+## Installation
 
-## Finding friends in your match
+Download the latest release from the [GitHub releases page](https://github.com/papelblume/CS2Clean/releases), then follow the steps for your system and the [first run](#first-run) steps below.
 
-Steam's players list (the first row above) leaves out people who are already your friends. CS2 gives Steam no server address, lobby or rich presence that the app can read, so friends have to be found another way. The app uses whatever is set up, all at once:
+### Windows
 
-| Method | Setup | How reliable |
-|--------|-------|--------------|
-| **Steam's friends list** | Steam's debug port on | Live. A friend whose status line (mode, map and score) equals yours is in your match |
-| **The `status` command** | CS2 launched with `-condebug`, and you run `status` | Exact, by name |
-| **Steam profile pages** | None. Only used when neither of the above is | A guess: the page is up to 10 minutes old. Marked "maybe" |
-
-A friend found by more than one method appears once. The order is Steam's players list, then `status`, then the friends list, then profile pages, and the lobby never grows past the mode's size. While a friend is playing CS2 and the match has an empty slot, the window says what would find them.
-
-### Steam's friends list
-
-1. Turn on Steam's debug port: create an empty file named `.cef-enable-remote-debugging` in Steam's folder (`~/.local/share/Steam` or `~/.steam/debian-installation` on Linux, `C:\Program Files (x86)\Steam` on Windows), or start Steam with `-cef-enable-debugging`. Then quit Steam fully and start it again.
-2. That is all. The app reads the Friends List window, in any of Steam's languages, and opens it for you when it is closed: once when the app starts, and in a match's warm-up while a friend is in CS2 and a slot is empty. It never does this during a live round, and at most once a minute and three times per match. Untick **Open Steam's friends list for me** in Settings to open the window yourself (Shift+Tab, or View > Friends).
-
-The debug port (8080, or `CS2CLEAN_DEBUG_PORT`) lets any program on this PC control Steam, so leave it off when you don't need it. `npm run friends-ui` shows what the app can read from the window.
-
-### The `status` command
-
-1. Add `-condebug` to CS2's launch options (Steam > Library > Counter-Strike 2 > Properties > Launch Options). CS2 then writes everything its console prints to `game/csgo/console.log`.
-2. In a match, open the console (turn it on under Settings > Game > Enable Developer Console) and run `status`. To make it one key, run `bind <key> status` once, then press that key. Run it again if players join later. Friends found stay for the match.
-
-The app only reads new lines of that file; nothing is typed into CS2. `status` prints names, not Steam IDs, so the names are matched to your friends: to the friends Steam says are playing CS2 and, if you have saved a Steam Web API key (or set `STEAM_API_KEY`) and your friends list is public, to all of them, including friends who appear offline. A name that fits two players, or two friends, is left out, and players the app already has use up their names first, so a stranger and a friend with the same name aren't mixed up. `npm run console-status` shows what it reads and who matched.
-
-### Steam profile pages
-
-Nothing to set up. When neither the debug port nor `console.log` is in use, the app reads the public profile popup of friends who are playing CS2, which shows a line like "Premier - Inferno [ 0 : 2 ]". Friends on your map, in a mode that can be yours, are added and marked "maybe". Steam only refreshes that page about every 10 minutes, so the score is ignored, and when more friends fit than there are empty slots, none are added. `npm run friends-ui` says whether the fallback would be used.
-
-## Keyboard shortcuts
-
-| Key | What it does |
-|-----|--------------|
-| **Shift+F2** | Toggle the lobby list (desktop window) |
-| **F7** | Show cards of flagged players in the overlay |
-| **F6** | Step forward through player cards (one at a time) |
-| **Shift+F6** | Step backward through player cards |
-
-All four keys can be changed under **Settings** in the app.
-
-## Leetify API key
-
-Lookups work without a key, but at Leetify's stricter rate limits. A free key from [leetify.com/app/developer](https://leetify.com/app/developer) makes lookups reliable:
-
-1. Get a free key from the link above
-2. Paste it into the app's window (it is validated before saving), or set `LEETIFY_API_KEY` in the environment
-3. A saved key takes priority over the environment variable
-
-## Platforms
-
-- **Windows** — installer (NSIS) or portable `.exe` from [GitHub releases](https://github.com/papelblume/CS2Clean/releases)
-- **Linux** — AppImage or tar.gz from [GitHub releases](https://github.com/papelblume/CS2Clean/releases)
-
-## Installation (Windows)
-
-1. Download the latest release from the [GitHub releases page](https://github.com/papelblume/CS2Clean/releases)
-2. Run the installer (per-user, no admin required) or the portable `.exe` (no installation)
-3. Start CS2 and launch CS2Clean
-4. Paste your Leetify API key if you have one
-5. Restart CS2 once (so it loads the GSI config), then join a match
-
-The installer adds Start menu and desktop shortcuts. Settings are stored in `%APPDATA%\CS2Clean`.
+Run the installer (it installs just for you, needs no administrator rights, and adds Start menu and desktop shortcuts) or the portable `.exe` (nothing to install). Settings are stored in `%APPDATA%\CS2Clean`.
 
 **SmartScreen:** The installer is not yet code-signed. Windows will show "Windows protected your PC" — click **More info**, then **Run anyway**.
 
-## Installation (Linux)
+### Linux
 
-### Pre-built binaries
-
-1. Download the latest AppImage or tar.gz from [GitHub releases](https://github.com/papelblume/CS2Clean/releases)
+1. Download the latest AppImage or tar.gz from the releases page
 2. **AppImage:** make it executable and run it:
    ```bash
    chmod +x CS2Clean-*.AppImage
@@ -125,115 +61,105 @@ The installer adds Start menu and desktop shortcuts. Settings are stored in `%AP
    ./CS2Clean
    ```
 
-### From source
+You need native Steam running and signed in, and an X11 session (Wayland is untested). Settings are kept in `~/.config/CS2Clean`.
 
-Requires **Node 22.12 or newer**:
+## First run
 
-```bash
-git clone https://github.com/papelblume/CS2Clean.git
-cd CS2Clean
-npm ci
-npm run hero:install
-npm start
-```
+The same on Windows and Linux:
 
-`npm run hero:install` sets up the csst.at fallback (the Hero sidecar; docs/DESIGN.md explains it). It needs Node 22 itself: the Node that runs it
-if that is 22, otherwise the newest nvm `v22.x`, or the one `CS2CLEAN_NODE22` points at. It installs Hero with that Node
-and copies the Node next to it. Skip it and the app still works; the window then says "csst.at fallback unavailable" and why.
+1. Start Steam and sign in. CS2Clean reads the players in your match from it.
+2. Open CS2Clean. The first time, it adds a small config file (`gamestate_integration_cs2clean.cfg`) to CS2's `cfg` folder. That is how CS2 tells the app when warm-up starts and the match goes live.
+3. Paste your Leetify API key if you have one. It's optional (see [API keys](#api-keys)).
+4. If CS2 was already running, restart it once so it picks up the new config file. Run CS2 in **Fullscreen Windowed** mode (Settings > Video > Display Mode); the overlay can't show over plain Fullscreen.
+5. Join a match. The overlay appears during warm-up, hides itself when the match goes live, and can be re-opened using hotkeys.
 
-### Linux requirements
+## Keyboard shortcuts
 
-- Native Steam running and signed in
-- CS2 in **Fullscreen Windowed** mode (Settings > Video > Display Mode)
-- X11 session (Wayland is untested)
+| Key | What it does |
+|-----|--------------|
+| **Shift+F2** | Show or hide the player list in the game overlay |
+| **F7** | Show details of flagged players (press again to hide) |
+| **F6** | Show the next player's details (one at a time) |
+| **Shift+F6** | Show the previous player's details |
 
-On first start the app writes `gamestate_integration_cs2clean.cfg` into CS2's `cfg` folder.
+Stepping past either end of the list hides the card. All four keys can be changed under **Settings** in the app.
 
-If Electron refuses to start with a `chrome-sandbox` error (common on Ubuntu 24.04 and derivatives), grant the sandbox the permissions it needs:
+The desktop window always lists every player in your match with their name, class, reputation score and ranks. In game, **Shift+F2** shows the same list in the overlay.
 
-```bash
-sudo chown root:root node_modules/electron/dist/chrome-sandbox
-sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
-```
+## How players are rated
 
-Settings are kept in `~/.config/CS2Clean`.
+**Data.** Player data is retrieved from Leetify's public API. When Leetify has no profile for a player, the app tries csst.at. Players with a private profile are shown from their lifetime stats only, without match history, so their numbers carry less weight. Players with no data on either site can't be shown.
 
-## Running from the desktop window
+**Stat levels.** Each stat is rated Low, Medium or High. High is roughly a median Pro's level (Tier 1/2/3 Team) or better; Medium is roughly an average FACEIT Level 7 player's level or better. The cut-offs come from Leetify's Data Library (September 2026 FACEIT averages) and analysis of 623 professional players' Leetify stats.
 
-After joining a match warm-up, press **Shift+F2** to open the lobby list. It shows each player's name, classification, and reputation score. Click a player to open their Leetify profile.
+**Reputation and class.** The reputation score (100 = nothing unusual) and a player's overall class compare their stats with the pros' and with the average player of their rank. They show how unusual the numbers are, not what the player did. Top players, pros and smurfs score high, and careful cheaters can look normal. A ban on record is the only hard evidence.
+
+## API keys
+
+An API key is a code, like a password, that lets an app ask a website for data on your behalf. CS2Clean can use two, both free and both optional. Paste them into the **API Keys** card in the app's window.
+
+### Leetify API key
+
+Lookups work without a key, but Leetify limits how many you can make. A free key makes lookups reliable:
+
+1. Get a free key at [leetify.com/app/developer](https://leetify.com/app/developer)
+2. Paste it into the **API Keys** card in the app's window (the app checks it before saving)
+
+### Steam Web API key
+
+Everything works without one. A Steam Web API key adds:
+
+- **Friend badges:** shows which players in your lobby are friends on Steam
+- **Find your own friends if using the `status` console command:** matches the names the `status` command prints to every friend of yours, including ones who appear offline (your friends list must be public). See [Finding friends in your match](docs/FINDING-FRIENDS.md#the-status-command-recommended)
+- **Custom profile links:** lets *Check a player* use `steamcommunity.com/id/name` links (without a key, the app reads the profile page instead)
+
+To set it up:
+
+1. Get a key at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey). Steam asks for a domain name; `localhost` works. Accounts that are still limited can't register a key.
+2. Paste it into the **API Keys** card in the app's window
+
+Treat the key like a password and don't share it. The app stores it encrypted when your system has a keychain. If you believe it has been exposed, revoke it immediately at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) and generate a new one if needed.
+
+## Finding friends in your match
+
+Steam's players list leaves out people who are already your friends, so CS2Clean finds them another way. With no setup, friends on your map are guessed and marked "maybe" (Steam updates that information only every 10 minutes). For exact results: add the "-condebug" launch option to CS2 and run `status` in the console during a match. A more advanced option can read Steam's own friends list by launching Steam with debugging enabled.
+
+Setup steps are in [docs/FINDING-FRIENDS.md](docs/FINDING-FRIENDS.md).
 
 ## Community servers and offline matches
 
-CS2 reports a match's players to Steam only for matchmaking matches, so on a community server (or an offline match) CS2Clean has no list of players to find. After a short wait the app says **Community server or offline match: roster unavailable**.
+CS2 only tells Steam who is in a matchmaking match. On a community server or an offline match, CS2Clean can't find the players by itself, and after a short wait the window says **Community server or offline match: roster unavailable**.
 
-You can still check anyone you spot, and you don't need a match for it: paste their **SteamID64**, **SteamID2/3** (`STEAM_0:1:123…`, `[U:1:…]`) or a **Steam or Leetify profile link** into *Check a player* in the desktop window. They are looked up like any other player. In a match they join its list, on top of the 10 players a lobby has, with overlay cards and the siren; with no match they are a list of their own, headed *Checked players*. You can have up to 5 at a time. They go when the match's players do (a new map, CS2 closing) or when you press *Remove* next to them. Custom profile links (`steamcommunity.com/id/name`) are resolved through Steam, with your Steam Web API key if you saved one.
+You can still check anyone you spot, with or without a match. Paste their **SteamID64**, **SteamID2/3** (like `STEAM_0:1:123…` or `[U:1:…]`) or a **Steam or Leetify profile link** into *Check a player* in the desktop window.
 
-## Replay mode (no CS2 needed)
+- They are looked up like any other player. In a match they join the list, on top of the 10 players a lobby has, with overlay cards and the siren. With no match they are listed on their own under *Checked players*.
+- You can have up to 5 at a time.
+- They go when the match's players do (a new map, CS2 closing) or when you click the trashcan icon next to them.
 
-To try the app without CS2, replay mode plays a recorded session:
-
-```bash
-npm run start:replay
-```
-
-To record a real match (Overwolf mode only):
-
-```bash
-npm run start:overwolf -- --record
-```
-
-The recording is saved to `%APPDATA%\CS2Clean\recordings`. You can then replay it with:
-
-```bash
-npx electron . --replay=recordings/your-recording.jsonl
-```
+Custom profile links (`steamcommunity.com/id/name`) work too.
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
 | "Steam didn't answer" | Make sure Steam is running and you're signed in |
-| A friend in your match is missing | The window says what would find them (see [Finding friends in your match](#finding-friends-in-your-match)): run `status` with CS2 launched with `-condebug`, or turn on Steam's debug port. `npm run friends-ui` and `npm run console-status` show what the app can read, and why not. |
-| Steam's friends list window opens by itself | The app opens it when it needs it (see above). Untick **Open Steam's friends list for me** in Settings to stop that |
-| A friend marked "maybe" isn't in your match | That comes from a Steam profile page that can be 10 minutes old. Use `status` or Steam's debug port for exact results |
-| "Couldn't find CS2's folder" | The app can still read Steam's players list; GSI won't detect match phases. Install CS2 in a standard location. |
+| A friend in your match is missing | The window says what would find them. See [Finding friends in your match](docs/FINDING-FRIENDS.md): run `status` in the console with CS2 launched with `-condebug`, or turn on Steam's debug port |
+| Steam's friends list window opens by itself | The app opens it when it needs it (see [Steam's debug port](docs/FINDING-FRIENDS.md#steams-debug-port-advanced)). Untick **Open Steam's friends list for me** in Settings to stop that |
+| A friend marked "maybe" isn't in your match | That comes from a Steam profile page that can be 10 minutes old. Use `status` in the console for exact results |
+| "Couldn't find CS2's folder" | The app can still read Steam's players list, but it won't know when warm-up starts or the match goes live. Install CS2 in a standard location. |
 | "CS2 is running as administrator" | Start CS2Clean as administrator too, or start CS2 without admin rights |
 | Overlay not visible in CS2 | Make sure CS2 is in **Fullscreen Windowed** mode, not plain Fullscreen |
-| `chrome-sandbox` error on Linux | Run the `chown`/`chmod` commands above |
-| Leetify rate limits | Get a free API key from leetify.com/app/developer |
-| "csst.at fallback unavailable" | The window gives the reason. Nothing else stops working: only players Leetify has no profile for can't be looked up on csst.at. The full error is in `hero.log` in the app's data folder (`%APPDATA%\CS2Clean` on Windows, `~/.config/CS2Clean` on Linux). From a source checkout the usual fix is `npm run hero:install`. |
-| "Setting up the csst.at fallback: downloading Chrome" | One-time download (a few hundred MB; Chrome is 370 MB on disk) into the app's data folder, the first time a player isn't on Leetify. Lookups carry on meanwhile and the fallback works from the next one after it. |
+| Leetify rate limits | Add a free Leetify API key (see [API keys](#api-keys)) |
+| "Setting up the csst.at fallback: downloading Chrome" | A one-time download (about 370 MB on disk) into the app's data folder, the first time a player isn't on Leetify. Lookups carry on meanwhile and the fallback works from the next one after it. |
+| "csst.at fallback unavailable" | The window gives the reason. Nothing else stops working: only players Leetify has no profile for can't be looked up on csst.at. Developers: see [the csst.at fallback](docs/DEVELOPMENT.md#the-csstat-fallback) |
+| `chrome-sandbox` error on Linux | See [Development](docs/DEVELOPMENT.md#linux-chrome-sandbox-error) |
 
-## UI Development
+## More documentation
 
-Preview UI states in a browser without running the full app:
-
-```bash
-npm run dev:ui
-```
-
-Then open `http://localhost:5173` with query params:
-- `?screen=lobby|detail|player|nokey|waiting|problem|hint` — which screen to show (default: lobby)
-- `?fallback=off` — preview the window with the csst.at fallback unavailable
-
-## Debug Scripts
-
-```bash
-npm run leetify:probe    # test the Leetify API client directly
-npm run coplay           # run the Steam coplay reader standalone
-npm run friends-ui       # show what the app can use to find friends (debug port, console.log, profile fallback), the friends list status lines and who would be added
-npm run console-status   # watch CS2's console.log (-condebug): run `status` in CS2 to see which lobby names are your friends (STEAM_API_KEY adds all your friends' names)
-```
-
-## Checks
-
-```bash
-npm test
-npm run build
-npm run hero:check                                   # the sidecar's selftest, from a source checkout
-npm run hero:check -- release/linux-unpacked/resources/hero   # ...or on a packaged build
-npm run check:package                                # verify a packaged app's asar contains expected files
-```
+- [Finding friends in your match](docs/FINDING-FRIENDS.md) — setup steps for each method
+- [How it works](docs/HOW-IT-WORKS.md) — data sources, local connections and privacy details
+- [Development](docs/DEVELOPMENT.md) — running from source, debug scripts, tests
+- [Design notes](docs/DESIGN.md) — architecture and scoring
 
 ## Credits
 
@@ -241,5 +167,8 @@ CS2Clean is a fork of [cheatscanner.eu](https://github.com/EspectroDK/cheatscann
 
 Player data is provided by [Leetify](https://leetify.com). CS2Clean does not look at demos and makes no accusations — treat a flag as "worth a closer look", not as proof of cheating.
 
-This project have been developed using AI tools - Claude Opus 5.5, Sonnet 5.5, Qwen3.6-35B, and gpt-oss-20b.
+This project has been developed using AI tools - Claude Opus 5.5, Sonnet 5.5, Qwen3.6-35B, and gpt-oss-20b.
 
+## License
+
+CS2Clean is licensed under the [GNU Affero General Public License v3.0](LICENSE). The public repository is https://github.com/papelblume/cs2clean. If you run a modified version as a website or service, you must offer its users the source of that version.
