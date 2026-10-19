@@ -19,12 +19,12 @@ describe("assessProfile", () => {
     const avg = assessProfile(AVERAGE()).detail!;
     expect(avg.metrics.aim).toBe(45);
     expect(avg.levels).toMatchObject({ rating: "LOW", aim: "LOW", clutch: "LOW" });
-    expect(avg.score).toBeLessThan(25);
+    expect(avg.outlier).toBeLessThan(25);
     const thin = assessProfile(profile(around(8, 1, 5), { aim: 97, clutch: 30 }));
     expect(thin.detail).not.toBeNull(); // 5 matches is enough for a signal
     expect(thin.confidence).toBeLessThan(1);
     const d = assessProfile(HIGH()).detail!;
-    expect(d.score).toBeGreaterThan(62);
+    expect(d.outlier).toBeGreaterThan(62);
     expect(d.levels).toMatchObject({ rating: "HIGH", aim: "HIGH" });
     expect(d.metrics.aim).toBe(96);
     expect(d.matches?.avgRating).toBeGreaterThan(4.5);
@@ -102,7 +102,7 @@ describe("assessProfile on csst.at data", () => {
     const a = assessProfile(extreme("csst.at"));
     expect(a.confidence).toBe(1);
     expect(a.classification).toBe("VERY_HIGH");
-    expect(a.detail!.score).toBeGreaterThanOrEqual(90);
+    expect(a.detail!.outlier).toBeGreaterThanOrEqual(90);
   });
 
   it("still discounts 30 matches from the API, and fewer from csst.at in proportion", () => {
@@ -110,6 +110,58 @@ describe("assessProfile on csst.at data", () => {
     expect(api.confidence).toBeCloseTo(0.6);
     expect(api.classification).toBe("HIGH");
     expect(assessProfile({ ...extreme("csst.at"), total_matches: 12 }).confidence).toBeCloseTo(0.4);
+  });
+});
+
+describe("the Performance number on the card", () => {
+  const score = (p: LeetifyProfile) => assessProfile(p).detail!.score;
+
+  it("puts the median player at 50", () => {
+    expect(score(profile(around(0, 3), { aim: 50, clutch: 0 }))).toBe(50);
+  });
+
+  it("looks both ways: players below the median score below 50, and a worse player scores lower", () => {
+    const below = profile(around(-3, 3), { aim: 30, clutch: -5, total: 200 });
+    const bad = profile(around(-6, 3), { aim: 15, clutch: -10, total: 200 });
+    expect(score(below)).toBeLessThan(50);
+    expect(score(bad)).toBeLessThan(score(below));
+    expect(score(bad)).toBeGreaterThanOrEqual(0);
+    // The outlier score has nothing to say about anyone below average, as before.
+    expect(assessProfile(below).detail!.outlier).toBe(0);
+    expect(assessProfile(bad).detail!.outlier).toBe(0);
+  });
+
+  it("rises with the class: average, good, elevated, high, very high", () => {
+    const scores = [AVERAGE(), GOOD(), ELEVATED(), HIGH(), VERY_HIGH()].map(score);
+    expect([...scores].sort((a, b) => a - b)).toEqual(scores);
+    expect(new Set(scores).size).toBe(scores.length);
+    expect(scores[0]).toBeLessThan(50);
+    expect(scores[4]).toBe(100);
+  });
+
+  it("keeps the old score as `outlier`, which the class is decided on", () => {
+    for (const p of [AVERAGE(), GOOD(), ELEVATED(), HIGH(), VERY_HIGH()]) {
+      const a = assessProfile(p);
+      expect(a.detail!.outlier).toBe(Math.round(a.trace!.discounted * 100));
+    }
+  });
+
+  it("is pulled towards 50 by thin data, from either side", () => {
+    const thin = (p: LeetifyProfile) => assessProfile(p).detail!.score;
+    const high = HIGH(); // 30 matches
+    expect(Math.abs(thin(high) - 50)).toBeLessThan(Math.abs(thin({ ...high, total_matches: 200 }) - 50));
+    const bad = profile(around(-6, 3), { aim: 15, clutch: -10 });
+    expect(Math.abs(thin(bad) - 50)).toBeLessThan(Math.abs(thin({ ...bad, total_matches: 200 }) - 50));
+  });
+
+  it("gives a missing signal's weight to the others", () => {
+    // Only the overall rating, which is 3 (half way up the 6 that counts as the top): halfway between 50 and 100.
+    expect(score({ privacy_mode: "private", total_matches: 200, ranks: { leetify: 3 } })).toBe(75);
+  });
+
+  it("stays between 0 and 100", () => {
+    expect(score(profile(around(-12, 2), { aim: 0, clutch: -30, total: 200 }))).toBe(0);
+    expect(score(profile(around(20, 2), { aim: 100, clutch: 60, total: 200 }))).toBe(100);
   });
 });
 

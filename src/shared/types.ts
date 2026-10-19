@@ -98,8 +98,13 @@ export interface MatchSummary {
 
 /** The overlay's extended card (F6 and F7): any player with some rating data. */
 export interface PlayerDetail {
-  /** Combined performance score, 0-100: how far above average the Leetify rating, aim and clutch are. Ours, not Leetify's. */
+  /**
+   * The Performance number on the card, 0-100: 50 is the median player, 100 the best and 0 the worst, going by the
+   * Leetify rating, aim and clutch. Ours, not Leetify's. It says how well someone plays, not how odd that is: see `outlier`.
+   */
   score: number;
+  /** 0-100: how far above average the Leetify rating, aim and clutch are (0 at the average and for everyone below it). The class is decided on this, and the flagged list is sorted by it. */
+  outlier: number;
   levels: { rating: AxisLevel; aim: AxisLevel; clutch: AxisLevel };
   metrics: PlayerMetrics;
   /** From the per-match data; null when the API sent none (a private profile, or no matches yet). */

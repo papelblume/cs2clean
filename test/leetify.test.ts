@@ -94,7 +94,7 @@ describe("lookupLobby", () => {
     const f = fake({ [ID(1)]: HIGH(), [ID(2)]: AVERAGE() });
     const out = await lookupLobby(new LeetifyClient("k", f.fetchImpl), [ID(2), ID(1)]);
     expect(out.map((a) => [a.steamId, a.classification])).toEqual([[ID(2), "NORMAL"], [ID(1), "HIGH"]]);
-    expect(out[1].detail?.score).toBeGreaterThan(60);
+    expect(out[1].detail?.outlier).toBeGreaterThan(60);
     expect(out[1].totalMatches).toBe(30);
   });
 

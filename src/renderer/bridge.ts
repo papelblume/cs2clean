@@ -54,19 +54,19 @@ const matchesOf = (avgRating: number, strongShare: number, ratings: number[]): M
 
 const DETAIL: Record<string, PlayerDetail> = {
   Brakk: {
-    score: 91, levels: { rating: "HIGH", aim: "HIGH", clutch: "MEDIUM" },
+    score: 99, outlier: 91, levels: { rating: "HIGH", aim: "HIGH", clutch: "MEDIUM" },
     metrics: metrics({ leetify: 7.1, aim: 98.3, positioning: 31.2, utility: 12.5, clutch: 0.24, opening: 0.09, preaim: 3.1, reactionMs: 290,
                        headAccuracy: 54.8, sprayAccuracy: 69.2, counterStrafing: 41.3, ctOpeningDuel: 71, tOpeningDuel: 70, premier: 9000, faceit: 10, faceitElo: 2870, totalMatches: 61 }),
     matches: matchesOf(7.8, 0.87, [9.4, 6.1, 8.2, 7.7, 8.9]),
   },
   Oberon_7: {
-    score: 44, levels: { rating: "MEDIUM", aim: "MEDIUM", clutch: "LOW" },
+    score: 74, outlier: 44, levels: { rating: "MEDIUM", aim: "MEDIUM", clutch: "LOW" },
     metrics: metrics({ leetify: 3.1, aim: 71.2, positioning: 62.5, utility: 55.4, clutch: 0.1, preaim: 6.9, reactionMs: 520, headAccuracy: 41.2, premier: 22300, faceit: null, faceitElo: null, totalMatches: 380 }),
     matches: matchesOf(3.1, 0.4, [4.4, 1.2, 3.9]),
   },
   // A private profile: the card is built from the aggregates alone, with no match rows.
   Kestrel: {
-    score: 31, levels: { rating: "MEDIUM", aim: "MEDIUM", clutch: "LOW" },
+    score: 69, outlier: 31, levels: { rating: "MEDIUM", aim: "MEDIUM", clutch: "LOW" },
     metrics: metrics({ leetify: 2.4, aim: 66.3, clutch: 0.09, premier: null, faceit: 5, faceitElo: 1250, totalMatches: 912 }),
     matches: null,
   },
@@ -74,7 +74,7 @@ const DETAIL: Record<string, PlayerDetail> = {
 
 /** What an unremarkable player's card looks like; everyone without their own entry above gets it. */
 const ordinary = (): PlayerDetail => ({
-  score: 12, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" }, metrics: metrics(), matches: matchesOf(0.4, 0.1, [-1.2, 2, 0.4]),
+  score: 52, outlier: 12, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" }, metrics: metrics(), matches: matchesOf(0.4, 0.1, [-1.2, 2, 0.4]),
 });
 
 const REPUTATION: Record<string, PlayerReputation> = {

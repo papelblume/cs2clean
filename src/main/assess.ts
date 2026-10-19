@@ -42,6 +42,14 @@ export const THRESHOLDS = {
   fullSample: 50,
   /** csst.at shows at most the last 30 matches, so there 30 is all there is to see: a full sample. */
   csstSample: 30,
+  /**
+   * The Performance number on the card has the median player at 50 (100 the best, 0 the worst), so it looks both ways,
+   * where the signals above start at the average and only look up. Each signal becomes its distance from the median in
+   * halves of the scale, -1 to +1: the mean rating over 6 (the ends of the rating's range above), the aim rating over 50
+   * (Leetify sets the average aim rating to 50, and its scale is 0-100), the clutch rating over 0.21 (the top of the
+   * range above). The mean rating stands alone here, without the share of strong matches, and the weights are the same.
+   */
+  median: { rating: 6, aim: 50, clutch: 0.21 },
   /** A signal (0..1) counts as ELEVATED / HIGH / VERY_HIGH from these values... */
   signalTier: [0.45, 0.7, 0.88],
   /** ...and the combined score (0..1) from these. */
@@ -79,6 +87,10 @@ export interface Trace {
   strongShare: number;
   /** The clutch rating from the profile, or null. */
   clutch: number | null;
+  /** The two-sided signals behind the Performance number, -1..+1 (null: the API sent nothing for it). */
+  centred: { rating: number | null; aim: number | null; clutch: number | null };
+  /** The Performance number before rounding and before thin data pulled it towards 50. */
+  performance: number;
 }
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
@@ -88,6 +100,7 @@ const opt = (v: unknown): number | null => (num(v) ? v : null);
 const tierOf = (v: number, cuts: readonly number[]) => cuts.filter((c) => v >= c).length;
 const level = (tier: number): AxisLevel => (tier >= 2 ? "HIGH" : tier === 1 ? "MEDIUM" : "LOW");
 const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;
+const clampSigned = (x: number) => Math.min(1, Math.max(-1, x));
 
 /**
  * The overall Leetify rating: ranks.leetify. When a response lacks it, the mean of the CT and T ratings times 100,
@@ -134,6 +147,7 @@ export function assessProfile(p: LeetifyProfile): Assessment {
   // What the newest matches say, for the card (any number of them) and for the rating signal (enough of them).
   let matches: MatchSummary | null = null;
   let recentSignal: number | null = null;
+  let recentMean: number | null = null;
   if (recent.length > 0) {
     const ratings = recent.map((m) => m.rating);
     const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
@@ -142,8 +156,10 @@ export function assessProfile(p: LeetifyProfile): Assessment {
       count: recent.length, avgRating: round(avg, 1), strongShare: round(strongShare, 2),
       recent: recent.slice(0, 5).map((m) => ({ map: m.map, rating: round(m.rating, 1), playedAt: m.playedAt })),
     };
-    if (recent.length >= T.minRecent)
+    if (recent.length >= T.minRecent) {
       recentSignal = T.rating.mix.mean * ramp(avg, T.rating.mean) + T.rating.mix.share * ramp(strongShare, T.rating.strongShare);
+      recentMean = avg;
+    }
   }
 
   const signals = {
@@ -158,6 +174,17 @@ export function assessProfile(p: LeetifyProfile): Assessment {
   const score = present.reduce((a, k) => a + T.weights[k] * signals[k]!, 0) / weightSum;
   // Few matches mean noisy numbers: discount the score rather than refuse to give one.
   const discounted = score * (0.5 + 0.5 * confidence);
+
+  // The Performance number: the same three signals, measured from the median player in both directions. Thin data
+  // pulls it towards 50, the median, as it pulls the score above towards 0.
+  const ratingMean = recentMean ?? metrics.leetify;
+  const centred = {
+    rating: ratingMean === null ? null : clampSigned(ratingMean / T.median.rating),
+    aim: metrics.aim === null ? null : clampSigned((metrics.aim - T.median.aim) / T.median.aim),
+    clutch: metrics.clutch === null ? null : clampSigned(metrics.clutch / T.median.clutch),
+  };
+  const above = present.reduce((a, k) => a + T.weights[k] * centred[k]!, 0) / weightSum;
+  const performance = 50 + 50 * above * (0.5 + 0.5 * confidence);
 
   const tiers = {
     rating: signals.rating === null ? 0 : tierOf(signals.rating, T.signalTier),
@@ -176,13 +203,14 @@ export function assessProfile(p: LeetifyProfile): Assessment {
 
   // Every player with ratings gets a card (F6 shows any player, F7 the flagged ones).
   const detail: PlayerDetail = {
-    score: Math.round(discounted * 100),
+    score: Math.round(Math.min(100, Math.max(0, performance))),
+    outlier: Math.round(discounted * 100),
     levels: { rating: level(tiers.rating), aim: level(tiers.aim), clutch: level(tiers.clutch) },
     metrics,
     matches,
   };
   return {
     classification, totalMatches: total, confidence, name, note: null, detail,
-    trace: { ratingFrom: recentSignal !== null ? "recent" : signals.rating !== null ? "overall" : null, signals, score, discounted, tiers, scale: series.scales.rating, meanRating: matches?.avgRating ?? 0, strongShare: matches?.strongShare ?? 0, clutch: metrics.clutch },
+    trace: { ratingFrom: recentSignal !== null ? "recent" : signals.rating !== null ? "overall" : null, signals, score, discounted, tiers, scale: series.scales.rating, meanRating: matches?.avgRating ?? 0, strongShare: matches?.strongShare ?? 0, clutch: metrics.clutch, centred, performance },
   };
 }

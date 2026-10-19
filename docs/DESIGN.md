@@ -226,6 +226,10 @@ Two independent scores computed from the same Leetify profile:
 - Aim rating (35% weight)
 - Clutch rating (15% weight)
 
+**Two numbers from the same signals**:
+- *Performance* (the card, 0–100): 50 is the median player, 100 the best, 0 the worst. It looks both ways: the mean rating over 6, the aim rating (Leetify sets the average to 50) and the clutch rating over 0.21 are each measured from the median, with the weights above. Thin data pulls it towards 50. It says how well someone plays, not how odd that is.
+- *Outlier score* (`detail.outlier`, 0–100): how far above average the signals are, 0 for everyone at or below the average. The class is decided on this, and the flagged list is sorted by it.
+
 **Classes**: NORMAL, ELEVATED, HIGH, VERY_HIGH, INSUFFICIENT_DATA
 
 **Rules**:
@@ -365,7 +369,7 @@ spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_H
 
 1. **No game injection**: The overlay is an ordinary transparent window kept on top of the game. Nothing reads or modifies CS2's memory.
 
-2. **Two scores, different questions**: Performance class measures how far above average a player performs; reputation score measures how implausible their stats look for their rank.
+2. **Two scores, different questions**: Performance class measures how far above average a player performs (the card's Performance number puts the median player at 50); reputation score measures how implausible their stats look for their rank.
 
 3. **Signal agreement**: One strong number alone never flags a player. The worst tiers require two active signal families.
 

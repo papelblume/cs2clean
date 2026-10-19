@@ -592,7 +592,8 @@ describe("SteamSource: a map Steam lists no players for, and players added by ha
 
 describe("overlay helpers", () => {
   it("lists flagged players by class (VERY_HIGH first), then by how flagged they are, whatever raised the class", () => {
-    const d = (score: number) => ({ score, avgRating: 0, strongShare: 0, aim: 0, clutch: 0, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" } as const, recent: [] });
+    // The card's Performance number (score) plays no part in the order; the outlier score does.
+    const d = (outlier: number) => ({ score: 50, outlier, avgRating: 0, strongShare: 0, aim: 0, clutch: 0, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" } as const, recent: [] });
     const rep = (score: number | null, tier = "WATCH" as const) => ({ score, tier, confidence: 1, reasons: [] });
     const row = (name: string, classification: "VERY_HIGH" | "HIGH" | "ELEVATED" | "NORMAL" | "INSUFFICIENT_DATA",
                  detail: ReturnType<typeof d> | null, reputation: ReturnType<typeof rep> | null = null, isLocal = false) =>
@@ -605,7 +606,7 @@ describe("overlay helpers", () => {
       row("e", "VERY_HIGH", d(85)),
       row("f", "INSUFFICIENT_DATA", null),
       row("banned", "VERY_HIGH", null, rep(0, "BANNED" as never)),   // no performance numbers, still flagged
-      row("odd-stats", "HIGH", d(20), rep(15, "SUSPICIOUS" as never)), // raised by reputation: 100 - 15 beats the score of 20
+      row("odd-stats", "HIGH", d(20), rep(15, "SUSPICIOUS" as never)), // raised by reputation: 100 - 15 beats the outlier score of 20
       row("me", "VERY_HIGH", d(99), null, true),                      // never yourself
     ]).map((r) => r.name);
     expect(list).toEqual(["banned", "e", "odd-stats", "c", "b", "a"]);

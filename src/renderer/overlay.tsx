@@ -173,7 +173,7 @@ function Card({ r, compact }: { r: LobbyRow; compact?: boolean }) {
           )}
           {d && (
             <>
-              <dt title="How far above average the Leetify rating, aim and clutch are. Not a probability of cheating.">Performance</dt>
+              <dt title="Where the Leetify rating, aim and clutch put this player: 50 is the median player, 100 the best. How well someone plays, not a probability of cheating.">Performance</dt>
               <dd><b>{d.score}</b> / 100</dd>
             </>
           )}

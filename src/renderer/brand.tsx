@@ -124,4 +124,4 @@ export const mapName = (m: string | null | undefined) =>
   m ? (MAPS[m] ?? m.replace(/^de_|^cs_/, "").replace(/(^|_)\w/g, (c) => c.replace("_", " ").toUpperCase())) : null;
 
 export const DISCLAIMER =
-  "Raw player data is retrieved from Leetify's public API. The app then separates each stat into Low, Medium, and High categories based on Leetify's Data Library. A stat labeled \"High\" roughly maps to higher than the average FACEIT Level 10. Players with private/non-existant Leetify profiles can not be shown.";
+  "Player data is retrieved from Leetify’s public API, or from csst.at when Leetify has no profile for a player. The app rates each stat Low, Medium or High using Leetify’s Data Library and the stats of professional players: High is the level of a median pro (3670 elo) or better, and Medium roughly the level of an average FACEIT Level 7 player or better. Players with a private profile are shown from their lifetime stats only, and players with no data on Leetify or csst.at can’t be shown.";

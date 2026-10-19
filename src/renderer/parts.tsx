@@ -23,9 +23,9 @@ export function PlayerClass({ r, compact }: { r: LobbyRow; compact?: boolean }) 
 
 const RANK = { VERY_HIGH: 0, HIGH: 1, ELEVATED: 2 } as Record<string, number>;
 
-/** How flagged a player is, 0-100: the higher of the performance score and how low the reputation is. */
+/** How flagged a player is, 0-100: the higher of the performance outlier score and how low the reputation is. */
 function strength(r: LobbyRow): number {
-  return Math.max(r.detail?.score ?? 0, r.reputation?.score != null ? 100 - r.reputation.score : 0);
+  return Math.max(r.detail?.outlier ?? 0, r.reputation?.score != null ? 100 - r.reputation.score : 0);
 }
 
 /**
