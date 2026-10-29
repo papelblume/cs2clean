@@ -15,13 +15,14 @@
 // when CS2 runs in "Fullscreen Windowed" mode.
 
 import { app, BrowserWindow, globalShortcut, ipcMain, safeStorage, screen, shell, utilityProcess } from "electron";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Hotkeys } from "../shared/hotkeys";
 import { OVERWOLF_HOTKEYS } from "../shared/overwolf-hotkeys";
 import type { AppState } from "../shared/types";
-import { Controller, type Settings, type SettingsStore } from "./controller";
+import { Controller, type SettingsStore } from "./controller";
 import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
+import { noteUpdateCheck, readLastUpdateCheck, settingsFileStore, type KeyCrypto } from "./settings-file";
 import { checkForUpdate, OWNER, REPO } from "./update-checker";
 import type { UpdateResult } from "./update-checker";
 import { OverwolfSource, type OverwolfPackages } from "./game/overwolf";
@@ -62,34 +63,19 @@ function arg(name: string): string | true | undefined {
   return undefined;
 }
 
-/** settings.json in the app's data folder; the API key is encrypted with the OS keychain when available. */
+/** The OS keychain, as far as settings.json is concerned. */
+const keychain: KeyCrypto = {
+  isAvailable: () => safeStorage.isEncryptionAvailable(),
+  encrypt: (plain) => safeStorage.encryptString(plain).toString("base64"),
+  decrypt: (base64) => safeStorage.decryptString(Buffer.from(base64, "base64")),
+};
+
+/** settings.json in the app's data folder (main/settings-file.ts). */
+const settingsPath = () => join(app.getPath("userData"), "settings.json");
+
+/** The API keys are encrypted with the OS keychain when available. */
 function settingsStore(): SettingsStore {
-  const file = join(app.getPath("userData"), "settings.json");
-  return {
-    load(): Settings {
-      if (!existsSync(file)) return {};
-      try {
-        const raw = JSON.parse(readFileSync(file, "utf8"));
-        let leetifyKey: string | null = raw.leetifyKey ?? null;
-        if (raw.leetifyKeyEnc && safeStorage.isEncryptionAvailable())
-          leetifyKey = safeStorage.decryptString(Buffer.from(raw.leetifyKeyEnc, "base64"));
-        let steamApiKey: string | null = raw.steamApiKey ?? null;
-        if (raw.steamApiKeyEnc && safeStorage.isEncryptionAvailable())
-          steamApiKey = safeStorage.decryptString(Buffer.from(raw.steamApiKeyEnc, "base64"));
-        return { leetifyKey, steamApiKey, siren: raw.siren, autoOpenFriendsList: raw.autoOpenFriendsList, hotkeys: raw.hotkeys };
-      } catch {
-        return {};
-      }
-    },
-    save(s: Settings) {
-      const out: Record<string, unknown> = { siren: s.siren, autoOpenFriendsList: s.autoOpenFriendsList, hotkeys: s.hotkeys };
-      if (s.leetifyKey && safeStorage.isEncryptionAvailable()) out.leetifyKeyEnc = safeStorage.encryptString(s.leetifyKey).toString("base64");
-      else if (s.leetifyKey) out.leetifyKey = s.leetifyKey;
-      if (s.steamApiKey && safeStorage.isEncryptionAvailable()) out.steamApiKeyEnc = safeStorage.encryptString(s.steamApiKey).toString("base64");
-      else if (s.steamApiKey) out.steamApiKey = s.steamApiKey;
-      writeFileSync(file, JSON.stringify(out, null, 2));
-    },
-  };
+  return settingsFileStore(settingsPath(), keychain);
 }
 
 function overwolfPackages(): OverwolfPackages | undefined {
@@ -401,16 +387,8 @@ async function checkUpdate(ctrl: Controller): Promise<UpdateResult> {
   const result = await checkForUpdate(ctrl.state.version);
   ctrl.setUpdateResult(result);
   if (result.status !== "failed") {
-    const settingsFile = join(app.getPath("userData"), "settings.json");
     try {
-      let raw: Record<string, unknown>;
-      try {
-        raw = JSON.parse(readFileSync(settingsFile, "utf8"));
-      } catch {
-        raw = {};
-      }
-      raw.lastUpdateCheck = Date.now();
-      writeFileSync(settingsFile, JSON.stringify(raw));
+      noteUpdateCheck(settingsPath(), Date.now());
     } catch { /* ignore */ }
   }
   return result;
@@ -418,12 +396,7 @@ async function checkUpdate(ctrl: Controller): Promise<UpdateResult> {
 
 /** The check at start-up: at most once per day (stored in settings.json). */
 async function checkUpdateOncePerDay(ctrl: Controller): Promise<void> {
-  const settingsFile = join(app.getPath("userData"), "settings.json");
-  let lastCheck: number | null = null;
-  try {
-    const raw = JSON.parse(readFileSync(settingsFile, "utf8"));
-    if (typeof raw.lastUpdateCheck === "number") lastCheck = raw.lastUpdateCheck;
-  } catch { /* first start */ }
+  const lastCheck = readLastUpdateCheck(settingsPath());
   const COOLDOWN_MS = 24 * 60 * 60 * 1000;
   if (lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return;
   await checkUpdate(ctrl);
