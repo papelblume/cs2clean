@@ -132,6 +132,9 @@
       "runAfterFinish": true,
       "artifactName": "CS2Clean-Setup-${version}.${ext}"
     },
+    "portable": {
+      "artifactName": "CS2Clean-${version}-portable.${ext}"
+    },
     "publish": null,
     "linux": {
       "target": [

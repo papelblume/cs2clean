@@ -357,7 +357,7 @@ The workflow can also be started by hand (Actions > cs2clean-release > Run workf
 
 Artifacts:
 - `CS2Clean-Setup-<version>.exe` — NSIS installer (Windows)
-- `CS2Clean.<version>.exe` — portable executable (Windows). electron-builder names it `CS2Clean <version>.exe`; GitHub turns the space into a dot
+- `CS2Clean-<version>-portable.exe` — portable executable (Windows)
 - `CS2Clean-<version>.AppImage` — AppImage (Linux)
 - `cs2clean-<version>.tar.gz` — tarball (Linux; named after the package, so lowercase)
 
