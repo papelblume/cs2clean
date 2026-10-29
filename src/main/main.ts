@@ -16,12 +16,13 @@
 
 import { app, BrowserWindow, globalShortcut, ipcMain, safeStorage, screen, shell, utilityProcess } from "electron";
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { Hotkeys } from "../shared/hotkeys";
 import { OVERWOLF_HOTKEYS } from "../shared/overwolf-hotkeys";
 import type { AppState } from "../shared/types";
 import { Controller, type SettingsStore } from "./controller";
 import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
+import { ensurePortableDataDir, portableDataDir } from "./portable";
 import { noteUpdateCheck, readLastUpdateCheck, settingsFileStore, type KeyCrypto } from "./settings-file";
 import { checkForUpdate, OWNER, REPO } from "./update-checker";
 import type { UpdateResult } from "./update-checker";
@@ -371,7 +372,8 @@ function syncOverlay() {
 
 // ------------------------------------------------------------------ app
 
-/** Starting with Windows, minimized: a login item for the installed app (Windows matches it by path and args). */
+/** Starting with Windows, minimized: a login item for the installed app or the extracted portable folder (Windows
+ *  matches it by path and args, so a moved portable folder needs it switched off and on again). */
 const STARTUP_ARGS = ["--minimized"];
 const startup = {
   get: () => app.getLoginItemSettings({ args: STARTUP_ARGS }).openAtLogin,
@@ -400,6 +402,14 @@ async function checkUpdateOncePerDay(ctrl: Controller): Promise<void> {
   const COOLDOWN_MS = 24 * 60 * 60 * 1000;
   if (lastCheck && Date.now() - lastCheck < COOLDOWN_MS) return;
   await checkUpdate(ctrl);
+}
+
+// The portable zip keeps its data beside the exe (main/portable.ts). Electron wants the folders set before anything
+// asks for them, and before the single-instance lock, which is per data folder.
+const portableData = portableDataDir(dirname(process.execPath));
+if (portableData && ensurePortableDataDir(portableData)) {
+  app.setPath("userData", portableData);
+  app.setPath("sessionData", portableData);
 }
 
 if (!app.requestSingleInstanceLock()) {

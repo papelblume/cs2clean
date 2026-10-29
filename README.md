@@ -43,9 +43,12 @@ Download the latest release from the [GitHub releases page](https://github.com/p
 
 ### Windows
 
-Run the installer (it installs just for you, needs no administrator rights, and adds Start menu and desktop shortcuts) or the portable `.exe` (`CS2Clean-<version>-portable.exe`, nothing to install). Settings are stored in `%APPDATA%\CS2Clean`.
+Run the installer (it installs just for you, needs no administrator rights, and adds Start menu and desktop shortcuts) or the portable `.zip` (`CS2Clean-<version>-portable.zip`).
 
-**SmartScreen:** The installer and the portable `.exe` are not yet code-signed. Windows will show "Windows protected your PC" — click **More info**, then **Run anyway**.
+- **Installed app:** settings are stored in `%APPDATA%\CS2Clean`.
+- **Portable `.zip`:** extract it into a folder of its own (Explorer's **Extract All**, or the **Extract to** entry in 7-Zip's menu) and run `CS2Clean.exe` from there. It keeps its settings and downloads in a `data` folder beside `CS2Clean.exe` (the csst.at fallback's Chrome download, about 370 MB, goes there too), so deleting the folder removes the app. It also adds one small file to CS2's `cfg` folder, which is harmless to leave. If you move the folder, switch **Start with Windows** off and on again.
+
+**SmartScreen:** The installer and the portable `CS2Clean.exe` are not yet code-signed. Windows will show "Windows protected your PC" — click **More info**, then **Run anyway**.
 
 ### Linux
 

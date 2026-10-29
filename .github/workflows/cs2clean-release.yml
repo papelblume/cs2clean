@@ -64,7 +64,9 @@ jobs:
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run dist
-      - run: npx electron-builder --win portable --x64
+      # The portable build is a zip of the unpacked app plus portable.txt, which makes the app keep its data beside it.
+      # It is built on its own, so the marker is in the zip and not in the installer above.
+      - run: npm run dist:zip
       - run: ls -l release
       # The selftest again, on the copy inside the package: its Node starts, Hero and better-sqlite3 load from there.
       - name: Check the packaged sidecar
@@ -73,7 +75,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: cs2clean-${{ steps.version.outputs.version }}-win
-          path: release/*.exe
+          path: |
+            release/*.exe
+            release/*.zip
           # No installer is a failed build, not an empty upload.
           if-no-files-found: error
 
@@ -89,6 +93,7 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             release/*.exe
+            release/*.zip
 
   release-linux:
     runs-on: ubuntu-latest

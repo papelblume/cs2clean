@@ -37,7 +37,7 @@ The fallback uses a helper (the Hero sidecar, explained in [DESIGN.md](DESIGN.md
 
 If the window says "csst.at fallback unavailable":
 
-- The full error is in `hero.log` in the app's data folder (`%APPDATA%\CS2Clean` on Windows, `~/.config/CS2Clean` on Linux).
+- The full error is in `hero.log` in the app's data folder (`%APPDATA%\CS2Clean` on Windows, `data` beside `CS2Clean.exe` in the portable zip, `~/.config/CS2Clean` on Linux).
 - From a source checkout the usual fix is `npm run hero:install`.
 
 ## Linux: chrome-sandbox error

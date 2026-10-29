@@ -303,7 +303,7 @@ Game Source → MatchState → Controller → LobbyService → LeetifyClient
 
 ## Settings
 
-Stored in `%APPDATA%\CS2Clean` (Windows) or `~/.config/CS2Clean` (Linux):
+Stored in `%APPDATA%\CS2Clean` (Windows), `data` beside `CS2Clean.exe` (the portable zip, see "Portable build") or `~/.config/CS2Clean` (Linux):
 
 ```typescript
 interface Settings {
@@ -327,7 +327,7 @@ TypeScript → Vite (renderer) + tsc (main) → Electron
                                               ↓
                                     electron-builder
                                               ↓
-                         Windows: NSIS installer + portable .exe
+                         Windows: NSIS installer + portable .zip
                          Linux: AppImage + tar.gz
 ```
 
@@ -345,6 +345,16 @@ Runs `electron-builder --linux dir --x64` to create a dir output, then `tools/ch
 code (`dist/**/*.js`) must point at a file that made it into the archive (the installer once left out `dist/shared`).
 Useful for catching packaging regressions before publishing.
 
+### Portable build
+
+The portable build is a zip of the unpacked app (`npm run dist:zip`), not electron-builder's single-file `portable` target. That target unpacks the whole app into `%TEMP%` on every launch and deletes it when the app exits, so a "Start with Windows" entry pointed at a path that no longer existed after exit, and there was no folder to delete.
+
+- `npm run dist:zip` adds `tools/portable/portable.txt` next to `CS2Clean.exe` (`-c.win.extraFiles…` on the command line). It is a separate build from `npm run dist`, so the installer never contains the marker. electron-builder puts no top-level folder in a Windows zip, so the README tells people to extract it into a folder of its own.
+- `main/portable.ts`: when the marker is beside the exe, `main.ts` creates `data` there and points both `userData` and `sessionData` at it, before the single-instance lock. That covers `settings.json`, `gsi.json`, `hero.log`, the Chrome download (`hero-browsers`, about 370 MB), recordings and Chromium's own storage. If the folder can't be created (a read-only place), the app falls back to `%APPDATA%\CS2Clean`.
+- The exe's path is stable, so "Start with Windows" works. Windows matches the entry by path, so a moved folder needs it switched off and on again.
+- The one file outside the folder is `gamestate_integration_cs2clean.cfg` in CS2's `cfg` folder.
+- Dropping a `portable.txt` next to the exe of an installed app does the same for that copy.
+
 ### Release Tags
 
 Push a tag to trigger the GitHub Actions workflow:
@@ -357,7 +367,7 @@ The workflow can also be started by hand (Actions > cs2clean-release > Run workf
 
 Artifacts:
 - `CS2Clean-Setup-<version>.exe` — NSIS installer (Windows)
-- `CS2Clean-<version>-portable.exe` — portable executable (Windows)
+- `CS2Clean-<version>-portable.zip` — portable build (Windows): extract into a folder of its own, see "Portable build"
 - `CS2Clean-<version>.AppImage` — AppImage (Linux)
 - `cs2clean-<version>.tar.gz` — tarball (Linux; named after the package, so lowercase)
 

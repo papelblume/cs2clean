@@ -46,5 +46,8 @@ This page is for anyone curious about what the app reads, what it sends, and whe
 
 | System | Folder |
 |--------|--------|
-| Windows | `%APPDATA%\CS2Clean` |
+| Windows (installed) | `%APPDATA%\CS2Clean` |
+| Windows (portable `.zip`) | the `data` folder next to `CS2Clean.exe` |
 | Linux | `~/.config/CS2Clean` |
+
+The portable zip has a `portable.txt` file next to `CS2Clean.exe`. While it is there, the app keeps its settings, API keys, logs and downloads in the `data` folder beside it, so deleting the whole folder removes the app. The one thing outside it is `gamestate_integration_cs2clean.cfg` in CS2's `cfg` folder, which is harmless to leave.

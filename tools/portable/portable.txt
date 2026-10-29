@@ -1,0 +1,8 @@
+CS2Clean (portable)
+
+While this file is next to CS2Clean.exe, CS2Clean keeps its settings, API keys and
+downloads in the "data" folder beside it, instead of in %APPDATA%\CS2Clean.
+
+To move CS2Clean, move this whole folder. To remove it, delete this whole folder.
+(CS2Clean also adds one small file, gamestate_integration_cs2clean.cfg, to CS2's
+"cfg" folder. It does no harm if you leave it there.)
