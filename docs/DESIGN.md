@@ -2,7 +2,7 @@
 
 ## Overview
 
-CS2Clean is an Electron desktop companion with a CS2 in-game overlay that checks player reputations using Leetify's Public API. When a match loads, the app looks up the first 10 players and shows each one's reputation score (0–100, 100 = nothing unusual) and performance classification.
+CS2Clean is an Electron desktop companion with a CS2 in-game overlay that checks player reputations using Leetify's Public API. When a match loads, the app looks up the first 10 players (plus up to 5 you add by hand) and shows each one's reputation score (0–100, 100 = nothing unusual) and performance classification.
 
 The app does not look at demos and makes no accusations. Treat a flag as "worth a closer look", not as proof of cheating.
 
@@ -42,7 +42,7 @@ The app does not look at demos and makes no accusations. Treat a flag as "worth 
 ### Process Separation
 
 - **Main process**: Controller, game sources, lobby service, Leetify client, window management, IPC, hotkeys
-- **Coplay worker**: Separate utility process that reads Steam's players list (isolated from the app so a Steam client quirk can't crash it). Uses [`koffi`](https://github.com/felixge/node-koffi), a native FFI library, to call Steam's native API without a full native addon.
+- **Coplay worker**: Separate utility process that reads Steam's players list (isolated from the app so a Steam client quirk can't crash it). Uses [`koffi`](https://github.com/Koromix/koffi), a native FFI library, to call Steam's native API without a full native addon.
 - **Friend finding** (see below) uses plain `fs` and `fetch` in the main process; only the coplay read is isolated in the utility process
 - **Renderer**: Two React windows (desktop + overlay), both receive state via IPC and use the bridge for IPC calls
 
@@ -55,7 +55,7 @@ The central state machine. Connects game sources to the lobby service, manages s
 **Responsibilities:**
 - API key management (validate, save, clear)
 - Hotkey registration and validation
-- Match lifecycle (warm-up → live → gameover)
+- Match lifecycle (warm-up, live, half-time intermission, game over)
 - Lobby lookups and caching
 - Overlay visibility control
 - Siren alert management
@@ -67,30 +67,38 @@ interface AppState {
   leetify: { hasKey: boolean; reachable: boolean | null; fallback: { working: boolean | null; reason: string | null } };
   steam: { hasKey: boolean };
   notice: string | null;
-  game: { source: GameKind; running: boolean; problem: string | null };
+  game: { source: GameSourceKind; running: boolean; problem: string | null; hint: string | null; rosterUnavailable: boolean };
   match: { map: string | null; mode: string | null; phase: MatchPhase | null } | null;
   lobby: { rows: LobbyRow[]; updatedAt: string | null; error: string | null; cycle: number[] };
-  overlay: { hotkey: string; detailHotkey: string; cycleHotkey: string; previousHotkey: string; mode: OverlayMode; visible: boolean; view: ViewKind; focusSlot: number | null; siren: boolean };
+  overlay: { hotkey: string; detailHotkey: string; cycleHotkey: string; previousHotkey: string; mode: "overwolf" | "window" | "none"; visible: boolean; view: "lobby" | "detail" | "player"; focusSlot: number | null; siren: boolean };
   hotkeysEditable: boolean;
   startWithWindows: boolean | null;
+  autoOpenFriendsList: boolean;
   alert: { seq: number; names: string[] };
+  update: { available: boolean; remoteVersion: string | null; checked: boolean };
 }
 ```
 
 ### Game Sources (`src/main/game/`)
 
-Abstract interface for reading match data from different platforms:
+Abstract class for reading match data from different platforms:
 
 ```typescript
-interface GameSource extends EventEmitter {
-  kind: "steam" | "overwolf" | "replay";
-  start(): void;
-  stop(): void;
-  refresh(): void;
-  on("running", (running: boolean)): void;
-  on("problem", (problem: string | null)): void;
-  on("hint", (hint: string | null)): void;   // a suggestion that isn't a problem; null clears it
-  on("match", (m: MatchState)): void;
+abstract class GameSource extends EventEmitter<GameSourceEvents> {
+  abstract readonly kind: "steam" | "overwolf" | "replay";
+  abstract start(): void;
+  abstract stop(): void;
+  refresh(): void;                               // ask for fresh data now; sources that are pushed to ignore it
+  addPlayer(steamId: string): AddPlayerResult;   // "added" | "duplicate" | "full" | "unsupported" (only the Steam source adds players)
+  removePlayer(steamId: string): boolean;        // takes a player added by hand off again
+}
+
+interface GameSourceEvents {
+  match: [MatchState];
+  running: [boolean];
+  problem: [string | null];
+  hint: [string | null];       // a suggestion that isn't a problem; null clears it
+  line: [RecordedLine];        // every update as a recording line (what --record writes)
 }
 ```
 
@@ -109,7 +117,8 @@ interface GameSource extends EventEmitter {
 **Replay** (`replay.ts`):
 - Plays a recorded session from a JSONL file
 - For testing without CS2 running
-- Recording format: `{"t": <ms>, "kind": "running"|"info", "value": <data>}`
+- Recording format (JSON Lines; lines starting with `//` are comments): `{"t": <ms>, "kind": "running", "value": <boolean>}` or `{"t": <ms>, "kind": "info", "category": <string>, "key": <string>, "value": <data>}` (an `info` line may also carry `feature`)
+- Recordings made with `--record` (Overwolf only) go to `recordings/` in the app's data folder
 
 **GEP** (`gep.ts`):
 - Parses Overwolf GEP info updates into a MatchState
@@ -135,7 +144,7 @@ Steam's coplay list leaves out people who are already your friends. What was tri
 
 **Friends list** (`steam-ui.ts`). Steam's friends list shows each friend's rich presence ("Competitive - Office [ 5 : 0 ]": mode, map and score). With the debug port on, the app evaluates a read-only script in the Friends List page over the local DevTools protocol, joins the rows to the Steam client's friends in CS2 by persona name, and adds friends whose line equals ours. They are re-checked on every scan: they stay while they remain in our mode and map (two players' scores can differ for a moment at a round end) and drop out when they leave. A failed read keeps what was found before. The window's title is localized, so `isFriendsWindowTitle` knows all 26 titles Steam uses.
 
-**Opening the window** (`friends-window.ts`). When the window is closed the app asks Steam for it with `steam://open/friends`, the only address it ever opens, then waits up to 5 s for the page to appear. Rules: only with the debug port reachable and the setting (`autoOpenFriendsList`, on by default) on; once after start-up (first try 12 s in, so a running CS2 has sent a heartbeat; up to 8 tries 15 s apart while Steam may still be starting) and in a match's warm-up while a friend is in CS2 and a slot is empty; never in a live round, at half-time or on the end screen; at most once a minute and 3 times per match; one try at a time.
+**Opening the window** (`friends-window.ts`). When the window is closed the app asks Steam for it with `steam://open/friends`, the only `steam://` address it ever opens, then waits up to 5 s for the page to appear. Rules: only with the debug port reachable and the setting (`autoOpenFriendsList`, on by default) on; once after start-up (first try 12 s in, so a running CS2 has sent a heartbeat; up to 8 tries 15 s apart while Steam may still be starting) and in a match's warm-up while a friend is in CS2 and a slot is empty; never in a live round, at half-time or on the end screen; at most once a minute and 3 times per match; one try at a time.
 
 **`status`** (`console-log.ts`, `name-match.ts`, `friend-names.ts`). `LogTailer` polls the file every 250 ms, starts at its end (a file that appears later is read from its start), and copes with truncation, replacement, CRLF, half-written lines and characters split across reads. `StatusParser` reads the block `status` prints (`---------players--------` ... `#end`), skipping bots and `[NoChan]` slots; it carries names, not Steam IDs, so the names are matched to friends: the ones Steam says are in CS2 (with names, from `coplay.ts`) plus, with a key, all friends from the Web API (`GetFriendList` + `GetPlayerSummaries`, batches of 100, cached 5 minutes, a failure remembered as long). A name counts only when it fits exactly one friend and one lobby entry; players the app already has, and the user, use up lobby entries first, so a stranger and a friend with the same name aren't mixed up. Lists are accepted only while in a match, an arriving list triggers a scan at once (or right after the one running), and matched friends stay for the match.
 
@@ -154,7 +163,7 @@ Manages player lookups and caching:
 - Caches results per match
 - Handles rate limiting and retries
 - Tops up player list with scraped data from csst.at when API returns "not found"
-- Only looks up the first 10 players
+- Only looks up the first 10 players of a lobby, plus up to 5 added by hand
 
 ### Leetify Client (`src/main/leetify.ts`)
 
@@ -243,9 +252,9 @@ Two independent scores computed from the same Leetify profile:
 **Question**: "How implausible do the numbers look, given the player's skill and rank?"
 
 **Signal families**:
-- **Mechanics**: extreme values for rank (aim rating and reaction time count most, then preaim, headshot accuracy, headshot kills (csst.at data only), spray and spotted accuracy, opening duels, counter-strafing). The ranges are the pros' stats; a lower Premier rating or FACEIT level slides them down by half the gap to the average player of that rank (`src/main/rank-means.ts`, Leetify's Performance Metric Tool, September 2026). Premier 20k and up counts as the top, because those averages are skewed by cheating accounts. A FACEIT ELO above the median pro's (3670) gives the reaction, aim rating and spotted accuracy ranges extra room, following the pros' trend with ELO (`ELO_TREND`).
+- **Mechanics**: extreme values for rank (aim rating and reaction time count most, then preaim, headshot accuracy, headshot kills (csst.at data only), spray and spotted accuracy, opening duels, counter-strafing). The ranges are the pros' stats; a lower Premier rating or FACEIT level slides them down by half the gap to the average player of that rank (`src/main/rank-means.ts`, Leetify's Performance Metric Tool, September 2026). Premier 20k and up counts as the top, because those averages are skewed by cheating accounts.
 - **Coherence**: stats that contradict each other (high aim but low positioning/utility, high headshot accuracy but low stopping)
-- **Trajectory**: sudden improvements, unnaturally steady reaction times, FACEIT vs non-FACEIT divergence
+- **Trajectory**: sudden improvements, a high mean rating with almost no below-average matches, unnaturally steady reaction times, FACEIT vs non-FACEIT divergence
 
 **Tiers**: TRUSTED, NORMAL, WATCH, SUSPICIOUS, VERY_SUSPICIOUS, BANNED, UNKNOWN
 
@@ -260,19 +269,23 @@ Two independent scores computed from the same Leetify profile:
 Transparent, click-through window on top of CS2:
 - Shows player list grouped by team (CT → T → unknown)
 - Appears automatically in warm-up, hides when match goes live
+- Shift+F2: show the player list (opens it over an open F6 or F7 card; hides the overlay when the list itself is showing)
 - F6: cycle through player cards (one at a time)
 - F7: show flagged players
 - Shift+F6: step backward through cards
+- These are the defaults. The four keys can be changed in Settings (not with Overwolf)
 - Plays siren when HIGH/VERY_HIGH player detected
 
 ### Desktop Window (`src/renderer/desktop.tsx`)
 
 Full-featured window for setup and monitoring:
-- API key input and validation
-- Lobby list with player details
-- Settings panel (hotkeys, siren toggle, auto-start)
+- API key cards: the Leetify key (checked with Leetify before it is saved) and the optional Steam Web API key
+- Lobby list with player details, and a note when Steam lists no players (community server or offline match)
+- "Check a player" form (Steam source): add up to 5 players by SteamID64, SteamID2/3 or a Steam or Leetify profile link
+- Settings panel (the four hotkeys, siren toggle and test, start with Windows, open Steam's friends list automatically, check for updates)
 - Leetify status indicator
 - csst.at fallback status: shown only when it can't be used, with the reason
+- Update banner when GitHub has a newer release
 
 ## Data Flow
 
@@ -294,7 +307,7 @@ Stored in `%APPDATA%\CS2Clean` (Windows) or `~/.config/CS2Clean` (Linux):
 
 ```typescript
 interface Settings {
-  leetifyKey?: string | null;      // Encrypted with OS keychain
+  leetifyKey?: string | null;      // Encrypted with the OS keychain; plain text only when none is available
   steamApiKey?: string | null;     // Optional, encrypted: friendship badges, and friend names for `status`
   siren?: boolean;                  // Default: true
   autoOpenFriendsList?: boolean;    // Open Steam's friends list window when needed. Default: true
@@ -328,8 +341,9 @@ npm run check:package    # verify a packaged app's asar contains expected files
 ```
 
 Runs `electron-builder --linux dir --x64` to create a dir output, then `tools/check-package.mjs` inspects the
-`app.asar` to ensure critical files are present and nothing unexpected is included. Useful for catching packaging
-regressions before publishing.
+`app.asar`: the file named by `package.json`'s `main` must be in it, and every relative `require()` in the app's own
+code (`dist/**/*.js`) must point at a file that made it into the archive (the installer once left out `dist/shared`).
+Useful for catching packaging regressions before publishing.
 
 ### Release Tags
 
@@ -339,11 +353,13 @@ git tag cs2clean-v0.2.0
 git push origin cs2clean-v0.2.0
 ```
 
+The workflow can also be started by hand (Actions > cs2clean-release > Run workflow) with a version number. Untick **Create the GitHub release** for a build-only test run: it builds, runs the sidecar selftests and uploads the installers as workflow artifacts, with no tag and no release. Never reuse the number of a published release with the box ticked: that release's files would be replaced.
+
 Artifacts:
 - `CS2Clean-Setup-<version>.exe` — NSIS installer (Windows)
-- `CS2Clean-<version>-portable.exe` — portable executable (Windows)
+- `CS2Clean.<version>.exe` — portable executable (Windows). electron-builder names it `CS2Clean <version>.exe`; GitHub turns the space into a dot
 - `CS2Clean-<version>.AppImage` — AppImage (Linux)
-- `CS2Clean-<version>.tar.gz` — tarball (Linux)
+- `cs2clean-<version>.tar.gz` — tarball (Linux; named after the package, so lowercase)
 
 ## Testing
 
@@ -358,7 +374,7 @@ spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_H
 
 **Test coverage**: controller, assess, reputation, leetify, hotkeys, lobby, and the Steam source and friend finding: `steam.test.ts`, `steam-ui.test.ts`, `capabilities.test.ts`, `friends-window.test.ts`, `console-log.test.ts`, `name-match.test.ts`, `friend-names.test.ts`, `status-friends.test.ts`, `miniprofile.test.ts` and `profile-friends.test.ts`, among others. Run `npm test` for the current count.
 
-**Hero sidecar tests**: `test/hero-sidecar.test.ts` (316 lines) covers `classifyHeroFailure` and all failure modes
+**Hero sidecar tests**: `test/hero-sidecar.test.ts` covers `classifyHeroFailure` and all failure modes
 (abi-mismatch, native-load, module-missing, browser-missing, spawn errors, timeouts, crashes...).
 
 **Replay fixture**: `fixtures/premier-mirage.jsonl` — hand-written test data for replay mode without CS2.
@@ -373,12 +389,12 @@ spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_H
 
 3. **Signal agreement**: One strong number alone never flags a player. The worst tiers require two active signal families.
 
-4. **Friend finding from several imperfect sources**: The coplay list leaves out your friends, and nothing the Steam client gives a non-game process (server address, lobby, rich presence) says which match a friend is in. So the app combines what each setup allows, exact where it can be (`status` names), live where it can be (Steam's friends list over the debug port), and a marked guess otherwise (mini-profile). None needs injection: the app only reads a local port and a log file, and only ever asks the system to open `steam://open/friends`. Each source fails closed, exact sources always win over guesses, and the window says what would help when no source can find a friend whose slot is empty. See "Finding friends in the match".
+4. **Friend finding from several imperfect sources**: The coplay list leaves out your friends, and nothing the Steam client gives a non-game process (server address, lobby, rich presence) says which match a friend is in. So the app combines what each setup allows, exact where it can be (`status` names), live where it can be (Steam's friends list over the debug port), and a marked guess otherwise (mini-profile). None needs injection: the app only reads a local port and a log file, and the only `steam://` address it ever asks the system to open is `steam://open/friends`. Each source fails closed, exact sources always win over guesses, and the window says what would help when no source can find a friend whose slot is empty. See "Finding friends in the match".
 
-5. **csst.at fallback in a sidecar**: When Leetify's API returns "not found", the app fetches profiles from csst.at through Hero, which runs in a separate folder with its own Node 22 and its own `better-sqlite3` (see "Hero sidecar"). When it can't, the window says so and why.
+5. **csst.at fallback in a sidecar**: When Leetify's API returns "not found", the app fetches profiles from csst.at through Hero, which runs in a separate folder with its own Node 22 and its own `better-sqlite3` (see "csst.at fallback: the Hero sidecar"). When it can't, the window says so and why.
 
-6. **GSI config auto-write**: The app writes `gamestate_integration_cs2clean.cfg` into CS2's `cfg` folder on first start.
+6. **GSI config auto-write**: The app writes `gamestate_integration_cs2clean.cfg` into CS2's `cfg` folder at every start, when the file is missing or its content has changed (CS2 reads it only when it starts, so a CS2 that is already running needs one restart).
 
 7. **Process isolation**: Steam coplay reading runs in a separate utility process to prevent Steam client quirks from crashing the app.
 
-8. **Encrypted API key**: The Leetify API key is encrypted with the OS keychain (Windows DPAPI, Linux desktop keyring).
+8. **Encrypted API keys**: The Leetify and Steam Web API keys are encrypted with the OS keychain (Windows DPAPI, Linux desktop keyring), and stored as plain text only when none is available.

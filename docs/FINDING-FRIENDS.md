@@ -8,7 +8,7 @@ Steam's players list (Steam > View > Players) leaves out people who are already 
 
 | Option | Setup | Result |
 |--------|-------|--------|
-| **Do nothing** (Steam profile pages) | None | A guess. Friends that have public profiles and are playing the same map as you are added and marked "maybe", but Steam updates that information only every 10 minutes of the hour |
+| **Do nothing** (Steam profile pages) | None | A guess. Friends that have public profiles and are playing the same map as you are added and marked "maybe", but Steam updates that information only about every 10 minutes (on the hour, :10, :20 and so on) |
 | **The `status` command** *(recommended)* | One launch option, and a key to press during a match | Exact. Players are matched to your friends by name |
 | **Steam's debug port** *(advanced)* | Change how Steam starts | Live/automatic retrieval. Read the security note first |
 

@@ -20,6 +20,17 @@ npm start
 
 `npm run hero:install` sets up the csst.at fallback (see below). Skip it and the app still works; the window then says "csst.at fallback unavailable" and why.
 
+## Run modes
+
+`npm start` builds and runs the app against the real game (Steam's players list and CS2's game-state feed). The other modes are for development without CS2 or Steam data:
+
+```bash
+npm run start:replay                       # plays fixtures/premier-mirage.jsonl instead of a live match
+npm start -- --replay=path/to/file.jsonl   # plays a recording of your own
+npm run start:overwolf                     # Overwolf's CS2 events and overlay (needs Overwolf's approval for the app)
+npm run start:overwolf -- --record         # ...and saves what Overwolf reports to recordings/ in the app's data folder
+```
+
 ## The csst.at fallback
 
 The fallback uses a helper (the Hero sidecar, explained in [DESIGN.md](DESIGN.md)). `npm run hero:install` needs Node 22 itself: the Node that runs it if that is 22, otherwise the newest nvm `v22.x`, or the one `CS2CLEAN_NODE22` points at. It installs Hero with that Node and copies the Node next to it.
@@ -45,6 +56,9 @@ sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
 | `LEETIFY_API_KEY` | Your Leetify API key. A key saved in the app takes priority |
 | `STEAM_API_KEY` | Your Steam Web API key. A key saved in the app takes priority |
 | `CS2CLEAN_NODE22` | Points `npm run hero:install` at a Node 22 |
+| `CS2CLEAN_HERO_DIR` | Use this folder as the csst.at helper (it must contain `cli.js`). A wrong path is reported, not ignored |
+| `CS2CLEAN_DATA_DIR` | Where the helper keeps `hero.log`, its Chrome download and its `cat` shim when the app doesn't say (the app itself always uses its data folder) |
+| `CS2CLEAN_CSST_ORIGIN` | The address the helper reads csst.at from (default `https://csst.at`), for testing |
 
 ## UI development
 
@@ -55,7 +69,7 @@ npm run dev:ui
 ```
 
 Then open `http://localhost:5173` with query params:
-- `?screen=lobby|detail|player|nokey|waiting|problem|hint` — which screen to show (default: lobby)
+- `?screen=lobby|detail|player|nokey|waiting|community|problem|hint` — which screen to show (default: lobby)
 - `?fallback=off` — preview the window with the csst.at fallback unavailable
 
 ## Debug scripts

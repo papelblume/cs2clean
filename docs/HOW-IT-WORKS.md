@@ -40,7 +40,7 @@ This page is for anyone curious about what the app reads, what it sends, and whe
   - `api.steampowered.com`, only if you saved a Steam key. It sends the key and the SteamIDs of the lobby players, plus yours when you run `status`.
   - `steamcommunity.com` for the profile-page fallback and custom profile links.
   - `api.github.com` for the update check.
-- **Stays on your PC:** Steam's debug port and CS2's `console.log` are only read locally, and the only address the app opens is `steam://open/friends`.
+- **Stays on your PC:** Steam's debug port and CS2's `console.log` are only read locally, and the only thing the app asks Steam to open is `steam://open/friends`. Links you click (a player's Leetify profile, the pages for getting API keys, the releases page) open in your normal browser.
 
 ## Where settings are stored
 
