@@ -35,7 +35,7 @@ CS2Clean doesn't touch the game itself. In plain terms:
 
 - **No injection.** No code is injected into CS2, and nothing reads or changes its memory. The overlay is an ordinary transparent window kept on top of CS2.
 - **How it knows what's happening.** It uses Steam's players list and CS2's own *Game State Integration*, a feature Valve built into CS2 for apps like this. To use it, CS2Clean adds a small config file to CS2's `cfg` folder, and CS2 then sends basic match information (warm-up, live, the map) to the app on your own PC.
-- **What leaves your PC.** Lookups of the SteamIDs of the players in your lobby, sent to Leetify, to csst.at for players Leetify doesn't have, and to Steam's friends lookup if you want to see what players are queued together. Your API keys stay on your PC, encrypted with your system's keychain when one is available. Details: [How it works](docs/HOW-IT-WORKS.md#privacy).
+- **What leaves your PC.** Lookups of the SteamIDs of the players in your lobby, sent to Leetify, to csst.at for players Leetify doesn't have, and, only if you saved a Steam Web API key, to Steam's Web API to see which of them are friends. Your API keys stay on your PC, encrypted with your system's keychain when one is available. Details: [How it works](docs/HOW-IT-WORKS.md#privacy).
 
 ## Installation
 
@@ -43,9 +43,9 @@ Download the latest release from the [GitHub releases page](https://github.com/p
 
 ### Windows
 
-Run the installer (it installs just for you, needs no administrator rights, and adds Start menu and desktop shortcuts) or the portable `.exe` (nothing to install). Settings are stored in `%APPDATA%\CS2Clean`.
+Run the installer (it installs just for you, needs no administrator rights, and adds Start menu and desktop shortcuts) or the portable `.exe` (`CS2Clean-<version>-portable.exe`, nothing to install). Settings are stored in `%APPDATA%\CS2Clean`.
 
-**SmartScreen:** The installer is not yet code-signed. Windows will show "Windows protected your PC" — click **More info**, then **Run anyway**.
+**SmartScreen:** The installer and the portable `.exe` are not yet code-signed. Windows will show "Windows protected your PC" — click **More info**, then **Run anyway**.
 
 ### Linux
 
@@ -57,8 +57,9 @@ Run the installer (it installs just for you, needs no administrator rights, and 
    ```
 3. **tar.gz:** extract and run the binary inside:
    ```bash
-   tar -xzf CS2Clean-*.tar.gz
-   ./CS2Clean
+   tar -xzf cs2clean-*.tar.gz
+   cd cs2clean-*/
+   ./cs2clean
    ```
 
 You need native Steam running and signed in, and an X11 session (Wayland is untested). Settings are kept in `~/.config/CS2Clean`.
@@ -68,7 +69,7 @@ You need native Steam running and signed in, and an X11 session (Wayland is unte
 The same on Windows and Linux:
 
 1. Start Steam and sign in. CS2Clean reads the players in your match from it.
-2. Open CS2Clean. The first time, it adds a small config file (`gamestate_integration_cs2clean.cfg`) to CS2's `cfg` folder. That is how CS2 tells the app when warm-up starts and the match goes live.
+2. Open CS2Clean. When it starts, it adds a small config file (`gamestate_integration_cs2clean.cfg`) to CS2's `cfg` folder if that file is missing. That is how CS2 tells the app when warm-up starts and the match goes live.
 3. Paste your Leetify API key if you have one. It's optional (see [API keys](#api-keys)).
 4. If CS2 was already running, restart it once so it picks up the new config file. Run CS2 in **Fullscreen Windowed** mode (Settings > Video > Display Mode); the overlay can't show over plain Fullscreen.
 5. Join a match. The overlay appears during warm-up, hides itself when the match goes live, and can be re-opened using hotkeys.
@@ -146,13 +147,12 @@ Custom profile links (`steamcommunity.com/id/name`) work too.
 | A friend in your match is missing | The window says what would find them. See [Finding friends in your match](docs/FINDING-FRIENDS.md): run `status` in the console with CS2 launched with `-condebug`, or turn on Steam's debug port |
 | Steam's friends list window opens by itself | The app opens it when it needs it (see [Steam's debug port](docs/FINDING-FRIENDS.md#steams-debug-port-advanced)). Untick **Open Steam's friends list for me** in Settings to stop that |
 | A friend marked "maybe" isn't in your match | That comes from a Steam profile page that can be 10 minutes old. Use `status` in the console for exact results |
-| "Couldn't find CS2's folder" | The app can still read Steam's players list, but it won't know when warm-up starts or the match goes live. Install CS2 in a standard location. |
-| "CS2 is running as administrator" | Start CS2Clean as administrator too, or start CS2 without admin rights |
+| "Couldn't find CS2's folder" | The app can still read Steam's players list, but it won't know when warm-up starts or the match goes live. CS2Clean finds CS2 through Steam's library list, so any Steam library drive works, but it only looks for Steam in the usual places: the one in the Windows registry, or on Linux a native Steam in `~/.steam/debian-installation` or `~/.local/share/Steam` (Flatpak and Snap Steam aren't supported). |
 | Overlay not visible in CS2 | Make sure CS2 is in **Fullscreen Windowed** mode, not plain Fullscreen |
 | Leetify rate limits | Add a free Leetify API key (see [API keys](#api-keys)) |
 | "Setting up the csst.at fallback: downloading Chrome" | A one-time download (about 370 MB on disk) into the app's data folder, the first time a player isn't on Leetify. Lookups carry on meanwhile and the fallback works from the next one after it. |
 | "csst.at fallback unavailable" | The window gives the reason. Nothing else stops working: only players Leetify has no profile for can't be looked up on csst.at. Developers: see [the csst.at fallback](docs/DEVELOPMENT.md#the-csstat-fallback) |
-| `chrome-sandbox` error on Linux | See [Development](docs/DEVELOPMENT.md#linux-chrome-sandbox-error) |
+| `chrome-sandbox` error on Linux (common on Ubuntu 24.04 and derivatives) | See [Development](docs/DEVELOPMENT.md#linux-chrome-sandbox-error). For the tar.gz, run the same two commands on the `chrome-sandbox` file in the extracted folder |
 
 ## More documentation
 
@@ -165,7 +165,7 @@ Custom profile links (`steamcommunity.com/id/name`) work too.
 
 CS2Clean is a fork of [cheatscanner.eu](https://github.com/EspectroDK/cheatscanner.eu)'s companion app.
 
-Player data is provided by [Leetify](https://leetify.com). CS2Clean does not look at demos and makes no accusations — treat a flag as "worth a closer look", not as proof of cheating.
+Player data is provided by [Leetify](https://leetify.com), and by [csst.at](https://csst.at) for players Leetify has no profile for. CS2Clean does not look at demos and makes no accusations — treat a flag as "worth a closer look", not as proof of cheating.
 
 This project has been developed using AI tools - Claude Opus 5.5, Sonnet 5.5, Qwen3.6-35B, and gpt-oss-20b.
 

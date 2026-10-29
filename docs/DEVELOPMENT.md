@@ -49,6 +49,13 @@ sudo chown root:root node_modules/electron/dist/chrome-sandbox
 sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
 ```
 
+From the Linux tar.gz release, the file sits in the extracted folder instead:
+
+```bash
+sudo chown root:root cs2clean-*/chrome-sandbox
+sudo chmod 4755 cs2clean-*/chrome-sandbox
+```
+
 ## Environment variables
 
 | Variable | What it does |
