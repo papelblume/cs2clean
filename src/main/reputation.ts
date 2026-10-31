@@ -94,7 +94,8 @@ export const REPUTATION = {
      * Headshot KILLS (the share of kills that were headshots, csst.at's "HS kills"): a different metric from headAcc
      * (the share of shots that hit the head). Starts at the card's HIGH cut like the rest. Pro report: only 30 pros
      * have it (median 44.9, top 10% 59, top 1% 66, best 66.8), too few to move the range, so it is unchanged.
-     * csst.at data has no rank band, so there is nothing to shift it by.
+     * csst.at data has no rank band, so there is nothing to shift it by. csst.at also gives headAcc (its accuracy
+     * tooltip), so it scores both.
      */
     headKills: [58, 70],
   },

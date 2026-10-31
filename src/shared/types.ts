@@ -64,7 +64,7 @@ export interface PlayerMetrics {
   preaim: number | null;
   /** stats.reaction_time_ms, shown as "Time to damage". */
   reactionMs: number | null;
-  /** stats.accuracy_head: the share of shots that hit the head. Leetify API data only. */
+  /** stats.accuracy_head: the share of shots that hit the head. From the Leetify API, and from the "Head" figure in csst.at's accuracy tooltip. */
   headAccuracy: number | null;
   /** The share of kills that were headshots (csst.at's "HS kills"). A different metric from headAccuracy; csst.at data only. */
   headshotKills: number | null;

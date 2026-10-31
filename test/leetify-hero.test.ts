@@ -121,7 +121,14 @@ describe("parseCsstAtHtml", () => {
     const profile = parseCsstAtHtml(EXAMPLE_HTML, STEAM_ID);
     // Percent (0-100), not fraction. stats.accuracy_head is the share of SHOTS that hit the head: a different metric.
     expect(profile?.stats?.headshot_kill_percentage).toBe(31.8);
-    expect(profile?.stats?.accuracy_head ?? null).toBeNull();
+    expect(profile?.stats?.accuracy_head).not.toBe(31.8);
+  });
+
+  it("extracts head and spotted accuracy from the accuracy tooltip, apart from HS kills", () => {
+    const profile = parseCsstAtHtml(EXAMPLE_HTML, STEAM_ID);
+    expect(profile?.stats?.accuracy_head).toBe(10.8);
+    expect(profile?.stats?.accuracy_enemy_spotted).toBe(33.6);
+    expect(profile?.stats?.headshot_kill_percentage).toBe(31.8);
   });
 
   it("extracts accuracy percentage", () => {

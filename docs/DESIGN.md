@@ -216,8 +216,11 @@ Pure JS function that parses csst.at's HTMX HTML response into a `LeetifyProfile
 its only caller is the Hero sidecar's CLI (`leetify-hero-cli.ts`), which is bundled into `cli.js` and runs under a
 different Node. The main process just re-exports it from `leetify-hero.ts` (that is how the tests import it). Extracts aim, utility,
 rating, preaim, reaction time, headshot kills (csst.at's "HS kills", the share of kills that were headshots: not the
-API's headshot accuracy, so it goes into `stats.headshot_kill_percentage`, is shown as "Headshot kills" and scored on its own range),
+API's headshot accuracy, so it goes into `stats.headshot_kill_percentage` and is scored on its own range),
 spray accuracy, counter-strafing ratio, and total games from the HTML by matching element IDs like `leetify-aim-{steamId}`.
+The accuracy element's tooltip (`Spotted enemy: 29.9% / Head: 15.6%`) gives `stats.accuracy_enemy_spotted` and `stats.accuracy_head`,
+found by label; with them the card shows "Headshot accuracy" (headshot kills only when there is no accuracy) and the reputation can
+use head accuracy, spotted accuracy and the "moving" check for csst.at players too.
 It reads each element's visible text only (tags and their attributes dropped, nested elements of the same name skipped) and takes
 the last number in it. That matters because csst.at wraps aim, preaim and time to damage in a "compare with pros" button that holds an
 icon (`stroke-width="1.75"`) and a `data-pro-distribution` attribute full of numbers; reading those as stats gave 1.75 for all three.

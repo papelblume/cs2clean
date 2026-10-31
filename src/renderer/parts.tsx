@@ -100,8 +100,9 @@ export function hsKillsLevel(pct: number | null | undefined): string {
 }
 
 /**
- * The headshot row of a card. Leetify's API knows the share of shots that hit the head ("Headshot accuracy"), csst.at
- * the share of kills that were headshots ("Headshot kills"): two metrics, each with its own label and tiers.
+ * The headshot row of a card: the share of shots that hit the head ("Headshot accuracy", from Leetify's API and from
+ * csst.at's accuracy tooltip), or when that is missing the share of kills that were headshots ("Headshot kills", csst.at's
+ * "HS kills"): two metrics, each with its own label and tiers.
  */
 export function headshotFact(m: PlayerMetrics): { label: string; value: string; level: string } {
   if (m.headAccuracy == null && m.headshotKills != null)

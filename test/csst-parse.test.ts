@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { metricsOf } from "../src/main/assess";
 import { parseCsstAtHtml } from "../src/main/csst-parse";
+import { assessReputation } from "../src/main/reputation";
+import { headshotFact } from "../src/renderer/parts";
 
 const ID = "76561198005725470";
 
@@ -24,6 +27,8 @@ describe("parseCsstAtHtml: the current csst.at page", () => {
         preaim: 8.58,
         reaction_time_ms: 585,
         headshot_kill_percentage: 41.4,
+        accuracy_head: 15.6,
+        accuracy_enemy_spotted: 29.9,
         spray_accuracy: 17.7,
         counter_strafing_good_shots_ratio: 69.6,
       },
@@ -37,6 +42,23 @@ describe("parseCsstAtHtml: the current csst.at page", () => {
 
   it("finds nothing for a different player's id", () => {
     expect(parseCsstAtHtml(PAGE, "76561198715645651")).toBeNull();
+  });
+});
+
+describe("a csst.at profile in the app", () => {
+  const profile = () => parseCsstAtHtml(PAGE, ID)!;
+
+  it("has head and spotted accuracy for the card, and still its headshot kills", () => {
+    expect(metricsOf(profile())).toMatchObject({ headAccuracy: 15.6, spottedAccuracy: 29.9, headshotKills: 41.4 });
+  });
+
+  it("shows headshot accuracy on the card, and keeps headshot kills for the scoring", () => {
+    expect(headshotFact(metricsOf(profile()))).toEqual({ label: "Headshot accuracy", value: "15.6%", level: "LOW" });
+  });
+
+  it("gives the reputation the checks that need them: head accuracy, spotted accuracy and moving", () => {
+    const ids = assessReputation(profile()).trace?.signals.map((s) => s.id) ?? [];
+    for (const id of ["headAcc", "spottedAcc", "moving", "headKills"]) expect(ids).toContain(id);
   });
 });
 
@@ -68,6 +90,30 @@ describe("parseCsstAtHtml: reading an element's text", () => {
 
   it("takes the last percentage of the text", () => {
     expect(parseCsstAtHtml(p("accuracy", "Accuracy <span>17.7%</span>"), ID)?.stats?.spray_accuracy).toBe(17.7);
+  });
+
+  describe("the accuracy tooltip", () => {
+    const accuracy = (tip: string) => `<div id="leetify-accuracy-${ID}"><p>Accuracy</p><p class="tooltip" data-tip="${tip}">17.7%</p></div>`;
+    const stats = (tip: string) => parseCsstAtHtml(accuracy(tip), ID)!.stats!;
+
+    it("gives head and spotted accuracy as their own stats, apart from the main accuracy figure", () => {
+      expect(stats("Spotted enemy: 29.9% / Head: 15.6%")).toMatchObject({ accuracy_enemy_spotted: 29.9, accuracy_head: 15.6, spray_accuracy: 17.7 });
+    });
+
+    it("finds each by its label, in whatever order", () => {
+      expect(stats("Head: 15.6% / Spotted enemy: 29.9%")).toMatchObject({ accuracy_enemy_spotted: 29.9, accuracy_head: 15.6 });
+    });
+
+    it("takes one when the other is missing, and neither without a tooltip", () => {
+      expect(stats("Head: 15.6%")).toMatchObject({ accuracy_head: 15.6, accuracy_enemy_spotted: null });
+      expect(stats("Spotted enemy: 29.9%")).toMatchObject({ accuracy_head: null, accuracy_enemy_spotted: 29.9 });
+      const bare = parseCsstAtHtml(`<div id="leetify-accuracy-${ID}"><p>Accuracy</p><p>17.7%</p></div>`, ID)!.stats!;
+      expect(bare).toMatchObject({ accuracy_head: null, accuracy_enemy_spotted: null, spray_accuracy: 17.7 });
+    });
+
+    it("doesn't mistake a longer label for Head", () => {
+      expect(stats("Headshot: 41.4% / Spotted enemy: 29.9%")).toMatchObject({ accuracy_head: null, accuracy_enemy_spotted: 29.9 });
+    });
   });
 
   it("leaves a blank element empty and keeps the others", () => {
