@@ -5,6 +5,39 @@
 
 import type { LeetifyProfile } from "./leetify";
 
+/** The inside of a tag, up to its closing ">" (a ">" inside a quoted attribute value doesn't end it). */
+const TAG_BODY = `(?:[^>"']|"[^"]*"|'[^']*')*`;
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The visible text of the element with this id: its tags and their attributes are dropped, so a number that is markup
+ * rather than a stat is never read as one (csst.at wraps some stats in a "compare with pros" button that holds an icon
+ * with `stroke-width="1.75"` and a data-pro-distribution attribute full of numbers). Elements of the same name inside
+ * it are skipped when looking for where it ends. null when there is no such element.
+ */
+function textOf(html: string, id: string): string | null {
+  const open = new RegExp(`<([A-Za-z][\\w-]*)\\b${TAG_BODY}\\bid="${escapeRegExp(id)}"${TAG_BODY}>`).exec(html);
+  if (!open) return null;
+  const tag = open[1];
+  const start = open.index + open[0].length;
+  const sameTag = new RegExp(`<(/?)${tag}\\b${TAG_BODY}>`, "gi");
+  sameTag.lastIndex = start;
+  let depth = 1;
+  for (let m = sameTag.exec(html); m; m = sameTag.exec(html)) {
+    if (m[1]) depth--;
+    else if (!m[0].endsWith("/>")) depth++;
+    if (depth === 0) {
+      return html
+        .slice(start, m.index)
+        .replace(new RegExp(`<${TAG_BODY}>`, "g"), " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+  }
+  return null;
+}
+
 /**
  * Parse csst.at HTMX HTML response into a LeetifyProfile.
  * Pure JS function — no native dependencies, works in any Node version.
@@ -12,42 +45,22 @@ import type { LeetifyProfile } from "./leetify";
 export function parseCsstAtHtml(html: string, steamId: string): LeetifyProfile | null {
   if (!html || !steamId) return null;
 
+  const textFor = (key: string) => textOf(html, `leetify-${key}-${steamId}`);
+
+  /** The last number of the element's text ("585ms" is 585, "8.58°" is 8.58). */
   const getValue = (key: string): number | null => {
-    const openRegex = new RegExp(`<\\w+\\b[^>]*id="leetify-${key}-${steamId}"[^>]*>`, "s");
-    const openMatch = openRegex.exec(html);
-    if (!openMatch) return null;
-    const tagName = openMatch[0].match(/^<(\w+)/)?.[1] ?? "div";
-    const closeRegex = new RegExp(`</${tagName}>`, "s");
-    const afterOpen = html.slice(openMatch.index + openMatch[0].length);
-    const closeMatch = closeRegex.exec(afterOpen);
-    if (!closeMatch) return null;
-    const content = afterOpen.slice(0, closeMatch.index);
-    const numbers = content.match(/([-+]?\d*\.?\d+)/g);
-    if (!numbers || numbers.length === 0) return null;
-    return parseFloat(numbers[numbers.length - 1]);
+    const numbers = textFor(key)?.match(/[-+]?\d*\.?\d+/g);
+    return numbers?.length ? parseFloat(numbers[numbers.length - 1]) : null;
   };
 
+  /** The last percentage of the element's text ("HS kills 41.4%" is 41.4). */
   const getPercent = (key: string): number | null => {
-    const openRegex = new RegExp(`<\\w+\\b[^>]*id="leetify-${key}-${steamId}"[^>]*>`, "s");
-    const openMatch = openRegex.exec(html);
-    if (!openMatch) return null;
-    const tagName = openMatch[0].match(/^<(\w+)/)?.[1] ?? "div";
-    const closeRegex = new RegExp(`</${tagName}>`, "s");
-    const afterOpen = html.slice(openMatch.index + openMatch[0].length);
-    const closeMatch = closeRegex.exec(afterOpen);
-    if (!closeMatch) return null;
-    const content = afterOpen.slice(0, closeMatch.index);
-    const allPcts = content.match(/([\d.]+)%/g);
-    if (!allPcts || allPcts.length === 0) return null;
-    const lastPct = allPcts[allPcts.length - 1];
-    return parseFloat(lastPct.replace("%", ""));
+    const pcts = textFor(key)?.match(/[\d.]+%/g);
+    return pcts?.length ? parseFloat(pcts[pcts.length - 1]) : null;
   };
 
   const getGames = (): number | null => {
-    const regex = new RegExp(`id="leetify-games-${steamId}"[^>]*>([\\s\\S]*?)</`);
-    const m = regex.exec(html);
-    if (!m) return null;
-    const n = parseInt(m[1].trim(), 10);
+    const n = parseInt(textFor("games") ?? "", 10);
     return Number.isFinite(n) ? n : null;
   };
 

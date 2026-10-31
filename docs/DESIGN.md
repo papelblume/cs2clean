@@ -218,6 +218,11 @@ different Node. The main process just re-exports it from `leetify-hero.ts` (that
 rating, preaim, reaction time, headshot kills (csst.at's "HS kills", the share of kills that were headshots: not the
 API's headshot accuracy, so it goes into `stats.headshot_kill_percentage`, is shown as "Headshot kills" and scored on its own range),
 spray accuracy, counter-strafing ratio, and total games from the HTML by matching element IDs like `leetify-aim-{steamId}`.
+It reads each element's visible text only (tags and their attributes dropped, nested elements of the same name skipped) and takes
+the last number in it. That matters because csst.at wraps aim, preaim and time to damage in a "compare with pros" button that holds an
+icon (`stroke-width="1.75"`) and a `data-pro-distribution` attribute full of numbers; reading those as stats gave 1.75 for all three.
+`fixtures/csst-leetify-extra.html` is a copy of a real answer (the pro lists in those attributes cut short): drop a fresh one in when
+csst.at changes its markup and run `test/csst-parse.test.ts`.
 The profile is marked `source: "csst.at"`: csst.at shows at most the last 30 matches, so assess.ts counts 30 matches there
 as a full sample (50 for the API). csst.at sends no positioning rating, so the reputation's `lopsided` signal compares the
 aim rating with utility alone (against a range moved up by 5 points, because one rating varies more than the mean of two).
