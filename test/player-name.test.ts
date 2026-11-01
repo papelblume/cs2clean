@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { lookupPlayerName } from "../src/main/steam/player-name";
 
-const ID = "76561198005725470"; // account 45459742
+const ID = "76561198000000001"; // account 39734273
 const API = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/";
-const MINI = "https://steamcommunity.com/miniprofile/45459742";
+const MINI = "https://steamcommunity.com/miniprofile/39734273";
 
 const page = (name: string) => `<div class="miniprofile_playersection"><div class="playersection_content"><span class="persona offline">${name}</span></div></div>`;
 const summaries = (...players: { steamid: string; personaname?: unknown }[]) => JSON.stringify({ response: { players } });
@@ -33,7 +33,7 @@ describe("the name of a player added by hand", () => {
   });
 
   it("is the one for this player, whatever else Steam sends", async () => {
-    const { fetchImpl } = fakeSteam({ [API]: ok(summaries({ steamid: "76561198000000001", personaname: "Someone else" }, { steamid: ID, personaname: "Right One" })) });
+    const { fetchImpl } = fakeSteam({ [API]: ok(summaries({ steamid: "76561198000000002", personaname: "Someone else" }, { steamid: ID, personaname: "Right One" })) });
     expect(await lookupPlayerName(ID, "k", fetchImpl)).toBe("Right One");
   });
 

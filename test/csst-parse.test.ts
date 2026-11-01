@@ -6,7 +6,7 @@ import { parseCsstAtHtml } from "../src/main/csst-parse";
 import { assessReputation } from "../src/main/reputation";
 import { headshotFact } from "../src/renderer/parts";
 
-const ID = "76561198005725470";
+const ID = "76561198000000001";
 
 /**
  * csst.at's answer for one player (2026-10-31). Aim, preaim and time to damage are "compare with pros" buttons: each

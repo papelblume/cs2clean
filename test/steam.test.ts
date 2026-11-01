@@ -414,7 +414,7 @@ describe("our own Steam ID and whether CS2 runs", () => {
 	"76561198000000002"
 	{
 		"AccountName"		"me"
-		"PersonaName"		"[-jesus-]"
+		"PersonaName"		"PlayerName"
 		"MostRecent"		"1"
 		"Timestamp"		"1700000000"
 	}

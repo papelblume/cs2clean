@@ -9,7 +9,7 @@ const PAGE = `<div class="miniprofile_gamesection"><span class="miniprofile_game
 
 describe("the mini-profile page", () => {
   it("turns a SteamID64 into the account ID in its address", () => {
-    expect(accountId("76561198005725470")).toBe("45459742");
+    expect(accountId("76561198000000001")).toBe("39734273");
     expect(accountId("76561199003266924")).toBe("1043001196");
     expect(accountId("123")).toBeNull();
     expect(accountId("76561197960265728")).toBeNull();
@@ -95,7 +95,7 @@ describe("picking friends from their lines", () => {
 });
 
 describe("looking lines up", () => {
-  const ME = "76561198005725470";
+  const ME = "76561198000000001";
   function setup(respond: (url: string) => { status: number; body?: string } | Error) {
     let t = 1_000_000;
     const urls: string[] = [];
@@ -113,7 +113,7 @@ describe("looking lines up", () => {
     const { mini, urls, advance } = setup(() => ({ status: 200, body: PAGE }));
     const [a, b] = await Promise.all([mini.get(ME), mini.get(ME)]);
     expect([a, b]).toEqual(["Premier - Inferno [ 0 : 2 ]", "Premier - Inferno [ 0 : 2 ]"]);
-    expect(urls).toEqual(["https://steamcommunity.com/miniprofile/45459742"]);
+    expect(urls).toEqual(["https://steamcommunity.com/miniprofile/39734273"]);
     advance(59_000);
     await mini.get(ME);
     expect(urls).toHaveLength(1);
