@@ -42,6 +42,11 @@ export abstract class GameSource extends EventEmitter<GameSourceEvents> {
     return "unsupported";
   }
 
+  /** Puts a name on a player added by hand once it is known (they are added as "Unknown player"); false when nothing changed. */
+  setPlayerName(_steamId: string, _name: string): boolean {
+    return false;
+  }
+
   /** Takes a player added by hand off again; false when there was none by that ID. */
   removePlayer(_steamId: string): boolean {
     return false;

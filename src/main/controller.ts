@@ -13,6 +13,7 @@ import type { GameSource } from "./game/source";
 import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
 import { LobbyService, type LobbyAnswer, type LobbyOptions } from "./lobby";
 import { validateSteamKey } from "./steam/friends";
+import { lookupPlayerName } from "./steam/player-name";
 import { resolveVanity } from "./steam/vanity";
 import type { UpdateResult } from "./update-checker";
 
@@ -61,6 +62,8 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   private settings: Settings;
   /** Players the siren already went off for, in the current match. */
   private alerted = new Set<string>();
+  /** True from stop() until the next start(): a name that turns up after that has nowhere to go. */
+  private stopped = false;
   /** Where each player's data in the current match came from; players without data have no entry. */
   private sources = new Map<string, DataSource>();
   /** The lobby as last announced (null: none); told apart from a new match by isSameMatch. */
@@ -93,6 +96,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   }
 
   start(): void {
+    this.stopped = false;
     this.startHotkeys();
     const src = this.deps.source;
     src.on("running", (running) => this.update({ game: { ...this.state.game, running } }));
@@ -103,6 +107,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   }
 
   stop(): void {
+    this.stopped = true;
     this.deps.source.stop();
     this.lobby.dispose();
   }
@@ -374,6 +379,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const result = this.deps.source.addPlayer(steamId);
     if (result === "added") {
       this.update({ notice: null });
+      void this.nameAddedPlayer(steamId);
       return true;
     }
     this.update({ notice: {
@@ -382,6 +388,17 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
       unsupported: "This game source can't add players by hand.",
     }[result] });
     return false;
+  }
+
+  /**
+   * Gives a player added by hand their Steam name: their row says "Unknown player" until it arrives. From the Steam Web API
+   * when there is a key, else from Steam's mini-profile page (steam/player-name.ts). The row keeps "Unknown player" when
+   * neither knows them; a player taken off the list meanwhile is simply not there to name.
+   */
+  private async nameAddedPlayer(steamId: string): Promise<void> {
+    const key = this.settings.steamApiKey || this.deps.steamApiKey || null;
+    const name = await lookupPlayerName(steamId, key, this.deps.fetchImpl).catch(() => null);
+    if (name && !this.stopped) this.deps.source.setPlayerName(steamId, name);
   }
 
   /** Takes a player added by hand off the list. */

@@ -19,6 +19,10 @@ vi.mock("../src/main/steam/friends", () => steam);
 const vanity = vi.hoisted(() => ({ resolveVanity: vi.fn(async (_name: string, _key: string | null, _f?: unknown): Promise<unknown> => ({ ok: true, steamId: "76561198000000009" })) }));
 vi.mock("../src/main/steam/vanity", () => vanity);
 
+// Looking the name of a player added by hand up at Steam (the network part of naming them).
+const playerName = vi.hoisted(() => ({ lookupPlayerName: vi.fn(async (_steamId: string, _key: string | null, _f?: unknown): Promise<string | null> => null) }));
+vi.mock("../src/main/steam/player-name", () => playerName);
+
 /** A fake Leetify public API: profiles by SteamID64 (default: an average player), and the one key it accepts. */
 function fakeLeetify() {
   const s = { lookups: [] as string[], keys: [] as (string | null)[], goodKey: "good-key" as string | null, requireKey: false,
@@ -712,9 +716,14 @@ describe("Controller", () => {
       added: string[] = [];
       result: AddPlayerResult = "added";
       removed: string[] = [];
+      named: [string, string][] = [];
       addPlayer(steamId: string): AddPlayerResult {
         this.added.push(steamId);
         return this.result;
+      }
+      setPlayerName(steamId: string, name: string): boolean {
+        this.named.push([steamId, name]);
+        return true;
       }
       removePlayer(steamId: string): boolean {
         this.removed.push(steamId);
@@ -775,6 +784,95 @@ describe("Controller", () => {
       expect(c.state.notice).toMatch(/SteamID64 instead/);
       expect(src.added).toEqual(["76561198000000009"]); // nothing was added by the failures
       c.stop();
+    });
+
+    describe("naming them", () => {
+      beforeEach(() => playerName.lookupPlayerName.mockReset().mockResolvedValue(null));
+      const lastLookup = () => playerName.lookupPlayerName.mock.calls.at(-1)?.slice(0, 2);
+
+      it("looks the name up with the Steam key when there is one, and puts it on the player", async () => {
+        const src = new ManualSource();
+        const { c } = setup({ steamApiKey: "steam-key" }, src);
+        c.start();
+        playerName.lookupPlayerName.mockResolvedValueOnce("Some Name");
+        expect(await c.addPlayer(ID)).toBe(true); // doesn't wait for the name
+        await vi.advanceTimersByTimeAsync(10);
+        expect(lastLookup()).toEqual([ID, "steam-key"]);
+        expect(src.named).toEqual([[ID, "Some Name"]]);
+        c.stop();
+      });
+
+      it("asks without a key when there is none, which is the mini-profile page's cue", async () => {
+        const src = new ManualSource();
+        const { c } = setup({}, src);
+        c.start();
+        await c.addPlayer(ID);
+        await vi.advanceTimersByTimeAsync(10);
+        expect(lastLookup()).toEqual([ID, null]);
+        c.stop();
+      });
+
+      it("uses a Steam key from the environment too", async () => {
+        const src = new ManualSource();
+        const { c } = setup({}, src, { steamApiKey: "env-key" });
+        c.start();
+        await c.addPlayer(ID);
+        await vi.advanceTimersByTimeAsync(10);
+        expect(lastLookup()).toEqual([ID, "env-key"]);
+        c.stop();
+      });
+
+      it("names a player added by profile link by the ID the link turned out to be", async () => {
+        const src = new ManualSource();
+        const { c } = setup({}, src);
+        c.start();
+        playerName.lookupPlayerName.mockResolvedValueOnce("Linked Name");
+        await c.addPlayer("https://steamcommunity.com/id/some_name");
+        await vi.advanceTimersByTimeAsync(10);
+        expect(src.named).toEqual([["76561198000000009", "Linked Name"]]);
+        c.stop();
+      });
+
+      it("leaves the name alone when Steam can't say, or the lookup fails", async () => {
+        const src = new ManualSource();
+        const { c } = setup({}, src);
+        c.start();
+        await c.addPlayer(ID); // null by default
+        playerName.lookupPlayerName.mockRejectedValueOnce(new Error("boom"));
+        await c.addPlayer(ID);
+        await vi.advanceTimersByTimeAsync(10);
+        expect(playerName.lookupPlayerName).toHaveBeenCalledTimes(2);
+        expect(src.named).toEqual([]);
+        expect(c.state.notice).toBeNull();
+        c.stop();
+      });
+
+      it("doesn't look for a name when nobody was added", async () => {
+        const src = new ManualSource();
+        const { c } = setup({}, src);
+        c.start();
+        await c.addPlayer("not a player");
+        for (const result of ["duplicate", "full", "unsupported"] as const) {
+          src.result = result;
+          await c.addPlayer(ID);
+        }
+        await vi.advanceTimersByTimeAsync(10);
+        expect(playerName.lookupPlayerName).not.toHaveBeenCalled();
+        c.stop();
+      });
+
+      it("drops a name that arrives after the controller was stopped", async () => {
+        const src = new ManualSource();
+        const { c } = setup({}, src);
+        c.start();
+        let arrive!: (name: string) => void;
+        playerName.lookupPlayerName.mockReturnValueOnce(new Promise<string>((r) => (arrive = r)));
+        await c.addPlayer(ID);
+        c.stop();
+        arrive("Late Name");
+        await vi.advanceTimersByTimeAsync(10);
+        expect(src.named).toEqual([]);
+      });
     });
 
     it("lists added players with no match behind them as a list of their own: no match, no overlay, no siren", async () => {

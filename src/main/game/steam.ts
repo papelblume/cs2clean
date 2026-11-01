@@ -268,6 +268,15 @@ export class SteamSource extends GameSource {
     return "added";
   }
 
+  /** Gives a player added by hand their name when it turns up. False when they are gone from the list or already have it. */
+  setPlayerName(steamId: string, name: string): boolean {
+    const player = this.manual.find((p) => p.steamId === steamId);
+    if (!player || player.name === name) return false;
+    player.name = name;
+    this.scheduleMatch();
+    return true;
+  }
+
   removePlayer(steamId: string): boolean {
     const before = this.manual.length;
     this.manual = this.manual.filter((p) => p.steamId !== steamId);

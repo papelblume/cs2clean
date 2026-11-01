@@ -116,6 +116,7 @@ Everything works without one. A Steam Web API key adds:
 - **Friend badges:** shows which players in your lobby are friends on Steam
 - **Find your own friends if using the `status` console command:** matches the names the `status` command prints to every friend of yours, including ones who appear offline (your friends list must be public). See [Finding friends in your match](docs/FINDING-FRIENDS.md#the-status-command-recommended)
 - **Custom profile links:** lets *Check a player* use `steamcommunity.com/id/name` links (without a key, the app reads the profile page instead)
+- **Names of players you add by hand:** looked up with your key (without one, the app reads the player's public mini-profile page instead)
 
 To set it up:
 
@@ -136,6 +137,7 @@ CS2 only tells Steam who is in a matchmaking match. On a community server or an 
 
 You can still check anyone you spot, with or without a match. Paste their **SteamID64**, **SteamID2/3** (like `STEAM_0:1:123…` or `[U:1:…]`) or a **Steam or Leetify profile link** into *Check a player* in the desktop window.
 
+- They show their Steam name, which arrives a moment after you add them (until then, and if Steam can't say, the row reads *Unknown player*).
 - They are looked up like any other player. In a match they join the list, on top of the 10 players a lobby has, with overlay cards and the siren. With no match they are listed on their own under *Checked players*.
 - You can have up to 5 at a time.
 - They go when the match's players do (a new map, CS2 closing) or when you click the trashcan icon next to them.

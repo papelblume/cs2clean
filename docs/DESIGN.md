@@ -90,6 +90,7 @@ abstract class GameSource extends EventEmitter<GameSourceEvents> {
   abstract stop(): void;
   refresh(): void;                               // ask for fresh data now; sources that are pushed to ignore it
   addPlayer(steamId: string): AddPlayerResult;   // "added" | "duplicate" | "full" | "unsupported" (only the Steam source adds players)
+  setPlayerName(steamId: string, name: string): boolean; // puts a name on a player added by hand once it is known
   removePlayer(steamId: string): boolean;        // takes a player added by hand off again
 }
 
@@ -149,6 +150,8 @@ Steam's coplay list leaves out people who are already your friends. What was tri
 **`status`** (`console-log.ts`, `name-match.ts`, `friend-names.ts`). `LogTailer` polls the file every 250 ms, starts at its end (a file that appears later is read from its start), and copes with truncation, replacement, CRLF, half-written lines and characters split across reads. `StatusParser` reads the block `status` prints (`---------players--------` ... `#end`), skipping bots and `[NoChan]` slots; it carries names, not Steam IDs, so the names are matched to friends: the ones Steam says are in CS2 (with names, from `coplay.ts`) plus, with a key, all friends from the Web API (`GetFriendList` + `GetPlayerSummaries`, batches of 100, cached 5 minutes, a failure remembered as long). A name counts only when it fits exactly one friend and one lobby entry; players the app already has, and the user, use up lobby entries first, so a stranger and a friend with the same name aren't mixed up. Lists are accepted only while in a match, an arriving list triggers a scan at once (or right after the one running), and matched friends stay for the match.
 
 **Mini-profile** (`miniprofile.ts`). A friend's rich presence from `steamcommunity.com/miniprofile/<account id>`, which anyone can read. It is a fallback because the page refreshes only about every 10 minutes: only map and mode are used (never the score), friends on our map in a mode that can be ours are added only if they all fit the empty slots (otherwise none: the lines are too old to tell who is in this match), they are marked `via: "profile"` (a "maybe" badge), and they are worked out afresh each scan. Lookups are cached for 2 minutes, share a request in flight, and back off for 5 minutes after a 429 or a Steam error. Up to 12 friends per scan.
+
+The same page also names a player added by hand when there is no Steam key (`parseMiniprofileName`, the element with the class `persona`): see "Check a player" below.
 
 **Roster** (`game/steam.ts`). The players we are sure of come first: the players list, then `status` friends, then friends-list friends, each friend once, up to the mode's size (a friend both of the last two find counts as a `status` friend). The mini-profile's guesses come after, and never count towards the match being complete or take a slot from an exact source.
 
@@ -289,7 +292,7 @@ Transparent, click-through window on top of CS2:
 Full-featured window for setup and monitoring:
 - API key cards: the Leetify key (checked with Leetify before it is saved) and the optional Steam Web API key
 - Lobby list with player details, and a note when Steam lists no players (community server or offline match)
-- "Check a player" form (Steam source): add up to 5 players by SteamID64, SteamID2/3 or a Steam or Leetify profile link
+- "Check a player" form (Steam source): add up to 5 players by SteamID64, SteamID2/3 or a Steam or Leetify profile link. They are added as "Unknown player" and named a moment later (`Controller.addPlayer` → `steam/player-name.ts`): from the Steam Web API's GetPlayerSummaries when a key is saved, else from Steam's mini-profile page; the mini-profile page also stands in when the API can't be reached or turns the key down, but not when the API answers that Steam has no such player. The name goes onto the row through `GameSource.setPlayerName`, which republishes the match. A player who is taken off the list meanwhile, or a controller that has stopped, just drops the name. Neither source knowing them leaves "Unknown player" (a row still shows Leetify's name for them).
 - Settings panel (the four hotkeys, siren toggle and test, start with Windows, open Steam's friends list automatically, check for updates)
 - Leetify status indicator
 - csst.at fallback status: shown only when it can't be used, with the reason
@@ -390,7 +393,7 @@ npm run typecheck  # TypeScript type checking
 `CS2CLEAN_HERO_DIR` to `/nonexistent/...` so tests that reach the fallback get a fast "no-runtime" status instead of
 spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_HERO_DIR` to a stub of their own.
 
-**Test coverage**: controller, assess, reputation, leetify, hotkeys, lobby, and the Steam source and friend finding: `steam.test.ts`, `steam-ui.test.ts`, `capabilities.test.ts`, `friends-window.test.ts`, `console-log.test.ts`, `name-match.test.ts`, `friend-names.test.ts`, `status-friends.test.ts`, `miniprofile.test.ts` and `profile-friends.test.ts`, among others. Run `npm test` for the current count.
+**Test coverage**: controller, assess, reputation, leetify, hotkeys, lobby, and the Steam source and friend finding: `steam.test.ts`, `steam-ui.test.ts`, `capabilities.test.ts`, `friends-window.test.ts`, `console-log.test.ts`, `name-match.test.ts`, `friend-names.test.ts`, `status-friends.test.ts`, `miniprofile.test.ts`, `player-name.test.ts` and `profile-friends.test.ts`, among others. Run `npm test` for the current count.
 
 **Hero sidecar tests**: `test/hero-sidecar.test.ts` covers `classifyHeroFailure` and all failure modes
 (abi-mismatch, native-load, module-missing, browser-missing, spawn errors, timeouts, crashes...).

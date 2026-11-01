@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FriendInGame } from "../src/main/steam/coplay";
 import {
-  MiniprofileStatus, accountId, matchProfileFriends, modeCompatible, normalizeMap, parseMiniprofile, parseStatus, type MiniFetch,
+  MiniprofileStatus, accountId, matchProfileFriends, modeCompatible, normalizeMap, parseMiniprofile, parseMiniprofileName, parseStatus, type MiniFetch,
 } from "../src/main/steam/miniprofile";
 
 const PAGE = `<div class="miniprofile_gamesection"><span class="miniprofile_game_name">Counter-Strike 2</span>
@@ -19,6 +19,22 @@ describe("the mini-profile page", () => {
     expect(parseMiniprofile(PAGE)).toEqual({ game: "Counter-Strike 2", status: "Premier - Inferno [ 0 : 2 ]" });
     expect(parseMiniprofile("<div>Currently Offline</div>")).toEqual({ game: null, status: null });
     expect(parseMiniprofile('<span class="rich_presence">Casual - Dust II &amp; more</span>').status).toBe("Casual - Dust II & more");
+  });
+
+  it("gives the player's name out of the page, whatever their state", () => {
+    for (const state of ["online", "offline", "in-game"])
+      expect(parseMiniprofileName(`<div class="playersection_content"><span class="persona ${state}">Some Name</span></div>`)).toBe("Some Name");
+  });
+
+  it("decodes the name's entities and trims it", () => {
+    expect(parseMiniprofileName(`<span class="persona online">  Tom &amp; Jerry &#9731; &quot;x&quot;  </span>`)).toBe("Tom & Jerry \u2603 \"x\"");
+  });
+
+  it("takes only the element whose class is persona, and is null when there is none or it is empty", () => {
+    expect(parseMiniprofileName(`<span class="persona_name_text_content">Not it</span><span class="friendPlayerLevel">42</span>`)).toBeNull();
+    expect(parseMiniprofileName(`<span class="persona offline">   </span>`)).toBeNull();
+    expect(parseMiniprofileName(PAGE)).toBeNull(); // a page with a game and a status but no name
+    expect(parseMiniprofileName("")).toBeNull();
   });
 
   it("splits a line into mode, map and score", () => {

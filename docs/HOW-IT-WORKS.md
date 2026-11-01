@@ -22,7 +22,7 @@ This page is for anyone curious about what the app reads, what it sends, and whe
 | **Steam's friends list** *(optional)* | Steam's players list leaves out your friends. With Steam's debug port on, the app reads the status line Steam's friends list shows for each friend ("Competitive - Office [ 5 : 0 ]", read-only, over a local port) and adds friends whose line equals yours. |
 | **CS2's `console.log`** *(optional)* | With CS2 launched with `-condebug`, the player list the `status` command prints in the CS2 console (read-only: the app only reads the file). Names that match your friends are added. |
 | **Steam profile pages** *(fallback)* | Only when neither of the above is in use: a friend's public Steam profile popup shows the map they are on, up to 10 minutes late. Matches are added as guesses, marked "maybe". |
-| **Steam Web API** *(optional)* | Each lobby player's friends list, to mark who is friends with whom, and the names of all your friends, to match the `status` list. Needs your own Steam Web API key. |
+| **Steam Web API** *(optional)* | Each lobby player's friends list, to mark who is friends with whom, the names of all your friends, to match the `status` list, and the name of a player you add by hand. Needs your own Steam Web API key. |
 | **GitHub** | The number of the latest release, for the update banner. |
 
 ## Local connections
@@ -37,8 +37,8 @@ This page is for anyone curious about what the app reads, what it sends, and whe
 - **What the app contacts:**
   - Leetify.
   - `csst.at` for players Leetify doesn't know. The first time, it also downloads Chrome from `github.com/ulixee/chrome-versions`.
-  - `api.steampowered.com`, only if you saved a Steam key. It sends the key and the SteamIDs of the lobby players, plus yours when you run `status`.
-  - `steamcommunity.com` for the profile-page fallback and custom profile links.
+  - `api.steampowered.com`, only if you saved a Steam key. It sends the key and the SteamIDs of the lobby players, plus yours when you run `status`, and the SteamID of a player you add by hand.
+  - `steamcommunity.com` for the profile-page fallback, custom profile links and, without a Steam key, the name of a player you add by hand (their public mini-profile page).
   - `api.github.com` for the update check.
 - **Stays on your PC:** Steam's debug port and CS2's `console.log` are only read locally, and the only thing the app asks Steam to open is `steam://open/friends`. Links you click (a player's Leetify profile, the pages for getting API keys, the releases page) open in your normal browser.
 

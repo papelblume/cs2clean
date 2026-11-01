@@ -531,6 +531,28 @@ describe("SteamSource: a map Steam lists no players for, and players added by ha
     src.stop();
   });
 
+  it("gives a player added by hand the name that turns up for them, and keeps it", async () => {
+    const { src, hold, matches } = make(() => []);
+    src.start();
+    await hold(community, 10_000);
+    expect(src.addPlayer(id(5))).toBe("added");
+    await vi.advanceTimersByTimeAsync(10);
+    expect(matches.at(-1)!.players.find((p) => p.steamId === id(5))!.name).toBe("Unknown player");
+
+    expect(src.setPlayerName(id(5), "Some Name")).toBe(true);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(matches.at(-1)!.players.map((p) => [p.name, p.via])).toEqual([["Nova", undefined], ["Some Name", "manual"]]);
+    await hold(community, 30_000); // the list is refreshed meanwhile
+    expect(matches.at(-1)!.players.find((p) => p.steamId === id(5))!.name).toBe("Some Name");
+
+    expect(src.setPlayerName(id(5), "Some Name")).toBe(false); // nothing changed
+    expect(src.setPlayerName(id(9), "Nobody")).toBe(false); // never added
+    expect(src.setPlayerName(ME, "Me")).toBe(false); // not one added by hand
+    src.removePlayer(id(5));
+    expect(src.setPlayerName(id(5), "Too late")).toBe(false); // taken off the list while the name was on its way
+    src.stop();
+  });
+
   it("lists players added by hand, keeps them for the map, and forgets them with it", async () => {
     const { src, post, hold, matches } = make(() => []);
     src.start();

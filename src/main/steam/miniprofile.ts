@@ -37,6 +37,15 @@ export function parseMiniprofile(html: string): { game: string | null; status: s
   return { game: pick("miniprofile_game_name"), status: pick("rich_presence") };
 }
 
+/**
+ * The player's name out of a mini-profile page: the element with the class "persona" (`<span class="persona offline">`,
+ * the second class being their state). Null for what isn't there.
+ */
+export function parseMiniprofileName(html: string): string | null {
+  const m = /<[a-z]+\b[^>]*\bclass="(?:[^"]*\s)?persona(?:\s[^"]*)?"[^>]*>([^<]*)</i.exec(html);
+  return (m && decodeEntities(m[1]).trim()) || null;
+}
+
 export interface ParsedStatus {
   /** "Premier", "Competitive", "Wingman", "Retakes"... Null when the line has no mode ("Main Menu"). */
   mode: string | null;
