@@ -19,7 +19,7 @@ const ROSTER: [string, "T" | "CT", LobbyRow["classification"], number, LobbyRow[
   ["Kestrel", "CT", "NORMAL", 18, "ok"],
   ["mintleaf", "CT", "INSUFFICIENT_DATA", 3, "ok"],
   ["Oberon_7", "CT", "ELEVATED", 28, "ok"],
-  ["pixelwolf", "CT", "NORMAL", 27, "ok"],
+  ["pixelwolf", "CT", "NORMAL", 30, "ok"],
   ["Brakk", "T", "VERY_HIGH", 30, "ok"],
   ["n0va", "T", "VERY_HIGH", 0, "ok"],
   ["sundial", "T", null, 0, "loading"],
@@ -57,24 +57,35 @@ const DETAIL: Record<string, PlayerDetail> = {
     score: 99, outlier: 91, levels: { rating: "HIGH", aim: "HIGH", clutch: "MEDIUM" },
     metrics: metrics({ leetify: 7.1, aim: 98.3, positioning: 31.2, utility: 12.5, clutch: 0.24, opening: 0.09, preaim: 3.1, reactionMs: 290,
                        headAccuracy: 54.8, sprayAccuracy: 69.2, counterStrafing: 41.3, ctOpeningDuel: 71, tOpeningDuel: 70, premier: 9000, faceit: 10, faceitElo: 2870, totalMatches: 61 }),
+    source: "leetify",
     matches: matchesOf(7.8, 0.87, [9.4, 6.1, 8.2, 7.7, 8.9]),
   },
   Oberon_7: {
     score: 74, outlier: 44, levels: { rating: "MEDIUM", aim: "MEDIUM", clutch: "LOW" },
     metrics: metrics({ leetify: 3.1, aim: 71.2, positioning: 62.5, utility: 55.4, clutch: 0.1, preaim: 6.9, reactionMs: 520, headAccuracy: 41.2, premier: 22300, faceit: null, faceitElo: null, totalMatches: 380 }),
+    source: "leetify",
     matches: matchesOf(3.1, 0.4, [4.4, 1.2, 3.9]),
   },
   // A private profile: the card is built from the aggregates alone, with no match rows.
   Kestrel: {
     score: 69, outlier: 31, levels: { rating: "MEDIUM", aim: "MEDIUM", clutch: "LOW" },
     metrics: metrics({ leetify: 2.4, aim: 66.3, clutch: 0.09, premier: null, faceit: 5, faceitElo: 1250, totalMatches: 912 }),
+    source: "leetify",
+    matches: null,
+  },
+  // A player from the csst.at fallback: no ranks, no match list, and the win rate goes on the matches row.
+  pixelwolf: {
+    score: 58, outlier: 21, levels: { rating: "MEDIUM", aim: "MEDIUM", clutch: "LOW" },
+    metrics: metrics({ leetify: 1.1, aim: 55.4, positioning: null, utility: 51.1, clutch: null, opening: null, preaim: 8.6, reactionMs: 585, headAccuracy: 15.6, headshotKills: 41.4,
+                       sprayAccuracy: 17.7, spottedAccuracy: 29.9, counterStrafing: 69.6, ctOpeningDuel: null, tOpeningDuel: null, premier: null, faceit: null, faceitElo: null, totalMatches: 30, winrate: 0.43 }),
+    source: "csst.at",
     matches: null,
   },
 };
 
 /** What an unremarkable player's card looks like; everyone without their own entry above gets it. */
 const ordinary = (): PlayerDetail => ({
-  score: 52, outlier: 12, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" }, metrics: metrics(), matches: matchesOf(0.4, 0.1, [-1.2, 2, 0.4]),
+  score: 52, outlier: 12, levels: { rating: "LOW", aim: "LOW", clutch: "LOW" }, metrics: metrics(), source: "leetify", matches: matchesOf(0.4, 0.1, [-1.2, 2, 0.4]),
 });
 
 const REPUTATION: Record<string, PlayerReputation> = {

@@ -107,6 +107,8 @@ export interface PlayerDetail {
   outlier: number;
   levels: { rating: AxisLevel; aim: AxisLevel; clutch: AxisLevel };
   metrics: PlayerMetrics;
+  /** Where the numbers come from: Leetify's API, or csst.at, the fallback for players Leetify has no profile for. */
+  source: "leetify" | "csst.at";
   /** From the per-match data; null when the API sent none (a private profile, or no matches yet). */
   matches: MatchSummary | null;
 }

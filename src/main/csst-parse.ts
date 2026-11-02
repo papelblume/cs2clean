@@ -88,8 +88,11 @@ export function parseCsstAtHtml(html: string, steamId: string): LeetifyProfile |
   const headAccuracy = getLabelled("accuracy", "Head");
   const counterStrafing = getPercent("counter-strafing");
   const games = getGames();
+  // csst.at shows a percentage; the API's win rate (and PlayerMetrics.winrate) is a 0-1 fraction.
+  const winPercent = getPercent("winrate");
+  const winrate = winPercent === null ? null : Number((winPercent / 100).toFixed(4));
 
-  const anyValue = [aim, utility, rating, preaim, reactionTime, headshots, accuracy, spottedAccuracy, headAccuracy, counterStrafing, games]
+  const anyValue = [aim, utility, rating, preaim, reactionTime, headshots, accuracy, spottedAccuracy, headAccuracy, counterStrafing, games, winrate]
     .some((v) => v !== null);
   if (!anyValue) return null;
 
@@ -103,7 +106,7 @@ export function parseCsstAtHtml(html: string, steamId: string): LeetifyProfile |
     privacy_mode: "private",
     source: "csst.at",
     total_matches: games,
-    winrate: null,
+    winrate,
     ranks: { leetify: ranksLeetify },
     rating: { aim, utility },
     stats: {

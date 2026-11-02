@@ -9,7 +9,7 @@ import { cycleHints } from "../shared/lobby-order";
 import type { AppState, AxisLevel, LobbyRow } from "../shared/types";
 import { ClassBadge, Logo, mapName, SideEmblem, TIER_LABELS, Wordmark } from "./brand";
 import { PlayerRanks } from "./ranks";
-import { ago, clutchDisplay, cspLevel, flagged, headshotFact, PlayerClass, ratingDisplay, show, sprayAccuracyLevel, spottedAccuracyLevel, ttdLevel, winrateDisplay } from "./parts";
+import { ago, clutchDisplay, cspLevel, flagged, headshotFact, matchesFact, PlayerClass, ratingDisplay, show, sprayAccuracyLevel, spottedAccuracyLevel, ttdLevel, winrateDisplay } from "./parts";
 import { playSiren } from "./siren";
 import { groupColor } from "./group-color";
 import { useAppState } from "./useAppState";
@@ -199,7 +199,7 @@ function Card({ r, compact }: { r: LobbyRow; compact?: boolean }) {
           <Fact label="Spotted accuracy" value={show(m.spottedAccuracy, 1, "%")} level={spottedAccuracyLevel(m.spottedAccuracy) as any} />
           <Fact label="Time to damage" value={show(m.reactionMs, 0, " ms")} level={ttdLevel(m.reactionMs) as any} />
           <Fact label="Preaim" value={show(m.preaim, 1, "°")} level={cspLevel(m.preaim) as any} />
-          {!compact && <Fact label="Leetify matches" value={show(m.totalMatches)} />}
+          {!compact && <Fact label={matchesFact(d).label} value={matchesFact(d).value} />}
         </dl>
       )}
       {m && matches && matches.recent.length > 0 && (

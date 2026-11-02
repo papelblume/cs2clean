@@ -222,7 +222,7 @@ rating, preaim, reaction time, headshot kills (csst.at's "HS kills", the share o
 API's headshot accuracy, so it goes into `stats.headshot_kill_percentage` and is scored on its own range),
 spray accuracy, counter-strafing ratio, and total games from the HTML by matching element IDs like `leetify-aim-{steamId}`.
 The accuracy element's tooltip (`Spotted enemy: 29.9% / Head: 15.6%`) gives `stats.accuracy_enemy_spotted` and `stats.accuracy_head`,
-found by label; with them the card shows "Headshot accuracy" (headshot kills only when there is no accuracy) and the reputation can
+found by label; the win rate (`leetify-winrate-…`, "43%") becomes the 0-1 fraction `PlayerMetrics.winrate` is. With them the card shows "Headshot accuracy" (headshot kills only when there is no accuracy) and the reputation can
 use head accuracy, spotted accuracy and the "moving" check for csst.at players too.
 It reads each element's visible text only (tags and their attributes dropped, nested elements of the same name skipped) and takes
 the last number in it. That matters because csst.at wraps aim, preaim and time to damage in a "compare with pros" button that holds an
@@ -281,7 +281,7 @@ Transparent, click-through window on top of CS2:
 - Shows player list grouped by team (CT → T → unknown)
 - Appears automatically in warm-up, hides when match goes live
 - Shift+F2: show the player list (opens it over an open F6 or F7 card; hides the overlay when the list itself is showing)
-- F6: cycle through player cards (one at a time)
+- F6: cycle through player cards (one at a time). The matches row reads "Leetify matches" for a player from the API and "Matches/Win rate" (`30 / 43%`) for one from csst.at
 - F7: show flagged players
 - Shift+F6: step backward through cards
 - These are the defaults. The four keys can be changed in Settings (not with Overwolf)

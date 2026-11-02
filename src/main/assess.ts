@@ -207,6 +207,7 @@ export function assessProfile(p: LeetifyProfile): Assessment {
     outlier: Math.round(discounted * 100),
     levels: { rating: level(tiers.rating), aim: level(tiers.aim), clutch: level(tiers.clutch) },
     metrics,
+    source: p.source === "csst.at" ? "csst.at" : "leetify",
     matches,
   };
   return {

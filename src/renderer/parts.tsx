@@ -1,4 +1,4 @@
-import type { LobbyRow, PlayerMetrics } from "../shared/types";
+import type { LobbyRow, PlayerDetail, PlayerMetrics } from "../shared/types";
 import { ClassBadge } from "./brand";
 
 /** A player's class and reputation score, or why there is none. */
@@ -124,6 +124,16 @@ export function spottedAccuracyLevel(pct: number | null | undefined): string {
   if (pct >= 40) return "HIGH";
   if (pct >= 35) return "MEDIUM";
   return "LOW";
+}
+
+/**
+ * The matches row of a card. Leetify's API says how many matches the profile covers. For a player from csst.at it is
+ * "30 / 43%", the matches and the win rate over them: that fallback has no match list to show the win rate next to.
+ */
+export function matchesFact(d: PlayerDetail): { label: string; value: string } {
+  const m = d.metrics;
+  if (d.source === "csst.at") return { label: "Matches/Win rate", value: `${show(m.totalMatches)} / ${winrateDisplay(m.winrate)}` };
+  return { label: "Leetify matches", value: show(m.totalMatches) };
 }
 
 /** Win rate for display: multiply by 100, round to nearest integer, show as "XX%". */

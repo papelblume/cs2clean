@@ -21,6 +21,7 @@ describe("parseCsstAtHtml: the current csst.at page", () => {
       steam64_id: ID,
       source: "csst.at",
       total_matches: 30,
+      winrate: 0.43,
       ranks: { leetify: -0.1 },
       rating: { aim: 49.2, utility: 51.1 },
       stats: {
@@ -90,6 +91,25 @@ describe("parseCsstAtHtml: reading an element's text", () => {
 
   it("takes the last percentage of the text", () => {
     expect(parseCsstAtHtml(p("accuracy", "Accuracy <span>17.7%</span>"), ID)?.stats?.spray_accuracy).toBe(17.7);
+  });
+
+  describe("the win rate", () => {
+    const winrate = (inner: string) => parseCsstAtHtml(`<div id="leetify-winrate-${ID}"><p>Winrate</p>${inner}</div><span id="leetify-games-${ID}">30</span>`, ID)!.winrate;
+
+    it("is a 0-1 fraction, like the API's, not the percentage csst.at shows", () => {
+      expect(winrate(`<span class="text-white ">43%</span>`)).toBe(0.43);
+      expect(winrate(`<span>29.9%</span>`)).toBe(0.299);
+      expect(winrate(`<span>100%</span>`)).toBe(1);
+    });
+
+    it("is null when csst.at shows none", () => {
+      expect(winrate(`<span>–</span>`)).toBeNull();
+      expect(parseCsstAtHtml(`<span id="leetify-games-${ID}">30</span>`, ID)!.winrate).toBeNull();
+    });
+
+    it("counts as a value on its own", () => {
+      expect(parseCsstAtHtml(`<div id="leetify-winrate-${ID}"><span>43%</span></div>`, ID)).toMatchObject({ winrate: 0.43, total_matches: null });
+    });
   });
 
   describe("the accuracy tooltip", () => {
