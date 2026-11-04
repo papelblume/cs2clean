@@ -286,6 +286,7 @@ Transparent, click-through window on top of CS2:
 - Shift+F6: step backward through cards
 - These are the defaults. The four keys can be changed in Settings (not with Overwolf)
 - Plays siren when HIGH/VERY_HIGH player detected
+- Click-through: `keepClickThrough()` (`main/click-through.ts`) calls `setIgnoreMouseEvents(true)` when the overlay is created and after every show. On Linux (X11) Electron makes the window's input region one pixel big; Cinnamon's window manager (Muffin) undoes that in the moments after it maps the window, so a call made before the show or right after `showInactive()` is lost. The call is therefore repeated at 50, 150, 400, 1000 and 2500 ms after each show (Windows keeps the window style it sets and needs one call)
 
 ### Desktop Window (`src/renderer/desktop.tsx`)
 

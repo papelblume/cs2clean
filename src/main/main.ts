@@ -22,6 +22,7 @@ import { OVERWOLF_HOTKEYS } from "../shared/overwolf-hotkeys";
 import type { AppState } from "../shared/types";
 import { Controller, type SettingsStore } from "./controller";
 import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
+import { keepClickThrough } from "./click-through";
 import { ensurePortableDataDir, portableDataDir } from "./portable";
 import { noteUpdateCheck, readLastUpdateCheck, settingsFileStore, type KeyCrypto } from "./settings-file";
 import { checkForUpdate, OWNER, REPO } from "./update-checker";
@@ -351,7 +352,7 @@ function createOverlayWindow(): BrowserWindow {
   });
   // Above a fullscreen-windowed game, and every click goes through to the game.
   overlayWin.setAlwaysOnTop(true, "screen-saver");
-  overlayWin.setIgnoreMouseEvents(true);
+  keepClickThrough(overlayWin);
   overlayWin.on("closed", () => (overlayWin = null));
   lockNavigation(overlayWin);
   load(overlayWin, "overlay");
@@ -367,6 +368,7 @@ function syncOverlay() {
   if (want && !win.isVisible()) {
     win.showInactive();
     win.setAlwaysOnTop(true, "screen-saver");
+    keepClickThrough(win); // the window manager can undo it while it maps the window (main/click-through.ts)
   } else if (!want && win.isVisible()) win.hide();
 }
 
