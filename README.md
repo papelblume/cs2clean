@@ -18,7 +18,7 @@ A desktop companion and in-game overlay for CS2 that automatically checks player
 
 - **Lobby check** — when a match loads, reads the player list from Steam and looks up each player on Leetify
 - **In-game overlay** — a transparent, click-through window on top of the game showing player cards with reputation scores, classifications, and Leetify's stats (aim, clutch, positioning, accuracy, etc.). It appears automatically in warm-up and hides when the match goes live
-- **Siren alert** — plays an audible alert when a High or Very high player is detected; turn it on or off in Settings
+- **Siren alert** — plays an audible alert when a High or Very high player is detected; turn it on or off in Settings, and keep chosen players out of it with the [siren ignore list](#siren-ignore-list)
 - **Player cards** — detailed view for each player: class, reputation score, reasons for flags, and (for public profiles) recent match history
 - **Ranks at a glance** — each player's Premier rating, FACEIT level and FACEIT Elo, shown right after their name in the window, the overlay list and the player cards
 - **Stats, not accusations** — each stat is rated Low, Medium or High, and the reputation score and overall class show how unusual a player's numbers look for their rank. One strong number alone never flags a player (see [How players are rated](#how-players-are-rated))
@@ -89,6 +89,18 @@ The same on Windows and Linux:
 Stepping past either end of the list hides the card. All four keys can be changed under **Settings** in the app.
 
 The desktop window always lists every player in your match with their name, class, reputation score and ranks. In game, **Shift+F2** shows the same list in the overlay.
+
+## Siren ignore list
+
+To stop the siren going off for particular players (a friend with a strong aim, say), put their SteamIDs in the siren ignore list. **Settings > Ignore list** opens the file, `siren-ignore.txt`, in your text editor.
+
+- One player per line: a SteamID64 (`76561198000000001`), a SteamID2 (`STEAM_0:1:19867136`), a SteamID3 (`[U:1:39734273]`) or a link to their Steam or Leetify profile. A custom Steam link (`steamcommunity.com/id/name`) can't be read from a file, so use the SteamID64 or a `steamcommunity.com/profiles/` link.
+- Blank lines and lines starting with `#` are ignored, and so is anything after a `#` that follows an ID, so you can say who it is: `76561198000000001   # my friend`.
+- A change counts the next time the siren would go off; CS2Clean doesn't need a restart. A player the siren already went off for in the current match isn't affected.
+- Listed players still appear in the lobby with their usual rating and class. They just never set the siren off. The **Test** button ignores the list.
+- A line CS2Clean can't use is skipped, and the line number is written to the app's log.
+
+The file is in CS2Clean's data folder (see [Where settings are stored](docs/HOW-IT-WORKS.md#where-settings-are-stored)), and CS2Clean makes it, with these instructions in it, the first time it starts.
 
 ## How players are rated
 

@@ -54,6 +54,8 @@ export interface ControllerDeps {
   applyHotkeys?: (h: Hotkeys) => string | null;
   /** Starting with Windows (a login item); absent where it isn't offered. */
   startup?: { get(): boolean; set(on: boolean): void };
+  /** The SteamID64s the siren leaves out (the person's siren ignore list); asked only when it is about to go off. */
+  sirenIgnore?: () => ReadonlySet<string>;
 }
 
 export class Controller extends EventEmitter<{ state: [AppState] }> {
@@ -409,7 +411,11 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
   /** Siren once per HIGH player per match (the overlay plays it when alert.seq changes). */
   private checkAlerts(): void {
     if (!this.state.match) return;
-    const fresh = this.state.lobby.rows.filter((r) => (r.classification === "HIGH" || r.classification === "VERY_HIGH") && r.steamId && !r.isLocal && !this.alerted.has(r.steamId));
+    const flagged = this.state.lobby.rows.filter((r) => (r.classification === "HIGH" || r.classification === "VERY_HIGH") && r.steamId && !r.isLocal && !this.alerted.has(r.steamId));
+    if (flagged.length === 0) return;
+    // A player on the ignore list is left out and not marked as announced, so taking them off it mid-match lets the siren go off for them.
+    const ignored = this.deps.sirenIgnore?.();
+    const fresh = ignored?.size ? flagged.filter((r) => !ignored.has(r.steamId!)) : flagged;
     if (fresh.length === 0) return;
     for (const r of fresh) this.alerted.add(r.steamId!);
     if (this.state.overlay.siren) this.state.alert = { seq: this.state.alert.seq + 1, names: fresh.map((r) => r.name) };

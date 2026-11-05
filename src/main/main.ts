@@ -32,6 +32,7 @@ import { record } from "./game/recorder";
 import { ReplaySource } from "./game/replay";
 import { CS2_GAME_ID, type GameSource } from "./game/source";
 import { SteamSource } from "./game/steam";
+import { SirenIgnoreList, SIREN_IGNORE_FILE } from "./siren-ignore";
 import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, readActiveSteamId, startGsiServer } from "./steam/gsi";
 import { isCs2Running } from "./steam/process";
@@ -218,6 +219,8 @@ function scanCoplay(localSteamId: string | null): Promise<CoplayResult> {
 let desktop: BrowserWindow | null = null;
 let overlayWin: BrowserWindow | null = null;
 let controller: Controller;
+/** The siren ignore list in the app's data folder (main/siren-ignore.ts); made when the app starts. */
+let sirenIgnore: SirenIgnoreList | null = null;
 
 function webPreferences() {
   return { preload, contextIsolation: true, sandbox: true, nodeIntegration: false };
@@ -431,6 +434,8 @@ if (!app.requestSingleInstanceLock()) {
     if (arg("record")) console.log("recording to", record(source, join(app.getPath("userData"), "recordings")));
     // The csst.at fallback keeps its log, its Chrome download and (on Mint) a cat shim under the app's data folder.
     configureHero({ dataDir: app.getPath("userData") });
+    sirenIgnore = new SirenIgnoreList(join(app.getPath("userData"), SIREN_IGNORE_FILE));
+    sirenIgnore.ensureFile();
     controller = new Controller({
       version: app.getVersion(),
       source,
@@ -441,6 +446,7 @@ if (!app.requestSingleInstanceLock()) {
       applyHotkeys: overlay.mode === "window" ? applyHotkeys : undefined,
       // Store (MSIX) installs can't add a plain login item, so they don't offer it.
       startup: app.isPackaged && process.platform === "win32" && !process.windowsStore ? startup : undefined,
+      sirenIgnore: () => sirenIgnore!.ids(),
     });
     controller.on("state", (s) => {
       for (const w of [desktop, overlayWin]) if (w && !w.isDestroyed()) w.webContents.send("state", s);
@@ -469,6 +475,12 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle("overlay:previous", () => controller.previousPlayer());
     ipcMain.handle("siren:set", (_e, on: unknown) => controller.setSiren(on === true));
     ipcMain.handle("siren:test", () => controller.testSiren());
+    ipcMain.handle("siren:open-ignore-list", async () => {
+      if (!sirenIgnore) return;
+      sirenIgnore.ensureFile(); // in case it was deleted
+      const failed = await shell.openPath(sirenIgnore.file); // "" when a program took it; no program for .txt: show where it is
+      if (failed) shell.showItemInFolder(sirenIgnore.file);
+    });
     ipcMain.handle("player:open", (_e, steamId: unknown) => {
       const url = controller.playerUrl(String(steamId ?? ""));
       if (url) void shell.openExternal(url);

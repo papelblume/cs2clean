@@ -294,7 +294,7 @@ Full-featured window for setup and monitoring:
 - API key cards: the Leetify key (checked with Leetify before it is saved) and the optional Steam Web API key
 - Lobby list with player details, and a note when Steam lists no players (community server or offline match)
 - "Check a player" form (Steam source): add up to 5 players by SteamID64, SteamID2/3 or a Steam or Leetify profile link. They are added as "Unknown player" and named a moment later (`Controller.addPlayer` → `steam/player-name.ts`): from the Steam Web API's GetPlayerSummaries when a key is saved, else from Steam's mini-profile page; the mini-profile page also stands in when the API can't be reached or turns the key down, but not when the API answers that Steam has no such player. The name goes onto the row through `GameSource.setPlayerName`, which republishes the match. A player who is taken off the list meanwhile, or a controller that has stopped, just drops the name. Neither source knowing them leaves "Unknown player" (a row still shows Leetify's name for them).
-- Settings panel (the four hotkeys, siren toggle and test, start with Windows, open Steam's friends list automatically, check for updates)
+- Settings panel (the four hotkeys, siren toggle, test and ignore list, start with Windows, open Steam's friends list automatically, check for updates)
 - Leetify status indicator
 - csst.at fallback status: shown only when it can't be used, with the reason
 - Update banner when GitHub has a newer release
@@ -329,6 +329,8 @@ interface Settings {
 
 **Hotkey format**: Electron accelerators (e.g., "Shift+F2", "Ctrl+Alt+K")
 **Constraints**: Letters and digits require Ctrl or Alt (to avoid blocking typing)
+
+**Siren ignore list**: a text file of its own, `siren-ignore.txt` in the same folder, not a setting in `settings.json`. A person edits it by hand, so it is plain text: one SteamID per line (`parseSteamInput` reads SteamID64, SteamID2, SteamID3 and `/profiles/` or Leetify links; a custom `/id/name` link needs a lookup at Steam and is reported instead), `#` comments, and a label after an ID. `main/siren-ignore.ts` makes the file with instructions in it when there is none, and `SirenIgnoreList.ids()` re-reads it when its size or time has changed (a missing file is an empty list; a file that can't be read just now keeps the last list). The `Controller` takes it as a dependency (`sirenIgnore`) and asks only when a siren is about to go off: `checkAlerts()` drops the listed players from the flagged ones and does not mark them as announced, so a player taken off the list mid-match sets the siren off at the next update. The list affects the siren only: a listed player keeps their class and reputation, and the Test button ignores it. **Settings > Ignore list** (`siren:open-ignore-list`) opens the file with `shell.openPath`, or shows it in the file manager when no program opens `.txt`.
 
 ## Build and Distribution
 

@@ -1,9 +1,13 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Controller, type ControllerDeps, type Settings } from "../src/main/controller";
 import { ReplaySource } from "../src/main/game/replay";
 import { GameSource, type AddPlayerResult, type RecordedLine } from "../src/main/game/source";
 import type { LeetifyProfile } from "../src/main/leetify";
 import { HERO_READY, type HeroScrape } from "../src/main/leetify-hero";
+import { SirenIgnoreList } from "../src/main/siren-ignore";
 import { cycleHints, listOrder } from "../src/shared/lobby-order";
 import type { MatchState } from "../src/shared/types";
 import { AVERAGE, ELEVATED, HIGH, VERY_HIGH } from "./profiles";
@@ -391,6 +395,116 @@ describe("Controller", () => {
     c.testSiren();
     expect(c.state.alert.seq).toBe(3);
     c.stop();
+  });
+
+  describe("the siren ignore list", () => {
+    it("keeps a listed player out of the siren, and the siren still goes off for the others", async () => {
+      const src = new FakeSource();
+      const ignored = new Set([P(2).steamId]);
+      const { c, server } = setup({}, src, { sirenIgnore: () => ignored });
+      server.s.profiles[P(2).steamId] = HIGH();
+      server.s.profiles[P(3).steamId] = VERY_HIGH();
+      c.start();
+      await vi.advanceTimersByTimeAsync(20);
+
+      src.send({ players: [P(0), P(1), P(2), P(3)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.alert).toEqual({ seq: 1, names: ["p3"] }); // p2 is flagged HIGH but not announced
+      expect(c.state.lobby.rows.find((r) => r.steamId === P(2).steamId)?.classification).toBe("HIGH");
+      c.testSiren();
+      expect(c.state.alert.seq).toBe(2); // the test button doesn't look at the list
+      c.stop();
+    });
+
+    it("stays quiet when the only flagged player is listed", async () => {
+      const src = new FakeSource();
+      const { c, server } = setup({}, src, { sirenIgnore: () => new Set([P(2).steamId]) });
+      server.s.profiles[P(2).steamId] = HIGH();
+      c.start();
+      await vi.advanceTimersByTimeAsync(20);
+      src.send({ players: [P(0), P(1), P(2)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.alert.seq).toBe(0);
+      c.stop();
+    });
+
+    it("lets the siren go off for a player once they come off the list, as the list is read again", async () => {
+      const src = new FakeSource();
+      const ignored = new Set([P(2).steamId]);
+      const { c, server } = setup({}, src, { sirenIgnore: () => ignored });
+      server.s.profiles[P(2).steamId] = HIGH();
+      c.start();
+      await vi.advanceTimersByTimeAsync(20);
+      src.send({ players: [P(0), P(1), P(2)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.alert.seq).toBe(0);
+
+      ignored.clear(); // the person edited the file; the next update checks again
+      src.send({ players: [P(0), P(1), P(2), P(3)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.alert).toEqual({ seq: 1, names: ["p2"] });
+      c.stop();
+    });
+
+    it("works when the siren is off, and doesn't use up the announcement of a player it skipped", async () => {
+      const src = new FakeSource();
+      const ignored = new Set([P(2).steamId]);
+      const { c, server } = setup({ siren: false }, src, { sirenIgnore: () => ignored });
+      server.s.profiles[P(2).steamId] = HIGH();
+      c.start();
+      await vi.advanceTimersByTimeAsync(20);
+      src.send({ players: [P(0), P(1), P(2)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.alert.seq).toBe(0);
+      c.setSiren(true);
+      ignored.clear();
+      src.send({ players: [P(0), P(1), P(2), P(3)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.alert.seq).toBe(1);
+      c.stop();
+    });
+
+    it("follows the file as the person edits it during a match", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "cs2clean-siren-"));
+      try {
+        const file = join(dir, "siren-ignore.txt");
+        writeFileSync(file, `# friends\n${P(2).steamId}   # p2\n`);
+        const list = new SirenIgnoreList(file, () => {});
+        const src = new FakeSource();
+        const { c, server } = setup({}, src, { sirenIgnore: () => list.ids() });
+        server.s.profiles[P(2).steamId] = HIGH();
+        c.start();
+        await vi.advanceTimersByTimeAsync(20);
+        src.send({ players: [P(0), P(1), P(2)] });
+        await vi.advanceTimersByTimeAsync(900);
+        expect(c.state.alert.seq).toBe(0); // listed in the file
+
+        writeFileSync(file, "# nobody now\n"); // the person takes them off
+        src.send({ players: [P(0), P(1), P(2), P(3)] });
+        await vi.advanceTimersByTimeAsync(900);
+        expect(c.state.alert).toEqual({ seq: 1, names: ["p2"] });
+        c.stop();
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("is asked only when the siren is about to go off, not at every update", async () => {
+      const src = new FakeSource();
+      const asked = vi.fn(() => new Set<string>());
+      const { c, server } = setup({}, src, { sirenIgnore: asked });
+      server.s.profiles[P(2).steamId] = HIGH();
+      c.start();
+      await vi.advanceTimersByTimeAsync(20);
+      src.send({ players: [P(0), P(1)] }); // nobody flagged
+      await vi.advanceTimersByTimeAsync(900);
+      expect(asked).not.toHaveBeenCalled();
+      src.send({ players: [P(0), P(1), P(2)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(asked).toHaveBeenCalledTimes(1);
+      expect(c.state.alert.seq).toBe(1);
+      c.stop();
+    });
   });
 
   it("doesn't start a new match, or sound the siren again, when the map name arrives after the roster", async () => {

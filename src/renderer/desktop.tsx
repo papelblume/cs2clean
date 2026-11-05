@@ -369,6 +369,7 @@ function SettingsPanel({ s }: { s: AppState }) {
           Siren when a High or Very high player is in my match
         </label>
         <button className="button quiet small-button" onClick={() => bridge.testSiren()}>Test</button>
+        <button className="button quiet small-button" title="Players listed in siren-ignore.txt never set the siren off. One SteamID per line." onClick={() => bridge.openSirenIgnoreList()}>Ignore list</button>
       </div>
       {s.overlay.mode === "window" && (
         <p className="muted small">

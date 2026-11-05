@@ -24,6 +24,7 @@ const bridge: Bridge = {
   previousPlayer: () => ipcRenderer.invoke("overlay:previous"),
   setSiren: (on) => ipcRenderer.invoke("siren:set", on),
   testSiren: () => ipcRenderer.invoke("siren:test"),
+  openSirenIgnoreList: () => ipcRenderer.invoke("siren:open-ignore-list"),
   openPlayer: (steamId) => ipcRenderer.invoke("player:open", steamId),
   addPlayer: (input) => ipcRenderer.invoke("player:add", input),
   removePlayer: (steamId) => ipcRenderer.invoke("player:remove", steamId),

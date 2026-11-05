@@ -220,6 +220,8 @@ export interface Bridge {
   previousPlayer(): Promise<void>;
   setSiren(on: boolean): Promise<void>;
   testSiren(): Promise<void>;
+  /** Opens the siren ignore list (a text file of SteamIDs the siren leaves out) in the person's text editor. */
+  openSirenIgnoreList(): Promise<void>;
   openPlayer(steamId: string): Promise<void>;
   /**
    * Adds a player by SteamID64, SteamID2/3 or a Steam or Leetify profile link, so the lobby checks them like anyone

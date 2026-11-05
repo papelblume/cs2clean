@@ -186,6 +186,7 @@ function simulated(): Bridge {
     previousPlayer: async () => step(-1),
     setSiren: async (siren) => set({ overlay: { ...state.overlay, siren } }),
     testSiren: async () => set({ alert: { seq: state.alert.seq + 1, names: [] } }),
+    openSirenIgnoreList: async () => {},
     openPlayer: async () => {},
     addPlayer: async (input) => input.trim() !== "",
     removePlayer: async () => {},
