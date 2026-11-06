@@ -490,6 +490,28 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("doesn't use up a flagged player's siren while it is off: turning it on mid-match sounds it once", async () => {
+    const src = new FakeSource();
+    const { c, server } = setup({ siren: false }, src);
+    server.s.profiles[P(2).steamId] = HIGH();
+    c.start();
+    await vi.advanceTimersByTimeAsync(20);
+    src.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(900);
+    expect(c.state.lobby.rows.find((r) => r.name === "p2")?.classification).toBe("HIGH");
+    expect(c.state.alert.seq).toBe(0); // off: silent
+
+    c.setSiren(true); // p2 is flagged and the siren never went off for them
+    expect(c.state.alert).toEqual({ seq: 1, names: ["p2"] });
+
+    src.send({ players: [P(0), P(1), P(2), P(3)] });
+    await vi.advanceTimersByTimeAsync(900);
+    c.setSiren(false);
+    c.setSiren(true);
+    expect(c.state.alert.seq).toBe(1); // once per player per match, as ever
+    c.stop();
+  });
+
   describe("the siren ignore list", () => {
     it("keeps a listed player out of the siren, and the siren still goes off for the others", async () => {
       const src = new FakeSource();

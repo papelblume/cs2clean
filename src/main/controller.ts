@@ -413,9 +413,13 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.deps.source.removePlayer(steamId);
   }
 
-  /** Siren once per HIGH player per match (the overlay plays it when alert.seq changes). */
+  /**
+   * Siren once per HIGH player per match (the overlay plays it when alert.seq changes). With the siren off nobody is
+   * announced, and nobody is marked as announced either: turning it on in the middle of a match sounds it for the
+   * flagged players it hasn't gone off for.
+   */
   private checkAlerts(): void {
-    if (!this.state.match) return;
+    if (!this.state.match || !this.state.overlay.siren) return;
     const flagged = this.state.lobby.rows.filter((r) => (r.classification === "HIGH" || r.classification === "VERY_HIGH") && r.steamId && !r.isLocal && !this.alerted.has(r.steamId));
     if (flagged.length === 0) return;
     // A player on the ignore list is left out and not marked as announced, so taking them off it mid-match lets the siren go off for them.
@@ -423,7 +427,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const fresh = ignored?.size ? flagged.filter((r) => !ignored.has(r.steamId!)) : flagged;
     if (fresh.length === 0) return;
     for (const r of fresh) this.alerted.add(r.steamId!);
-    if (this.state.overlay.siren) this.state.alert = { seq: this.state.alert.seq + 1, names: fresh.map((r) => r.name) };
+    this.state.alert = { seq: this.state.alert.seq + 1, names: fresh.map((r) => r.name) };
   }
 
   /** The player's Leetify profile; only for a real SteamID64, so nothing else ends up in a URL. */
