@@ -118,6 +118,38 @@ describe("lookupLobby", () => {
     expect(f.log.urls).toHaveLength(1); // no point asking the other five
   });
 
+  describe("a 403", () => {
+    const forbid = (...ns: number[]) => Object.fromEntries(ns.map((n) => [ID(n), json(403, { error: "forbidden" })]));
+
+    it("is a missing profile for one player among others that Leetify answers", async () => {
+      const sc = scraper({});
+      const out = await lookupLobby(new LeetifyClient("k", fake({ ...forbid(2), [ID(1)]: HIGH(), [ID(3)]: AVERAGE() }).fetchImpl), [ID(1), ID(2), ID(3)], { scrape: sc.scrape });
+      expect(out.map((a) => a.classification)).toEqual(["HIGH", "INSUFFICIENT_DATA", "NORMAL"]);
+      expect(sc.calls).toEqual([[ID(2)]]); // and csst.at is asked about that one
+    });
+
+    it("is a refused key when it is the answer for every player of a lobby, and the fallback is left out of it", async () => {
+      const sc = scraper({});
+      const ids = [1, 2, 3, 4, 5].map(ID);
+      const f = fake(forbid(1, 2, 3, 4, 5));
+      await expect(lookupLobby(new LeetifyClient("k", f.fetchImpl), ids, { scrape: sc.scrape })).rejects.toMatchObject({
+        kind: "invalid-key",
+        message: expect.stringMatching(/refused every request \(HTTP 403\)/),
+      });
+      expect(sc.calls).toEqual([]);
+    });
+
+    it("is still a missing profile when the lobby is too small to say (one or two players)", async () => {
+      const out = await lookupLobby(new LeetifyClient("k", fake(forbid(1, 2)).fetchImpl), [ID(1), ID(2)], { scrape: scraper({}).scrape });
+      expect(out.map((a) => a.classification)).toEqual(["INSUFFICIENT_DATA", "INSUFFICIENT_DATA"]);
+    });
+
+    it("is still a missing profile when some of the others are plain 404s", async () => {
+      const out = await lookupLobby(new LeetifyClient("k", fake(forbid(1, 2)).fetchImpl), [ID(1), ID(2), ID(3)], { scrape: scraper({}).scrape });
+      expect(out.map((a) => a.classification)).toEqual(["INSUFFICIENT_DATA", "INSUFFICIENT_DATA", "INSUFFICIENT_DATA"]);
+    });
+  });
+
   it("limits the requests in flight", async () => {
     const answers = Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((n) => [ID(n), AVERAGE()]));
     const f = fake(answers, { delayMs: 5 });

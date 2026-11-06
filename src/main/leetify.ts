@@ -227,16 +227,25 @@ const FALLBACK_RETRY_MS = 60_000;
 const FALLBACK_RECHECK_MS = 5 * 60_000;
 
 /**
+ * Leetify answers 403 where it won't show a profile, and the app takes that to mean "no public profile" for that one
+ * player. When it is the answer for every player of a lobby this big (or bigger), nobody's profile is the problem: the
+ * key or its access is, and "no data" would be remembered for six hours for the whole lobby. That is an error instead.
+ */
+const FORBIDDEN_MIN_PLAYERS = 3;
+
+/**
  * Looks up every player and turns each profile into an answer for the lobby. A player without a public
  * profile is an answer ("no data"); a rate limit or a network problem is a transient one the lobby retries.
- * A rejected API key stops the whole lookup, since every later request would fail the same way. Nothing else does:
- * a profile the analysis can't read, or an error nobody planned for, costs that one player their answer.
+ * A rejected API key stops the whole lookup, since every later request would fail the same way. So does a lobby
+ * where Leetify answered 403 for everybody (see FORBIDDEN_MIN_PLAYERS). Nothing else does: a profile the analysis
+ * can't read, or an error nobody planned for, costs that one player their answer.
  */
 export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: LookupOptions = {}): Promise<LobbyAnswer[]> {
   const out: LobbyAnswer[] = new Array(steamIds.length);
   let next = 0;
   let fatal: LeetifyError | null = null;
   const notFound: number[] = [];
+  let forbidden = 0;
 
   debug("leetify", "lookupLobby:", steamIds.join(", "));
 
@@ -272,6 +281,7 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
       }
       if (e.kind === "not-found") {
         debug("leetify", "Not found on Leetify:", steamId);
+        if (e.status === 403) forbidden++;
         const idx = steamIds.indexOf(steamId);
         if (idx !== -1) notFound.push(idx);
         return { steamId, classification: null, totalMatches: 0, note: "Not on Leetify, or the profile isn't public" };
@@ -293,6 +303,8 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(o.concurrency ?? 3, steamIds.length)) }, worker));
   if (fatal) throw fatal;
+  if (steamIds.length >= FORBIDDEN_MIN_PLAYERS && forbidden === steamIds.length)
+    throw new LeetifyError("invalid-key", "Leetify refused every request (HTTP 403). Check the API key and its access under Settings.", 403);
 
   // Fallback: scrape not-found players from csst.at using Hero.
   if (notFound.length > 0) {

@@ -10,8 +10,8 @@ import { MAX_MANUAL } from "../shared/lobby-size";
 import { parseSteamInput } from "../shared/steam-id";
 import type { AppState, LobbyRow, MatchState } from "../shared/types";
 import type { GameSource } from "./game/source";
-import { LeetifyClient, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
-import { LobbyService, type LobbyAnswer, type LobbyOptions } from "./lobby";
+import { LeetifyClient, LeetifyError, lookupLobby, type DataSource, type LookupOptions } from "./leetify";
+import { LobbyService, LookupBlocked, type LobbyAnswer, type LobbyOptions } from "./lobby";
 import { validateSteamKey } from "./steam/friends";
 import { lookupPlayerName } from "./steam/player-name";
 import { resolveVanity } from "./steam/vanity";
@@ -448,6 +448,8 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
         },
       });
     } catch (e) {
+      // A missing or rejected key fails the same way every time: tell the lobby, which then waits for a new key (or a new match).
+      if (e instanceof LeetifyError && e.kind === "invalid-key") throw new LookupBlocked(message(e));
       throw new Error(message(e));
     }
   }

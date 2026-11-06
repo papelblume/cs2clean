@@ -41,6 +41,13 @@ export interface LobbyAnswer {
  */
 export type Lookup = (steamIds: string[], onEarly?: (answers: LobbyAnswer[]) => void) => Promise<LobbyAnswer[]>;
 
+/**
+ * What a Lookup throws when asking again can't help until something outside the lobby changes (the Leetify key is
+ * missing or was rejected, say). Any other error is a hiccup the lobby retries by itself. The message is shown.
+ * A new key (clear()) or a new match lets the lobby ask again.
+ */
+export class LookupBlocked extends Error {}
+
 interface Cached {
   classification: EvidenceClass | null;
   totalMatches: number;
@@ -97,6 +104,10 @@ export class LobbyService {
   private timer: NodeJS.Timeout | null = null;
   /** True while a Retry-After or failure retry is waiting. Nothing may pull that timer forward. */
   private backingOff = false;
+  /** Why lookups are on hold (see LookupBlocked); null when they aren't. Nothing is retried while this is set. */
+  private blocked: string | null = null;
+  /** Counts clear()s: a "blocked" answer that was out while the key changed is about the old key, and is dropped. */
+  private clears = 0;
   private inFlight = false;
   private failed = new Map<string, string | null>();
   /** Epoch of the match in which the local player has already been looked up. */
@@ -134,6 +145,7 @@ export class LobbyService {
     if (fresh) {
       this.matchEpoch++;
       this.localPlayerDoneFor = null;
+      this.blocked = null; // one more try per match: the key may have been fixed at the source
       this.resetFriendships(); // the previous match's groups must not show on this one's players while the new pass runs
     }
     const roster = match ? this.rosterSig(match) : null;
@@ -187,6 +199,8 @@ export class LobbyService {
     this.localPlayerDoneFor = null;
     this.resetFriendships();
     this.backingOff = false;
+    this.blocked = null;
+    this.clears++;
     this.schedule();
     this.onChange();
   }
@@ -225,8 +239,9 @@ export class LobbyService {
           groupId: this.friendshipGroups.get(p.steamId!)?.groupId ?? null,
           groupName: this.friendshipGroups.get(p.steamId!)?.groupName ?? null,
         };
-      const failed = this.failed.has(p.steamId);
-      return { ...p, classification: null, totalMatches: 0, status: failed ? "error" : "loading", detail: null, reputation: null, note: failed ? this.failed.get(p.steamId) ?? null : null,
+      // On hold: nobody is looked up, so players who came after the hold began show the reason too, not "loading".
+      const failed = this.failed.has(p.steamId) || this.blocked !== null;
+      return { ...p, classification: null, totalMatches: 0, status: failed ? "error" : "loading", detail: null, reputation: null, note: failed ? this.failed.get(p.steamId) ?? this.blocked : null,
                groupId: null, groupName: null };
     });
   }
@@ -254,7 +269,7 @@ export class LobbyService {
   }
 
   private schedule(delay = this.opts.debounceMs ?? 800): void {
-    if (this.disposed || this.backingOff) return; // a retry is waiting; a roster change or a new match must not shorten it
+    if (this.disposed || this.backingOff || this.blocked !== null) return; // a retry is waiting (a roster change or a new match must not shorten it), or lookups are on hold
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     if (this.pendingIds().length === 0) return;
@@ -281,6 +296,7 @@ export class LobbyService {
     if (ids.length === 0) return;
     this.inFlight = true;
     const epoch = this.matchEpoch; // a match that begins while this lookup is out must not count as done
+    const clears = this.clears;
 
     const batch = ids;
 
@@ -309,11 +325,19 @@ export class LobbyService {
       if (localAnswered) this.localPlayerDoneFor = epoch;
     } catch (e) {
       if (this.disposed) { this.inFlight = false; return; }
-      for (const id of batch) this.failed.set(id, null);
-      this.error = e instanceof Error ? e.message : String(e);
+      const reason = e instanceof Error ? e.message : String(e);
+      const hold = e instanceof LookupBlocked;
+      if (hold && clears !== this.clears) { // refused for the key that clear() has just replaced: ask again with the new one
+        this.inFlight = false;
+        this.schedule();
+        return;
+      }
+      for (const id of batch) this.failed.set(id, hold ? reason : null);
+      this.error = reason;
       this.inFlight = false;
+      if (hold) this.blocked = reason; // asking every 15 seconds would get the same answer; clear() or a new match asks again
       this.onChange();
-      this.scheduleRetry(this.opts.retryMs ?? 15_000);
+      if (!hold) this.scheduleRetry(this.opts.retryMs ?? 15_000);
       return;
     }
     this.inFlight = false;

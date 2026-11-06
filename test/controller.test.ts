@@ -30,14 +30,18 @@ vi.mock("../src/main/steam/player-name", () => playerName);
 /** A fake Leetify public API: profiles by SteamID64 (default: an average player), and the one key it accepts. */
 function fakeLeetify() {
   const s = { lookups: [] as string[], keys: [] as (string | null)[], goodKey: "good-key" as string | null, requireKey: false,
-              profiles: {} as Record<string, LeetifyProfile>, missing: new Set<string>(), down: false };
+              profiles: {} as Record<string, LeetifyProfile>, missing: new Set<string>(), down: false,
+              /** Every profile request, answered or not; and the 403 for all of them that a key without access gets. */
+              attempts: 0, forbidAll: false };
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
   const fetchImpl = (async (url: string, init?: RequestInit) => {
     if (s.down) throw new TypeError("fetch failed");
     const u = new URL(url);
     const key = new Headers(init?.headers).get("_leetify_key");
     if (u.pathname === "/api-key/validate") return key && key === s.goodKey ? json(200, {}) : json(401, { error: "bad key" });
+    s.attempts++;
     if (s.requireKey && key !== s.goodKey) return json(401, { error: "bad key" });
+    if (s.forbidAll && key !== s.goodKey) return json(403, { error: "forbidden" });
     const id = u.searchParams.get("steam64_id") ?? "";
     s.lookups.push(id);
     s.keys.push(key);
@@ -174,6 +178,51 @@ describe("Controller", () => {
     c.clearApiKey();
     expect(saved().leetifyKey).toBeNull();
     expect(c.state.leetify.hasKey).toBe(false);
+    c.stop();
+  });
+
+  it("doesn't ask Leetify every 15 seconds while the key is missing or rejected, only again with a new key or in a new match", async () => {
+    const source = new FakeSource();
+    const { c, server } = setup({}, source);
+    server.s.requireKey = true;
+    c.start();
+    source.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.lobby.error).toMatch(/wants an API key/);
+    const asked = server.s.attempts;
+    expect(asked).toBeGreaterThan(0);
+    await vi.advanceTimersByTimeAsync(2 * 60_000);
+    source.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(server.s.attempts).toBe(asked);
+    expect(c.state.lobby.rows.map((r) => [r.status, r.note])).toEqual(Array(3).fill(["error", expect.stringMatching(/wants an API key/)]));
+
+    source.send({ map: "de_nuke", players: [P(0), P(1), P(2)] }); // a new match: one more try
+    await vi.advanceTimersByTimeAsync(50);
+    expect(server.s.attempts).toBeGreaterThan(asked);
+    const again = server.s.attempts;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(server.s.attempts).toBe(again);
+
+    expect(await c.setApiKey("good-key")).toBe(true); // the key fixes it, without waiting for the next match
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.lobby.error).toBeNull();
+    expect(c.state.lobby.rows.map((r) => r.classification)).toEqual(["NORMAL", "NORMAL", "NORMAL"]);
+    c.stop();
+  });
+
+  it("takes Leetify's 403 for every player of a lobby for a refused key: an error to fix, not three 'no data' answers", async () => {
+    const source = new FakeSource();
+    const { c, server } = setup({ leetifyKey: "no-access" }, source);
+    server.s.forbidAll = true;
+    c.start();
+    source.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(c.state.lobby.error).toMatch(/refused every request/);
+    expect(c.state.lobby.rows.map((r) => r.status)).toEqual(["error", "error", "error"]); // not "ok" with INSUFFICIENT_DATA, which the cache keeps for hours
+    const asked = server.s.attempts;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(server.s.attempts).toBe(asked);
     c.stop();
   });
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MatchState } from "../src/shared/types";
-import { LobbyService, type LobbyAnswer } from "../src/main/lobby";
+import { LobbyService, LookupBlocked, type LobbyAnswer } from "../src/main/lobby";
 import { MAX_LOOKUPS, MAX_MANUAL } from "../src/shared/lobby-size";
 
 // The Steam Web API call behind the friendship groups; the tests count and steer it.
@@ -262,6 +262,72 @@ describe("LobbyService", () => {
       fail = false;
       await vi.advanceTimersByTimeAsync(10_000);
       expect(lookup).toHaveBeenCalledTimes(2);
+    });
+
+    describe("when asking again can't help (LookupBlocked)", () => {
+      const WHY = "Leetify wants an API key. Add one under Settings.";
+
+      it("asks once, shows the reason (also for players who join later), and waits for a new key", async () => {
+        let blocked = true;
+        const lookup = vi.fn(async (ids: string[]) => { if (blocked) throw new LookupBlocked(WHY); return ids.map(ok); });
+        const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, retryMs: 1000, localSteamId: A });
+        lobby.setMatch(matchOn("de_dust2", A, B));
+        await vi.advanceTimersByTimeAsync(20);
+        expect(lookup).toHaveBeenCalledTimes(1);
+        expect(lobby.error).toBe(WHY);
+        expect(lobby.rows()[0]).toMatchObject({ status: "error", note: WHY });
+
+        for (let i = 0; i < 6; i++) { // a minute of heartbeats; C joins from the third on
+          lobby.setMatch(i >= 2 ? matchOn("de_dust2", A, B, C) : matchOn("de_dust2", A, B));
+          await vi.advanceTimersByTimeAsync(10_000);
+        }
+        expect(lookup).toHaveBeenCalledTimes(1); // no retry every 15 seconds, no lookup for the player who joined
+        expect(lobby.rows()[2]).toMatchObject({ status: "error", note: WHY }); // and not a "loading" that never ends
+
+        blocked = false; // the key was changed
+        lobby.clear();
+        await vi.advanceTimersByTimeAsync(20);
+        expect(lookup).toHaveBeenCalledTimes(2);
+        expect(lookup.mock.calls[1][0]).toEqual([A, B, C]);
+        expect(lobby.error).toBeNull();
+        expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "ok", "ok"]);
+      });
+
+      it("asks once more for every new match", async () => {
+        const lookup = vi.fn(async (_ids: string[]): Promise<LobbyAnswer[]> => { throw new LookupBlocked(WHY); });
+        const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, retryMs: 1000, localSteamId: A });
+        lobby.setMatch(matchOn("de_dust2", A, B));
+        await vi.advanceTimersByTimeAsync(20);
+        lobby.setMatch(matchOn("de_inferno", A, B)); // another map: another match
+        await vi.advanceTimersByTimeAsync(20);
+        expect(lookup).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(lookup).toHaveBeenCalledTimes(2);
+      });
+
+      it("is not told apart from a hiccup by a plain Error: that one is still retried", async () => {
+        const lookup = vi.fn(async (_ids: string[]): Promise<LobbyAnswer[]> => { throw new Error("offline"); });
+        const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, retryMs: 1000, localSteamId: A });
+        lobby.setMatch(matchOn("de_dust2", A, B));
+        await vi.advanceTimersByTimeAsync(20 + 3000);
+        expect(lookup.mock.calls.length).toBeGreaterThanOrEqual(3);
+      });
+
+      it("drops a refusal that was already out when the key changed", async () => {
+        const out: ((e: Error) => void)[] = [];
+        const lookup = vi.fn((ids: string[]) =>
+          out.length === 0 ? new Promise<LobbyAnswer[]>((_, reject) => out.push(reject)) : Promise.resolve(ids.map(ok)));
+        const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, retryMs: 1000, localSteamId: A });
+        lobby.setMatch(matchOn("de_dust2", A, B));
+        await vi.advanceTimersByTimeAsync(20);
+        expect(lookup).toHaveBeenCalledTimes(1); // out, with the old key
+        lobby.clear(); // the new key
+        out[0](new LookupBlocked(WHY)); // the old key's answer arrives
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(lookup).toHaveBeenCalledTimes(2);
+        expect(lobby.error).toBeNull();
+        expect(lobby.rows().map((r) => r.status)).toEqual(["ok", "ok"]);
+      });
     });
 
     it("starts fresh for another match: after a gap, on another map, and for a new lobby on the same map", async () => {
