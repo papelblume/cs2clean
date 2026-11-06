@@ -379,6 +379,8 @@ git push origin cs2clean-v0.2.0
 
 The workflow can also be started by hand (Actions > cs2clean-release > Run workflow) with a version number. Untick **Create the GitHub release** for a build-only test run: it builds, runs the sidecar selftests and uploads the installers as workflow artifacts, with no tag and no release. Never reuse the number of a published release with the box ticked: that release's files would be replaced.
 
+The Windows and Linux jobs only build and upload their installers as workflow artifacts. A final `publish` job creates the GitHub release from them, and it runs only when both builds passed, so a release never lacks one platform. If a build fails, fix it and use **Re-run failed jobs**: the passing platform's artifacts are kept and `publish` runs once the failed job succeeds.
+
 Artifacts:
 - `CS2Clean-Setup-<version>.exe` — NSIS installer (Windows)
 - `CS2Clean-<version>-portable.zip` — portable build (Windows): extract into a folder of its own, see "Portable build"

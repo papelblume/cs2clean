@@ -4,6 +4,8 @@ name: cs2clean-release
 #   Actions > cs2clean-release > Run workflow, version e.g. 0.2.0   (creates the tag cs2clean-v0.2.0)
 #   or push a tag: git tag cs2clean-v0.2.0, git push origin cs2clean-v0.2.0
 # The version is set at build time; package.json in the repo isn't changed.
+# The two build jobs only build, test and upload their installers as workflow artifacts. The GitHub release is made
+# by the `publish` job at the end, and only when both of them succeeded, so a release never lacks one platform.
 #
 # Test run (nothing published): Run workflow, pick the branch under test, a throwaway version such as 0.0.1 and
 # untick "Create the GitHub release". It builds, runs the sidecar selftests and uploads the installers as workflow
@@ -29,6 +31,8 @@ permissions:
 jobs:
   release-win:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     defaults:
       run:
         shell: bash
@@ -81,20 +85,6 @@ jobs:
           # No installer is a failed build, not an empty upload.
           if-no-files-found: error
 
-      # A tag push always publishes; a manual run publishes unless "Create the GitHub release" was unticked.
-      - name: GitHub release
-        if: ${{ github.event_name == 'push' || inputs.publish }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: cs2clean-v${{ steps.version.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          name: CS2Clean ${{ steps.version.outputs.version }}
-          # Without this, a pattern that matches nothing publishes a release that is missing that file.
-          fail_on_unmatched_files: true
-          files: |
-            release/*.exe
-            release/*.zip
-
   release-linux:
     runs-on: ubuntu-latest
     defaults:
@@ -145,14 +135,32 @@ jobs:
             release/*.tar.gz
           if-no-files-found: error
 
+  # One release for both platforms, made only when both builds (their tests and sidecar checks included) have passed.
+  # With a release step in each build job, a failure on one OS still published a final release without that OS's
+  # installers, and the app's update check would already have pointed people at it.
+  publish:
+    # A tag push always publishes; a manual run publishes unless "Create the GitHub release" was unticked.
+    # (A job's `if` without a status function also requires both `needs` jobs to have succeeded.)
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    needs: [release-win, release-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cs2clean-${{ needs.release-win.outputs.version }}-*
+          path: release
+          merge-multiple: true
+      - run: ls -l release
       - name: GitHub release
-        if: ${{ github.event_name == 'push' || inputs.publish }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: cs2clean-v${{ steps.version.outputs.version }}
+          tag_name: cs2clean-v${{ needs.release-win.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: CS2Clean ${{ steps.version.outputs.version }}
+          name: CS2Clean ${{ needs.release-win.outputs.version }}
+          # Without this, a pattern that matches nothing publishes a release that is missing that file.
           fail_on_unmatched_files: true
           files: |
+            release/*.exe
+            release/*.zip
             release/*.AppImage
             release/*.tar.gz
