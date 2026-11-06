@@ -54,10 +54,14 @@ export function show(v: number | null | undefined, digits = 0, unit = ""): strin
   return v == null ? "–" : `${v.toFixed(digits)}${unit}`;
 }
 
-/** Clutch rating for display: multiply by 100, show as "+N.N". */
+/**
+ * Clutch rating for display: multiply by 100, show as "+N.N" or "-N.N". Leetify's clutch rating is centred on zero, so
+ * below-average players have a negative one. A value that rounds to zero is shown as "+0.0", never "-0.0".
+ */
 export function clutchDisplay(v: number | null | undefined): string {
   if (v == null) return "–";
-  return `+${(v * 100).toFixed(1)}`;
+  const abs = Math.abs(v * 100).toFixed(1);
+  return v < 0 && abs !== "0.0" ? `-${abs}` : `+${abs}`;
 }
 
 /** Leetify rating for display: show with +/- prefix, e.g. "+3.54" or "-1.55". */
