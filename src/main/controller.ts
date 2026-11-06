@@ -61,6 +61,8 @@ export interface ControllerDeps {
 export class Controller extends EventEmitter<{ state: [AppState] }> {
   readonly leetify: LeetifyClient;
   private lobby: LobbyService;
+  /** Takes this controller's listeners off the game source; null while they aren't on it (before start(), after stop()). */
+  private detachSource: (() => void) | null = null;
   private settings: Settings;
   /** Players the siren already went off for, in the current match. */
   private alerted = new Set<string>();
@@ -78,8 +80,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     const key = this.settings.leetifyKey || deps.envKey || null;
     this.leetify = new LeetifyClient(key, deps.fetchImpl);
     const steamKey = this.steamKey;
-    const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) };
-    this.lobby = new LobbyService((ids, onEarly) => this.lookup(ids, onEarly), () => this.publish(), lobbyOpts);
+    this.lobby = this.createLobby();
     this.state = {
       version: deps.version,
       leetify: { hasKey: !!key, reachable: null, fallback: { working: null, reason: null } },
@@ -97,19 +98,44 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     };
   }
 
+  /** A lobby with the options the controller gives it: the Steam key in use now, and notices for the window. */
+  private createLobby(): LobbyService {
+    const lobbyOpts = { ...this.deps.lobby, steamApiKey: this.steamKey, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) };
+    return new LobbyService((ids, onEarly) => this.lookup(ids, onEarly), () => this.publish(), lobbyOpts);
+  }
+
   start(): void {
+    if (this.detachSource) return; // already started
+    if (this.stopped) {
+      // A lobby that was disposed by stop() is finished for good: this one starts empty, and the game source, which
+      // announces its match again on every scan, fills it.
+      this.lobby = this.createLobby();
+      this.publish();
+    }
     this.stopped = false;
     this.startHotkeys();
     const src = this.deps.source;
-    src.on("running", (running) => this.update({ game: { ...this.state.game, running } }));
-    src.on("problem", (problem) => this.update({ game: { ...this.state.game, problem } }));
-    src.on("hint", (hint) => this.update({ game: { ...this.state.game, hint } }));
-    src.on("match", (m: MatchState) => this.onMatch(m));
+    const onRunning = (running: boolean) => this.update({ game: { ...this.state.game, running } });
+    const onProblem = (problem: string | null) => this.update({ game: { ...this.state.game, problem } });
+    const onHint = (hint: string | null) => this.update({ game: { ...this.state.game, hint } });
+    const onMatch = (m: MatchState) => this.onMatch(m);
+    src.on("running", onRunning);
+    src.on("problem", onProblem);
+    src.on("hint", onHint);
+    src.on("match", onMatch);
+    this.detachSource = () => {
+      src.off("running", onRunning);
+      src.off("problem", onProblem);
+      src.off("hint", onHint);
+      src.off("match", onMatch);
+    };
     src.start();
   }
 
   stop(): void {
     this.stopped = true;
+    this.detachSource?.(); // what the source says after this has nowhere to go; start() listens again
+    this.detachSource = null;
     this.deps.source.stop();
     this.lobby.dispose();
   }

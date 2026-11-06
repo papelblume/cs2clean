@@ -512,6 +512,61 @@ describe("Controller", () => {
     c.stop();
   });
 
+  describe("stopped and started again", () => {
+    it("looks the lobby up again after the restart, and doesn't listen to the source while it is stopped", async () => {
+      const src = new FakeSource();
+      const { c, server } = setup({}, src);
+      server.s.profiles[P(2).steamId] = HIGH();
+      c.start();
+      await vi.advanceTimersByTimeAsync(20);
+      src.send({ players: [P(0), P(1), P(2)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.lobby.rows.map((r) => [r.name, r.classification])).toEqual([["p0", "NORMAL"], ["p1", "NORMAL"], ["p2", "HIGH"]]);
+      expect(src.listenerCount("match")).toBe(1);
+
+      c.stop();
+      expect(src.listenerCount("match")).toBe(0);
+      src.send({ map: "de_nuke", players: [P(0), P(1)] }); // said while stopped: nobody is listening
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.match?.map).toBe("de_dust2");
+
+      c.start();
+      expect(src.listenerCount("match")).toBe(1);
+      server.s.lookups.length = 0;
+      src.send({ players: [P(0), P(1), P(2), P(3)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(c.state.lobby.rows.map((r) => [r.name, r.classification])).toEqual([["p0", "NORMAL"], ["p1", "NORMAL"], ["p2", "HIGH"], ["p3", "NORMAL"]]);
+      expect(server.s.lookups.sort()).toEqual([0, 1, 2, 3].map((n) => P(n).steamId)); // a new lobby: everybody is asked about again
+      c.stop();
+    });
+
+    it("keeps one set of listeners when started twice in a row", () => {
+      const src = new FakeSource();
+      const { c } = setup({}, src);
+      c.start();
+      c.start();
+      expect(src.listenerCount("match")).toBe(1);
+      c.stop();
+      c.stop();
+      expect(src.listenerCount("match")).toBe(0);
+    });
+
+    it("gives the new lobby the Steam key in use at the restart", async () => {
+      const src = new FakeSource();
+      const { c } = setup({}, src);
+      c.start();
+      c.stop();
+      await c.setSteamApiKey("steam-key"); // saved while stopped
+      c.start();
+      steam.groupPlayers.mockClear();
+      src.send({ players: [P(0), P(1), P(2)] });
+      await vi.advanceTimersByTimeAsync(900);
+      expect(steam.groupPlayers).toHaveBeenCalled();
+      expect(steam.groupPlayers.mock.calls[0][1]).toBe("steam-key");
+      c.stop();
+    });
+  });
+
   describe("the siren ignore list", () => {
     it("keeps a listed player out of the siren, and the siren still goes off for the others", async () => {
       const src = new FakeSource();
