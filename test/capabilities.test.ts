@@ -3,22 +3,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  CEF_FLAG_FILE, cefHint, debugPortFromArgs, describeCapabilities, detectCef, detectConsoleLog, findCs2ConsoleLog,
-  CONSOLE_RECENT_MS, friendsHint, profileFallbackWanted, scanSteamProcesses, systemConsoleLog, type CefIo, type CefState, type ConsoleLogState, type SteamProcesses,
+  CEF_FLAG_FILE, cefHint, debugFlagInArgs, describeCapabilities, detectCef, detectConsoleLog, findCs2ConsoleLog,
+  CONSOLE_RECENT_MS, friendsHint, profileFallbackWanted, scanSteamProcesses, systemCefIo, systemConsoleLog, type CefIo, type CefState, type ConsoleLogState, type SteamProcesses,
 } from "../src/main/steam/capabilities";
 
 // Steam's web helper command line, as read from /proc on Linux Mint (shortened: the parts that matter).
 const HELPER = ["./steamwebhelper", "-nocrashdialog", "-lang=en_US", "-uimode=7", "--valve-enable-site-isolation", "--enable-smooth-scrolling", "--password-store=basic"];
 const WITH_PORT = [...HELPER.slice(0, 5), "--remote-allow-origins=*", "--remote-debugging-address=127.0.0.1", "--remote-debugging-port=8080", ...HELPER.slice(5)];
 
-describe("the debug port in Steam's command line", () => {
-  it("reads the port, and only a real one", () => {
-    expect(debugPortFromArgs(WITH_PORT)).toBe(8080);
-    expect(debugPortFromArgs(["--remote-debugging-port=9222"])).toBe(9222);
-    expect(debugPortFromArgs(HELPER)).toBeNull();
-    expect(debugPortFromArgs(["--remote-debugging-address=127.0.0.1"])).toBeNull();
-    for (const bad of ["--remote-debugging-port=0", "--remote-debugging-port=99999", "--remote-debugging-port=", "--remote-debugging-port=80a"])
-      expect(debugPortFromArgs([bad]), bad).toBeNull();
+describe("the debug port flag in Steam's command line", () => {
+  it("is on when the command line asks for a debugging port, and only then", () => {
+    expect(debugFlagInArgs(WITH_PORT)).toBe(true);
+    expect(debugFlagInArgs(HELPER)).toBe(false);
+    expect(debugFlagInArgs(["--remote-debugging-address=127.0.0.1"])).toBe(false);
+    for (const bad of ["--remote-debugging-port=", "--remote-debugging-port=80a", "--remote-debugging-port"])
+      expect(debugFlagInArgs([bad]), bad).toBe(false);
   });
 });
 
@@ -38,15 +37,15 @@ describe("looking for Steam in /proc", () => {
     add("300", ["./steamwebhelper", "--type=renderer"]); // Steam's other helper processes don't carry the flag
     mkdirSync(join(proc, "self"));
     add("400", null);                                     // a process we can't read
-    expect(scanSteamProcesses(proc)).toEqual({ steamRunning: true, debugPort: 8080 });
+    expect(scanSteamProcesses(proc)).toEqual({ steamRunning: true, debugFlag: true });
   });
 
   it("sees Steam running without the flag, and Steam not running", () => {
     add("200", HELPER);
-    expect(scanSteamProcesses(proc)).toEqual({ steamRunning: true, debugPort: null });
+    expect(scanSteamProcesses(proc)).toEqual({ steamRunning: true, debugFlag: false });
     rmSync(join(proc, "200"), { recursive: true });
     add("201", ["/usr/bin/steam-runtime-launcher-service"]);
-    expect(scanSteamProcesses(proc)).toEqual({ steamRunning: false, debugPort: null });
+    expect(scanSteamProcesses(proc)).toEqual({ steamRunning: false, debugFlag: false });
   });
 
   it("is null where there is no /proc", () => {
@@ -55,40 +54,51 @@ describe("looking for Steam in /proc", () => {
 });
 
 describe("what the debug port allows", () => {
-  function io(o: { reachable?: boolean; friendsWindow?: boolean; procs?: SteamProcesses | null; flagFile?: boolean; envPort?: number | null } = {}) {
+  function io(o: { reachable?: boolean; friendsWindow?: boolean; procs?: SteamProcesses | null; flagFile?: boolean } = {}) {
     const probed: number[] = [];
     const c: CefIo = {
       probe: async (port) => (probed.push(port), { reachable: o.reachable ?? false, friendsWindow: o.friendsWindow ?? false }),
       processes: () => (o.procs === undefined ? null : o.procs),
       flagFile: () => o.flagFile ?? false,
-      envPort: o.envPort,
     };
     return { c, probed };
   }
-  const running = (debugPort: number | null): SteamProcesses => ({ steamRunning: true, debugPort });
+  const running = (debugFlag: boolean): SteamProcesses => ({ steamRunning: true, debugFlag });
 
   it("is reachable when the port answers, and says whether the friends window is open", async () => {
-    expect(await detectCef(io({ reachable: true, friendsWindow: true, procs: running(8080) }).c)).toEqual({ state: "reachable", port: 8080, friendsWindow: true });
+    expect(await detectCef(io({ reachable: true, friendsWindow: true, procs: running(true) }).c)).toEqual({ state: "reachable", port: 8080, friendsWindow: true });
     expect(await detectCef(io({ reachable: true, friendsWindow: false }).c)).toMatchObject({ state: "reachable", friendsWindow: false });
   });
 
   it("explains a closed port on Linux", async () => {
     const state = async (o: Parameters<typeof io>[0]): Promise<CefState> => (await detectCef(io(o).c)).state;
-    expect(await state({ procs: { steamRunning: false, debugPort: null } })).toBe("steam-not-running");
-    expect(await state({ procs: running(null), flagFile: false })).toBe("off");
-    expect(await state({ procs: running(null), flagFile: true })).toBe("restart-steam");
-    expect(await state({ procs: running(8080) })).toBe("unknown");   // asks for a port that doesn't answer
+    expect(await state({ procs: { steamRunning: false, debugFlag: false } })).toBe("steam-not-running");
+    expect(await state({ procs: running(false), flagFile: false })).toBe("off");
+    expect(await state({ procs: running(false), flagFile: true })).toBe("restart-steam");
+    expect(await state({ procs: running(true) })).toBe("unknown");   // the flag is on but the port doesn't answer
   });
 
   it("can't explain a closed port where Steam's command line isn't readable", async () => {
     expect(await detectCef(io({ procs: null, flagFile: true }).c)).toMatchObject({ state: "unknown", friendsWindow: null });
   });
 
-  it("probes the port from Steam's command line first, then the environment's, then 8080", async () => {
-    const a = io({ procs: running(9222), envPort: 7000 }); await detectCef(a.c);
-    const b = io({ procs: running(null), envPort: 7000 }); await detectCef(b.c);
+  it("always probes port 8080, which is the only port Steam's debug port has", async () => {
+    const a = io({ procs: running(true) }); await detectCef(a.c);
+    const b = io({ procs: running(false) }); await detectCef(b.c);
     const c = io({ procs: null }); await detectCef(c.c);
-    expect([a.probed, b.probed, c.probed]).toEqual([[9222], [7000], [8080]]);
+    expect([a.probed, b.probed, c.probed]).toEqual([[8080], [8080], [8080]]);
+  });
+
+  it("ignores CS2CLEAN_DEBUG_PORT: the port isn't configurable", async () => {
+    const before = process.env.CS2CLEAN_DEBUG_PORT;
+    process.env.CS2CLEAN_DEBUG_PORT = "7000";
+    try {
+      const a = io({ procs: null }); await detectCef(a.c);
+      expect(a.probed).toEqual([8080]);
+      expect(Object.keys(systemCefIo()).sort()).toEqual(["flagFile", "probe", "processes"]); // no port in the real io either
+    } finally {
+      if (before === undefined) delete process.env.CS2CLEAN_DEBUG_PORT; else process.env.CS2CLEAN_DEBUG_PORT = before;
+    }
   });
 });
 

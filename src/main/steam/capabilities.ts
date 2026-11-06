@@ -2,9 +2,9 @@
 //
 //   - Steam's debug port: Steam's web helper serves Chrome's DevTools protocol on localhost when Steam was started
 //     with -cef-enable-debugging or with an empty ".cef-enable-remote-debugging" file in its folder (steam-ui.ts reads
-//     the friends list through it). Steam's command line says whether the flag is on and which port it uses: on
-//     Linux that is readable from /proc (steamwebhelper ... --remote-debugging-port=8080); on Windows only the port
-//     itself can be probed.
+//     the friends list through it). The port is always 8080: Steam doesn't let it be changed. Steam's command line says
+//     whether the flag is on: on Linux that is readable from /proc (steamwebhelper ... --remote-debugging-port=8080); on
+//     Windows only the port itself can be probed.
 //   - CS2's console.log: CS2 writes it when launched with -condebug. It is "active" when it has been written to since
 //     this CS2 session began.
 //
@@ -20,20 +20,16 @@ export const CEF_FLAG_FILE = ".cef-enable-remote-debugging";
 
 // ------------------------------------------------------------------ Steam's debug port
 
-/** The port in Steam's web helper command line ("--remote-debugging-port=8080"), or null. */
-export function debugPortFromArgs(args: readonly string[]): number | null {
-  for (const a of args) {
-    const m = /^--remote-debugging-port=(\d{1,5})$/.exec(a);
-    if (m && Number(m[1]) > 0 && Number(m[1]) < 65536) return Number(m[1]);
-  }
-  return null;
+/** Whether Steam's web helper command line turns the debug port on ("--remote-debugging-port=8080"). */
+export function debugFlagInArgs(args: readonly string[]): boolean {
+  return args.some((a) => /^--remote-debugging-port=\d+$/.test(a));
 }
 
 export interface SteamProcesses {
   /** Steam's web helper is running, which means Steam is. */
   steamRunning: boolean;
-  /** The debug port its command line asks for; null when it doesn't ask for one. */
-  debugPort: number | null;
+  /** Its command line turns the debug port on. */
+  debugFlag: boolean;
 }
 
 /** Looks through /proc for Steam's web helper processes. Null where /proc isn't available (not Linux). */
@@ -45,7 +41,7 @@ export function scanSteamProcesses(procDir = "/proc"): SteamProcesses | null {
     return null;
   }
   let steamRunning = false;
-  let debugPort: number | null = null;
+  let debugFlag = false;
   for (const pid of entries) {
     if (!/^\d+$/.test(pid)) continue;
     let args: string[];
@@ -56,9 +52,9 @@ export function scanSteamProcesses(procDir = "/proc"): SteamProcesses | null {
     }
     if (basename(args[0] ?? "") !== "steamwebhelper") continue;
     steamRunning = true;
-    debugPort ??= debugPortFromArgs(args);
+    debugFlag ||= debugFlagInArgs(args);
   }
-  return { steamRunning, debugPort };
+  return { steamRunning, debugFlag };
 }
 
 export type CefState =
@@ -69,7 +65,7 @@ export type CefState =
   /** Steam runs without the flag and there is no flag file. */
   | "off"
   | "steam-not-running"
-  /** The port is closed and Steam's command line can't tell why (Windows), or it asks for a port that doesn't answer. */
+  /** The port is closed and Steam's command line can't tell why (Windows), or it has the flag on but the port doesn't answer. */
   | "unknown";
 
 export interface CefCapability {
@@ -84,19 +80,17 @@ export interface CefIo {
   probe: (port: number) => Promise<{ reachable: boolean; friendsWindow: boolean }>;
   processes: () => SteamProcesses | null;
   flagFile: () => boolean;
-  /** CS2CLEAN_DEBUG_PORT, when set. */
-  envPort?: number | null;
 }
 
 export async function detectCef(io: CefIo): Promise<CefCapability> {
   const procs = io.processes();
-  const port = procs?.debugPort ?? io.envPort ?? DEFAULT_DEBUG_PORT;
+  const port = DEFAULT_DEBUG_PORT; // Steam's debug port is always this one
   const probed = await io.probe(port);
   if (probed.reachable) return { state: "reachable", port, friendsWindow: probed.friendsWindow };
   const closed = { port, friendsWindow: null };
   if (!procs) return { state: "unknown", ...closed };
   if (!procs.steamRunning) return { state: "steam-not-running", ...closed };
-  if (procs.debugPort != null) return { state: "unknown", ...closed };
+  if (procs.debugFlag) return { state: "unknown", ...closed };
   return { state: io.flagFile() ? "restart-steam" : "off", ...closed };
 }
 
@@ -112,7 +106,6 @@ export function systemCefIo(): CefIo {
       const dir = steamPath();
       return !!dir && existsSync(join(dir, CEF_FLAG_FILE));
     },
-    envPort: Number(process.env.CS2CLEAN_DEBUG_PORT) || null,
   };
 }
 

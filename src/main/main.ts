@@ -41,7 +41,7 @@ import { MiniprofileStatus } from "./steam/miniprofile";
 import { watchStatusBlocks } from "./steam/console-log";
 import { FriendNameDirectory } from "./steam/friend-names";
 import { FriendsWindowOpener } from "./steam/friends-window";
-import { DEFAULT_DEBUG_PORT, findFriendsTarget, listDebugTargets, readFriendUi } from "./steam/steam-ui";
+import { findFriendsTarget, listDebugTargets, readFriendUi } from "./steam/steam-ui";
 
 // Overwolf's overlay keeps the default hotkeys (none is bound in CS2 by default); the app's own overlay
 // window uses the ones chosen in Settings.
@@ -112,8 +112,6 @@ function gsiToken(): string {
   return token;
 }
 
-const debugPort = (): number => Number(process.env.CS2CLEAN_DEBUG_PORT) || DEFAULT_DEBUG_PORT;
-
 /** The "open Steam's friends list for me" setting; the controller exists once the app is ready. */
 const autoOpenFriendsList = (): boolean => controller?.state.autoOpenFriendsList ?? true;
 
@@ -150,13 +148,13 @@ function steamSource(): SteamSource {
     localSteamId: readActiveSteamId,
     cs2Running: isCs2Running,
     // Friends in the same match are found through Steam's friends list when Steam was started with -cef-enable-debugging.
-    uiStatus: () => readFriendUi(debugPort()),
+    uiStatus: () => readFriendUi(), // Steam's debug port, 8080
     // ... and Steam's friends list window is opened when it is closed (the "open it for me" setting), once when the app
     // starts and in a match's warm-up.
     friendsWindow: new FriendsWindowOpener({
       open: (url) => shell.openExternal(url),
       windowState: async () => {
-        const r = await listDebugTargets(debugPort());
+        const r = await listDebugTargets();
         return !r.ok ? "unreachable" : findFriendsTarget(r.targets) ? "open" : "closed";
       },
       enabled: autoOpenFriendsList,

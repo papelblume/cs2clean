@@ -139,7 +139,7 @@ Steam's coplay list leaves out people who are already your friends. What was tri
 `capabilities.ts` says what is available and why not; `game/steam.ts` runs it all.
 
 **Capabilities** (`capabilities.ts`). Every system touch goes through an injectable `io`, so the decisions are tested.
-- *Debug port*: probed at `127.0.0.1:<port>/json`. On Linux the port comes from Steam's web helper command line in `/proc` (`--remote-debugging-port=8080`), else `CS2CLEAN_DEBUG_PORT`, else 8080. A closed port is explained: Steam not running, running without the flag, or the flag file (`.cef-enable-remote-debugging`) present but Steam not restarted. On Windows the command line isn't read, so a closed port is just "unknown".
+- *Debug port*: always 8080 (Steam doesn't let it be changed, and the app has no setting for it), probed at `127.0.0.1:8080/json`. On Linux Steam's web helper command line in `/proc` (`--remote-debugging-port=8080`) says whether the flag is on. A closed port is explained: Steam not running, running without the flag, or the flag file (`.cef-enable-remote-debugging`) present but Steam not restarted. On Windows the command line isn't read, so a closed port is just "unknown".
 - *console.log*: `game/csgo/console.log` next to CS2's `cfg` folder. It is "active" when written to since the session began; `profileFallbackWanted` also counts a write within the last two hours as in use, because the app may have started mid-match.
 - `friendsHint` and `profileFallbackWanted` are pure functions of these, and `main.ts` shares one look at them (at most every 10 s) between the hint and the fallback.
 

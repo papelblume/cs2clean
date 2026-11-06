@@ -1,8 +1,8 @@
 // `npm run friends-ui`: prints what Steam's friends list window shows (read over the debug port) and which friends
 // the app would add to your match because their status line equals yours. Use it in a match's warm-up or live, with
 // Steam started with -cef-enable-debugging. Optional: your SteamID64 as an argument, to leave yourself out.
-// Port: the one in Steam's command line (Linux), else CS2CLEAN_DEBUG_PORT, else 8080. It also says what the app can
-// use to find friends (the debug port, CS2's console.log) and why not.
+// Port: 8080, the one Steam's debug port always uses. It also says what the app can use to find friends (the debug
+// port, CS2's console.log) and why not.
 
 import { cefHint, describeCapabilities, detectCef, profileFallbackWanted, systemConsoleLog, systemCefIo } from "./capabilities";
 import { readCoplay, type FriendInGame } from "./coplay";
