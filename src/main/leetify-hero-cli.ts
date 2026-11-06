@@ -21,6 +21,7 @@ import { accessSync, constants, existsSync, mkdirSync, readdirSync } from "fs";
 import { join } from "path";
 import type { LeetifyProfile } from "./leetify";
 import { parseCsstAtHtml } from "./csst-parse";
+import { createFinisher } from "./hero-finish";
 import { debug } from "./logger";
 
 // Minimal Hero interface; its types aren't imported so the bundle has no build-time dependency on Hero.
@@ -68,10 +69,16 @@ const errText = (e: unknown): string => (e instanceof Error ? e.message || Strin
 // to end the process (finish, the SIGTERM handler) uses this one, taken before that can happen.
 const exit = process.exit.bind(process);
 
-/** Writes the result line, lets it flush, and exits: Hero Core would otherwise keep the process alive for a while. */
-function finish(result: unknown, code: number): void {
-  process.stdout.write(JSON.stringify(result) + "\n", () => exit(code));
-}
+/**
+ * Writes the result line, lets it flush, and exits: Hero Core would otherwise keep the process alive for a while. Only
+ * the first call counts: the parent takes the last line for the result, so a late error (an unhandled rejection while
+ * Hero shuts down) must not print a second one over it. What comes after the first result goes to stderr.
+ */
+const finish = createFinisher(
+  (line, done) => process.stdout.write(line, done),
+  exit,
+  (result) => console.error("[hero] ignored a result printed after the first one:", JSON.stringify(result)),
+);
 
 // Everything the sidecar needs is installed next to cli.js.
 const sidecarRequire = createRequire(join(__dirname, "package.json"));
