@@ -47,3 +47,45 @@ describe("Steam rejects the API key (403)", () => {
     expect(result.errors).toEqual(["a"]);
   });
 });
+
+describe("validateSteamKey", () => {
+  beforeEach(() => mockFetch.mockReset());
+  const answer = (status: number, body = "") => ({ ok: status >= 200 && status < 300, status, text: () => Promise.resolve(body) });
+
+  test("accepts a key Steam answers for, whether the test account's friends list is public (200) or private (401)", async () => {
+    const { validateSteamKey } = await import("../src/main/steam/friends");
+    mockFetch.mockResolvedValueOnce(answer(200, '{"friendslist":{"friends":[]}}'));
+    expect(await validateSteamKey("good-key")).toBe(true);
+    mockFetch.mockResolvedValueOnce(answer(401, "<html><body>Unauthorized</body></html>"));
+    expect(await validateSteamKey("good-key")).toBe(true);
+  });
+
+  test("rejects a key Steam turns down (403), whatever the body looks like", async () => {
+    const { validateSteamKey } = await import("../src/main/steam/friends");
+    mockFetch.mockResolvedValueOnce(answer(403, "<html><body>Forbidden</body></html>"));
+    expect(await validateSteamKey("bad-key")).toBe(false);
+    mockFetch.mockResolvedValueOnce(answer(403, "{}"));
+    expect(await validateSteamKey("bad-key")).toBe(false);
+  });
+
+  test("doesn't call the key invalid when Steam can't answer: a rate limit, an outage or an odd status throws", async () => {
+    const { validateSteamKey } = await import("../src/main/steam/friends");
+    for (const status of [429, 500, 503, 400]) {
+      mockFetch.mockResolvedValueOnce(answer(status, "<html><body>Service Unavailable</body></html>"));
+      await expect(validateSteamKey("good-key")).rejects.toThrow(`Steam answered HTTP ${status}`);
+    }
+  });
+
+  test("lets a network failure through, for the caller to report as 'couldn't check'", async () => {
+    const { validateSteamKey } = await import("../src/main/steam/friends");
+    mockFetch.mockRejectedValueOnce(new Error("fetch failed"));
+    await expect(validateSteamKey("good-key")).rejects.toThrow("fetch failed");
+  });
+
+  test("sends the key it was given, URL-encoded", async () => {
+    const { validateSteamKey } = await import("../src/main/steam/friends");
+    mockFetch.mockResolvedValueOnce(answer(200));
+    await validateSteamKey("a b&c");
+    expect(String(mockFetch.mock.calls[0][0])).toContain("key=a%20b%26c");
+  });
+});

@@ -12,7 +12,10 @@ const BASE = "https://api.steampowered.com";
 const ENDPOINT = "/ISteamUser/GetFriendList/v0001/";
 const DELAY_MS = 200;
 
-/** Steam ID with a private friends list, used to validate the API key without exposing data. */
+/**
+ * The Steam ID validateSteamKey asks about. Any ID works: the key is judged by the status of the answer, not by
+ * whether this account's friends list is public (which is not ours to rely on, and can change).
+ */
 const KEY_TEST_ID = "76561197960287930";
 
 export interface FriendsResult {
@@ -148,10 +151,17 @@ export async function groupPlayers(lobbyIds: string[], apiKey: string): Promise<
   return { groups: uf.groups(), private: private_, errors };
 }
 
-/** Check whether a Steam Web API key is valid by fetching one private profile. Returns false on 403 or non-JSON. */
+/**
+ * Whether Steam accepts a Web API key, judged by the status of one friends-list request, the same way fetchFriends
+ * reads it: 403 is a key Steam turned down, 200 is an accepted key, and 401 is an accepted key asking about a list that
+ * is private (Steam looks at the key first). Anything else (a rate limit, a Steam outage, an unexpected status) says
+ * nothing about the key, so it throws and the caller can say "couldn't check" instead of "invalid". A network failure
+ * throws too.
+ */
 export async function validateSteamKey(key: string): Promise<boolean> {
   const url = `${BASE}${ENDPOINT}?key=${encodeURIComponent(key)}&steamid=${KEY_TEST_ID}&relationship=friend`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  const text = await res.text().catch(() => "");
-  return text.startsWith("{") && text.endsWith("}");
+  if (res.status === 403) return false;
+  if (res.ok || res.status === 401) return true;
+  throw new Error(`Steam answered HTTP ${res.status}`);
 }
