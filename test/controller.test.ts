@@ -212,6 +212,41 @@ describe("Controller", () => {
     expect(c.steamKey).toBe("new-key"); // read at once, so the friend names don't go on with the old key
   });
 
+  it("goes on with STEAM_API_KEY when the Steam key saved in Settings is removed, as the Leetify key does", async () => {
+    const source = new FakeSource();
+    const { c, saved } = setup({ steamApiKey: "saved-key" }, source, { steamApiKey: "env-key" });
+    c.start();
+    source.send({ players: [P(0), P(1), P(2)] });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(steam.groupPlayers.mock.calls.at(-1)?.[1]).toBe("saved-key");
+
+    c.clearSteamApiKey();
+    expect(saved().steamApiKey).toBeNull();
+    expect(c.state.steam.hasKey).toBe(true); // the environment's key is still in use
+    await vi.advanceTimersByTimeAsync(50);
+    expect(steam.groupPlayers.mock.calls.at(-1)?.[1]).toBe("env-key");
+    expect(c.state.lobby.rows.map((r) => r.groupName)).toEqual(["3 friends", "3 friends", "3 friends"]);
+    c.stop();
+  });
+
+  it("says there is no Steam key once the saved one is removed and there is no STEAM_API_KEY either", async () => {
+    const { c } = setup({ steamApiKey: "saved-key" });
+    expect(c.state.steam.hasKey).toBe(true);
+    c.clearSteamApiKey();
+    expect(c.state.steam.hasKey).toBe(false);
+    expect(c.steamKey).toBeNull();
+  });
+
+  it("looks a custom profile name up with the Steam key in use, STEAM_API_KEY included", async () => {
+    vanity.resolveVanity.mockClear();
+    const { c } = setup({}, new FakeSource(), { steamApiKey: "env-key" });
+    await c.addPlayer("https://steamcommunity.com/id/someone");
+    expect(vanity.resolveVanity.mock.calls[0].slice(0, 2)).toEqual(["someone", "env-key"]);
+    expect(await c.setSteamApiKey("saved-key")).toBe(true);
+    await c.addPlayer("https://steamcommunity.com/id/someone");
+    expect(vanity.resolveVanity.mock.calls[1].slice(0, 2)).toEqual(["someone", "saved-key"]);
+  });
+
   it("shows one unreadable profile as that player's answer, without failing the lobby or asking again and again", async () => {
     const source = new FakeSource();
     const { c, server } = setup({}, source);

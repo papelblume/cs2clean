@@ -77,7 +77,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.settings = { ...deps.store.load() };
     const key = this.settings.leetifyKey || deps.envKey || null;
     this.leetify = new LeetifyClient(key, deps.fetchImpl);
-    const steamKey = this.settings.steamApiKey || deps.steamApiKey || null;
+    const steamKey = this.steamKey;
     const lobbyOpts = { ...deps.lobby, steamApiKey: steamKey, onFriendshipError: (count: number) => this.update({ notice: `Steam Web API errors for ${count} player${count > 1 ? "s" : ""}: friendship groups unavailable.` }), onFriendshipKeyError: (msg: string) => this.update({ notice: "Your Steam Web API key is invalid or missing." }) };
     this.lobby = new LobbyService((ids, onEarly) => this.lookup(ids, onEarly), () => this.publish(), lobbyOpts);
     this.state = {
@@ -185,11 +185,12 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     return true;
   }
 
+  /** Removes the key saved in Settings. A STEAM_API_KEY, if there is one, takes over, as the Leetify key's does. */
   clearSteamApiKey(): void {
     this.settings = { ...this.settings, steamApiKey: null };
     this.deps.store.save(this.settings);
-    this.lobby.setSteamApiKey(null);
-    this.update({ steam: { hasKey: false } });
+    this.lobby.setSteamApiKey(this.steamKey);
+    this.update({ steam: { hasKey: !!this.steamKey } });
   }
 
   private useKey(key: string | null): void {
@@ -374,7 +375,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     let steamId: string;
     if (input.kind === "id") steamId = input.steamId;
     else {
-      const r = await resolveVanity(input.name, this.settings.steamApiKey || this.deps.steamApiKey || null, this.deps.fetchImpl);
+      const r = await resolveVanity(input.name, this.steamKey, this.deps.fetchImpl);
       if (!r.ok) {
         this.update({ notice: r.reason === "not-found" ? `Steam has no profile called "${input.name}".`
           : r.reason === "bad-key" ? "Your Steam Web API key is invalid or missing."
@@ -403,8 +404,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
    * neither knows them; a player taken off the list meanwhile is simply not there to name.
    */
   private async nameAddedPlayer(steamId: string): Promise<void> {
-    const key = this.settings.steamApiKey || this.deps.steamApiKey || null;
-    const name = await lookupPlayerName(steamId, key, this.deps.fetchImpl).catch(() => null);
+    const name = await lookupPlayerName(steamId, this.steamKey, this.deps.fetchImpl).catch(() => null);
     if (name && !this.stopped) this.deps.source.setPlayerName(steamId, name);
   }
 
