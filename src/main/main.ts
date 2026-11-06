@@ -117,18 +117,11 @@ const debugPort = (): number => Number(process.env.CS2CLEAN_DEBUG_PORT) || DEFAU
 /** The "open Steam's friends list for me" setting; the controller exists once the app is ready. */
 const autoOpenFriendsList = (): boolean => controller?.state.autoOpenFriendsList ?? true;
 
-// The Steam Web API key for matching `status` names to all friends (the Settings key, else STEAM_API_KEY), read from
-// the settings file at most once a minute, and the Steam ID the friends list is asked about.
+// The Steam Web API key for matching `status` names to all friends is the controller's (the Settings key, else
+// STEAM_API_KEY), asked each time so a key saved or removed in Settings counts at once, and the Steam ID the friends
+// list is asked about. The directory keeps its answer per key and account.
 let nameLocal: string | null = null;
-let webKey: { at: number; key: string | null } | null = null;
-const friendNameDirectory = new FriendNameDirectory(
-  () => {
-    if (!webKey || Date.now() - webKey.at > 60_000)
-      webKey = { at: Date.now(), key: settingsStore().load().steamApiKey || process.env.STEAM_API_KEY?.trim() || null };
-    return webKey.key;
-  },
-  () => nameLocal,
-);
+const friendNameDirectory = new FriendNameDirectory(() => controller?.steamKey ?? null, () => nameLocal);
 
 // One look at what Steam and CS2 allow, shared by the hint and the mini-profile fallback, at most every 10 seconds.
 const miniprofile = new MiniprofileStatus();

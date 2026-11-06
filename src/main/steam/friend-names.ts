@@ -4,7 +4,8 @@
 // CS2, this includes friends who appear offline. It needs a Steam Web API key and a public friends list.
 //
 // The answer is cached, and a failure is remembered for as long, so a broken key or a rate limit isn't hit again on
-// every `status`.
+// every `status`. It is cached for one key and one account: a new key or another account is another question, so a
+// failure of the old key never holds back the new one.
 
 import type { NameCandidate } from "./name-match";
 
@@ -44,8 +45,11 @@ class ApiError extends Error {
 }
 
 export class FriendNameDirectory {
-  private cached: { at: number; value: FriendNames } | null = null;
-  private inflight: Promise<FriendNames> | null = null;
+  /** The answer, with the key and account (`asked`) it is for. */
+  private cached: { asked: string; at: number; value: FriendNames } | null = null;
+  private inflight: { asked: string; promise: Promise<FriendNames> } | null = null;
+  /** What the latest get() asked for: a load for an older key or account that ends late must not leave its answer behind. */
+  private latest: string | null = null;
 
   constructor(private apiKey: () => string | null, private steamId: () => string | null, private o: FriendNamesOptions = {}) {}
 
@@ -56,9 +60,14 @@ export class FriendNameDirectory {
   async get(): Promise<FriendNames> {
     const key = this.apiKey(), me = this.steamId();
     if (!key || !me) return { friends: [], error: "no-key" };
-    if (this.cached && this.now - this.cached.at < (this.o.ttlMs ?? 300_000)) return this.cached.value;
-    this.inflight ??= this.load(key, me).finally(() => { this.inflight = null; });
-    return this.inflight;
+    const asked = `${me}\n${key}`;
+    this.latest = asked;
+    if (this.cached?.asked === asked && this.now - this.cached.at < (this.o.ttlMs ?? 300_000)) return this.cached.value;
+    if (this.inflight?.asked !== asked) {
+      const promise: Promise<FriendNames> = this.load(key, me, asked).finally(() => { if (this.inflight?.promise === promise) this.inflight = null; });
+      this.inflight = { asked, promise };
+    }
+    return this.inflight.promise;
   }
 
   private async getJson(path: string, params: Record<string, string>): Promise<unknown> {
@@ -79,7 +88,7 @@ export class FriendNameDirectory {
     }
   }
 
-  private async load(key: string, me: string): Promise<FriendNames> {
+  private async load(key: string, me: string, asked: string): Promise<FriendNames> {
     let value: FriendNames;
     try {
       const list = (await this.getJson(FRIENDS, { key, steamid: me, relationship: "friend" })) as { friendslist?: { friends?: { steamid?: unknown }[] } };
@@ -94,7 +103,7 @@ export class FriendNameDirectory {
     } catch (e) {
       value = { friends: [], error: e instanceof ApiError ? e.kind : "unavailable" };
     }
-    this.cached = { at: this.now, value };
+    if (this.latest === asked) this.cached = { asked, at: this.now, value };
     return value;
   }
 }

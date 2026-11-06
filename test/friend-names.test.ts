@@ -70,3 +70,73 @@ describe("the Web API's friend names", () => {
     expect(urls).toEqual([]);
   });
 });
+
+describe("the Web API's friend names, when the key or the account changes", () => {
+  const OTHER = "76561198000000777";
+  const reply = (status: number, body: unknown): FetchedResponse => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+  /** Steam that accepts only the key "GOOD", and has one friend, named after whoever is asked about. */
+  const steam = () => {
+    const asked: { key: string; steamid: string | null }[] = [];
+    const fetch: NamesFetch = async (url) => {
+      const u = new URL(url);
+      const key = u.searchParams.get("key") ?? "";
+      if (u.pathname.includes("GetFriendList")) {
+        asked.push({ key, steamid: u.searchParams.get("steamid") });
+        if (key !== "GOOD") return reply(403, {});
+        return reply(200, { friendslist: { friends: [{ steamid: id(u.searchParams.get("steamid") === OTHER ? 2 : 1) }] } });
+      }
+      const ids = (u.searchParams.get("steamids") ?? "").split(",");
+      return reply(200, { response: { players: ids.map((s) => ({ steamid: s, personaname: `Friend${BigInt(s) - 76561198000000000n}` })) } });
+    };
+    return { asked, fetch };
+  };
+
+  it("doesn't hold a new key back with the old key's failure", async () => {
+    const { asked, fetch } = steam();
+    let key = "BAD", t = 1_000_000;
+    const d = new FriendNameDirectory(() => key, () => ME, { fetch, now: () => t, ttlMs: 300_000 });
+    expect(await d.get()).toEqual({ friends: [], error: "bad-key" });
+    t += 5_000; // far inside the time a failure is remembered
+    key = "GOOD";
+    expect(await d.get()).toEqual({ friends: [{ steamId: id(1), name: "Friend1" }], error: null });
+    expect(asked.map((a) => a.key)).toEqual(["BAD", "GOOD"]);
+    await d.get();
+    expect(asked).toHaveLength(2); // and the new key's answer is cached as before
+  });
+
+  it("asks again for another account, and again when the first account is back", async () => {
+    const { asked, fetch } = steam();
+    let me = ME, t = 1_000_000;
+    const d = new FriendNameDirectory(() => "GOOD", () => me, { fetch, now: () => t, ttlMs: 300_000 });
+    expect((await d.get()).friends[0].name).toBe("Friend1");
+    me = OTHER;
+    expect((await d.get()).friends[0].name).toBe("Friend2"); // not the first account's friends
+    expect(asked.map((a) => a.steamid)).toEqual([ME, OTHER]);
+  });
+
+  it("drops the answer of a request for the old key that ends after the new key was asked", async () => {
+    const asked: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const fetch: NamesFetch = async (url) => {
+      const u = new URL(url);
+      const key = u.searchParams.get("key") ?? "";
+      if (u.pathname.includes("GetFriendList")) {
+        asked.push(key);
+        if (key === "OLD") await gate; // the old key's request is slow
+        return key === "OLD" ? reply(403, {}) : reply(200, { friendslist: { friends: [{ steamid: id(1) }] } });
+      }
+      return reply(200, { response: { players: [{ steamid: id(1), personaname: "Friend1" }] } });
+    };
+    let key = "OLD";
+    const d = new FriendNameDirectory(() => key, () => ME, { fetch, now: () => 1_000_000, ttlMs: 300_000 });
+    const slow = d.get();
+    key = "NEW";
+    const fresh = await d.get();
+    expect(fresh.error).toBeNull();
+    release();
+    expect((await slow).error).toBe("bad-key"); // whoever asked with the old key still gets its own answer
+    expect(await d.get()).toEqual(fresh);       // but the cache holds the new key's
+    expect(asked).toEqual(["OLD", "NEW"]);
+  });
+});

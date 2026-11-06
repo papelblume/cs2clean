@@ -203,6 +203,15 @@ describe("Controller", () => {
     c.stop();
   });
 
+  it("uses the Steam key saved in Settings, else STEAM_API_KEY", async () => {
+    expect(setup().c.steamKey).toBeNull();
+    expect(setup({}, undefined, { steamApiKey: "env-key" }).c.steamKey).toBe("env-key");
+    const { c } = setup({ steamApiKey: "saved-key" }, undefined, { steamApiKey: "env-key" });
+    expect(c.steamKey).toBe("saved-key");
+    expect(await c.setSteamApiKey("new-key")).toBe(true);
+    expect(c.steamKey).toBe("new-key"); // read at once, so the friend names don't go on with the old key
+  });
+
   it("shows one unreadable profile as that player's answer, without failing the lobby or asking again and again", async () => {
     const source = new FakeSource();
     const { c, server } = setup({}, source);

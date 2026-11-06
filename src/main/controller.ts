@@ -159,6 +159,11 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.useKey(null);
   }
 
+  /** The Steam Web API key in use: the one saved in Settings, else STEAM_API_KEY; null when there is neither. */
+  get steamKey(): string | null {
+    return this.settings.steamApiKey || this.deps.steamApiKey || null;
+  }
+
   /** Checks the Steam key is non-empty, validates it, and saves it. */
   async setSteamApiKey(raw: string): Promise<boolean> {
     const key = raw.trim();
