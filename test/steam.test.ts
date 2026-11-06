@@ -1,6 +1,7 @@
 import { request } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SteamSource } from "../src/main/game/steam";
+import type { FriendsWindow } from "../src/main/steam/friends-window";
 import type { CoplayEntry, CoplayResult, FriendInGame } from "../src/main/steam/coplay";
 import { gsiConfig, libraryPaths, parseGsi, parseLoginUsers, startGsiServer, type GameState } from "../src/main/steam/gsi";
 import { isCs2Running } from "../src/main/steam/process";
@@ -295,6 +296,83 @@ describe("SteamSource", () => {
     await vi.advanceTimersByTimeAsync(5_000);   // complete: slow interval now
     expect(scans.length).toBe(n);
     src.stop();
+  });
+});
+
+describe("SteamSource.stop()", () => {
+  beforeEach(() => vi.useFakeTimers({ now: 1_800_000_000_000 }));
+  afterEach(() => vi.useRealTimers());
+
+  /** A source whose Steam scan and friends-list opener stay out until the test lets them answer. */
+  function make() {
+    let push: (s: GameState) => void = () => {};
+    let scans = 0, ensures = 0;
+    let finishScan: () => void = () => {};
+    let finishEnsure: () => void = () => {};
+    const friendsWindow: FriendsWindow = {
+      ensure: () => (ensures++, new Promise((r) => { finishEnsure = () => r("unreachable"); })),
+      newMatch: () => {},
+    };
+    const src = new SteamSource({
+      scan: () => (scans++, new Promise<CoplayResult>((r) => { finishScan = () => r({ localName: "Nova", entries: [], friends: [] }); })),
+      listen: (on) => ((push = on), () => {}),
+      friendsWindow,
+      fastMs: 1000, slowMs: 10_000,
+    });
+    return {
+      src, scans: () => scans, ensures: () => ensures, finishScan: () => finishScan(), finishEnsure: () => finishEnsure(),
+      inMatch: () => push({ map: "de_dust2", mode: "competitive", phase: "warmup", localSteamId: ME }),
+    };
+  }
+
+  it("does not start another scan when the one that was out ends after the stop", async () => {
+    const t = make();
+    t.src.start();
+    t.inMatch();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(t.scans()).toBe(1);                // out, waiting for Steam
+
+    t.src.stop();
+    t.finishScan();
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(t.scans()).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);       // nothing left that would run it again
+  });
+
+  it("does not try the friends list again when that try ends after the stop", async () => {
+    const t = make();
+    t.src.start();
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect(t.ensures()).toBe(1);              // the first try at start, still waiting for Steam
+
+    t.src.stop();
+    t.finishEnsure();                         // "unreachable": it would normally try again in 15 s
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(t.ensures()).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("can be started again, and then runs one loop, not two", async () => {
+    const t = make();
+    t.src.start();
+    t.inMatch();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(t.scans()).toBe(1);
+
+    t.src.stop();                             // the scan is still out
+    t.src.start();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(t.scans()).toBe(1);                // it is not started on top of the one still out
+    t.finishScan();
+    await vi.advanceTimersByTimeAsync(1_100); // the loop carries on, once
+    expect(t.scans()).toBe(2);
+    t.finishScan();
+    await vi.advanceTimersByTimeAsync(1_100);
+    expect(t.scans()).toBe(3);
+    t.src.stop();
+    t.finishScan();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(t.scans()).toBe(3);
   });
 });
 

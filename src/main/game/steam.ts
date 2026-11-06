@@ -122,6 +122,11 @@ export class SteamSource extends GameSource {
   private timer: NodeJS.Timeout | null = null;
   private watchdog: NodeJS.Timeout | null = null;
   private scanning = false;
+  /**
+   * True from stop() until the next start(). A scan or a friends-list try that is still out when the source is stopped
+   * ends afterwards, and must not set the next one going: that would keep the loop alive for good.
+   */
+  private stopped = false;
   private running = false;
   private lastProblem: string | null | undefined = undefined;
   /** The CS2 process is (assumed) up; only consulted before the game-state feed has posted. See deps.cs2Running. */
@@ -136,6 +141,8 @@ export class SteamSource extends GameSource {
   }
 
   start(): void {
+    this.stopped = false;
+    this.startOpenTries = 0;
     this.stopListening = this.deps.listen((s) => this.onGameState(s));
     this.stopStatus = this.deps.listenStatus?.((b) => this.onStatusBlock(b)) ?? null;
     this.watchdog = setInterval(() => this.checkRunning(), 5_000);
@@ -145,7 +152,9 @@ export class SteamSource extends GameSource {
   }
 
   stop(): void {
+    this.stopped = true;
     this.stopListening?.();
+    this.stopListening = null;
     this.stopStatus?.();
     this.stopStatus = null;
     if (this.timer) clearTimeout(this.timer);
@@ -209,7 +218,8 @@ export class SteamSource extends GameSource {
       try { result = await w.ensure("start"); } catch { result = "failed"; }
     }
     const settled = result === "open" || result === "opened" || result === "disabled" || result === "limit";
-    if (!settled && this.startOpenTries < START_OPEN_TRIES && this.deps.friendsWindow)
+    // Not when stopped, nor when a restart has armed its own timer in the meantime.
+    if (!settled && !this.stopped && !this.startOpenTimer && this.startOpenTries < START_OPEN_TRIES && this.deps.friendsWindow)
       this.startOpenTimer = setTimeout(() => void this.openFriendsWindowAtStart(), START_OPEN_RETRY_MS);
   }
 
@@ -380,6 +390,7 @@ export class SteamSource extends GameSource {
   }
 
   private schedule(delay: number): void {
+    if (this.stopped) return; // a scan that was out when stop() came ends here, and must not start the loop again
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.scan(), delay);
   }
