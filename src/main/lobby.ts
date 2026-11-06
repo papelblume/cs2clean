@@ -55,6 +55,13 @@ interface Cached {
 
 const UNKNOWN_NAME = "Unknown player";
 
+/**
+ * Friendship grouping that Steam couldn't answer in full (a rate limit, a network blip) is tried again after this long,
+ * at most FRIENDSHIP_RETRIES times for one roster: a hiccup must not leave the lobby ungrouped for the whole match.
+ */
+const FRIENDSHIP_RETRY_MS = 30_000;
+const FRIENDSHIP_RETRIES = 3;
+
 export interface LobbyOptions {
   /** Wait this long after a roster change before asking, so a filling lobby costs one request (ms). */
   debounceMs?: number;
@@ -68,10 +75,15 @@ export interface LobbyOptions {
   localSteamId?: string | null;
   /** Steam Web API key for fetching friends lists (optional). Change it later with setSteamApiKey. */
   steamApiKey?: string | null;
-  /** Called when friendship grouping encounters transient errors (rate limit, network); absent in tests. */
+  /**
+   * Called when friendship grouping is still short of answers (rate limit, network) after its retries, with how many
+   * players Steam couldn't answer for; absent in tests.
+   */
   onFriendshipError?: (count: number) => void;
   /** Called when the Steam API key is invalid (403); absent in tests. */
   onFriendshipKeyError?: (message: string) => void;
+  /** Try friendship grouping again after this long when Steam couldn't answer for everybody (ms). */
+  friendshipRetryMs?: number;
   now?: () => number;
 }
 
@@ -93,12 +105,14 @@ export class LobbyService {
   updatedAt: string | null = null;
   /** Friendship groups for the current match, keyed by player SteamID. */
   private friendshipGroups = new Map<string, { groupId: string | null; groupName: string | null }>();
-  /** Steam IDs that are private in the current match. */
-  private privatePlayers = new Set<string>();
   /** The roster (sorted Steam IDs) friendship grouping last ran for; grouping runs again when a player joins. */
   private friendshipComputedFor: string | null = null;
   /** Bumped whenever a grouping that is still out should be ignored: a newer pass, a new match, a new key, clear, dispose. */
   private friendshipPass = 0;
+  /** The roster the retries below are counted for; another roster, a new match or a new key starts the count again. */
+  private friendshipRetryRoster: string | null = null;
+  private friendshipRetriesLeft = 0;
+  private friendshipRetryTimer: NodeJS.Timeout | null = null;
   private disposed = false;
 
   constructor(private lookup: Lookup, private onChange: () => void, private opts: LobbyOptions = {}) {}
@@ -120,8 +134,7 @@ export class LobbyService {
     if (fresh) {
       this.matchEpoch++;
       this.localPlayerDoneFor = null;
-      this.friendshipComputedFor = null;
-      this.friendshipPass++;
+      this.resetFriendships(); // the previous match's groups must not show on this one's players while the new pass runs
     }
     const roster = match ? this.rosterSig(match) : null;
     const rosterChanged = roster !== this.lastRoster;
@@ -159,10 +172,7 @@ export class LobbyService {
     if (this.disposed || key === (this.opts.steamApiKey ?? null)) return;
     this.opts.steamApiKey = key;
     // Whatever an earlier pass found, or is still finding, was found with the old key.
-    this.friendshipPass++;
-    this.friendshipComputedFor = null;
-    this.friendshipGroups.clear();
-    this.privatePlayers.clear();
+    this.resetFriendships();
     void this.computeFriendshipGroups(); // does nothing without a key, a match or two players
     this.onChange();
   }
@@ -175,13 +185,24 @@ export class LobbyService {
     this.error = null;
     this.updatedAt = null;
     this.localPlayerDoneFor = null;
-    this.friendshipGroups.clear();
-    this.privatePlayers.clear();
-    this.friendshipComputedFor = null;
-    this.friendshipPass++;
+    this.resetFriendships();
     this.backingOff = false;
     this.schedule();
     this.onChange();
+  }
+
+  /**
+   * Forgets the friendship groups, and with them any grouping still out or waiting to be retried, so the next
+   * computeFriendshipGroups starts from nothing (with a full set of retries).
+   */
+  private resetFriendships(): void {
+    this.friendshipGroups.clear();
+    this.friendshipComputedFor = null;
+    this.friendshipPass++;
+    this.friendshipRetryRoster = null;
+    this.friendshipRetriesLeft = 0;
+    if (this.friendshipRetryTimer) clearTimeout(this.friendshipRetryTimer);
+    this.friendshipRetryTimer = null;
   }
 
   private get limit(): number {
@@ -352,7 +373,15 @@ export class LobbyService {
     if (roster === this.friendshipComputedFor) return;
     this.friendshipComputedFor = roster;
     const pass = ++this.friendshipPass;
+    if (this.friendshipRetryTimer) clearTimeout(this.friendshipRetryTimer); // one still waiting was for an older roster
+    this.friendshipRetryTimer = null;
+    if (roster !== this.friendshipRetryRoster) {
+      this.friendshipRetryRoster = roster;
+      this.friendshipRetriesLeft = FRIENDSHIP_RETRIES;
+    }
 
+    // How many players Steam couldn't answer for; null when this pass is complete.
+    let unanswered: number | null = null;
     try {
       const result = await groupPlayers(idList, key);
       // The roster, the match or the key changed while Steam was answering: a newer pass owns the groups.
@@ -365,29 +394,43 @@ export class LobbyService {
           this.friendshipGroups.set(steamId, { groupId, groupName });
         }
       }
-      for (const sid of result.private) {
-        this.privatePlayers.add(sid);
-      }
-      if (result.errors.length > 0 && this.opts.onFriendshipError) {
-        this.opts.onFriendshipError(result.errors.length);
-      }
+      if (result.errors.length > 0) unanswered = result.errors.length;
     } catch (e) {
       if (pass !== this.friendshipPass) return;
-      // A thrown error (e.g. 403 invalid key) is surfaced if a callback is registered.
-      if (this.opts.onFriendshipKeyError) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes("Steam API key invalid")) {
-          this.opts.onFriendshipKeyError(msg);
-        }
-      }
+      const msg = e instanceof Error ? e.message : String(e);
+      // A rejected key stays rejected until it is changed (setSteamApiKey starts over), so that is reported and not
+      // retried. Anything else that was thrown is treated like Steam being out of reach.
+      if (msg.includes("Steam API key invalid")) this.opts.onFriendshipKeyError?.(msg);
+      else unanswered = idList.length;
     }
+    if (unanswered !== null) this.retryFriendshipsOrGiveUp(pass, unanswered);
     this.onChange();
+  }
+
+  /**
+   * Grouping came up short of answers: ask Steam again after a while, a few times. Only when that doesn't help is it
+   * reported, so a blip that clears up leaves no notice behind.
+   */
+  private retryFriendshipsOrGiveUp(pass: number, unanswered: number): void {
+    if (this.friendshipRetriesLeft <= 0) {
+      this.opts.onFriendshipError?.(unanswered);
+      return;
+    }
+    this.friendshipRetriesLeft--;
+    this.friendshipRetryTimer = setTimeout(() => {
+      this.friendshipRetryTimer = null;
+      if (this.disposed || pass !== this.friendshipPass) return; // the match, the roster or the key moved on meanwhile
+      this.friendshipComputedFor = null; // or computeFriendshipGroups would take this roster for one it has already done
+      void this.computeFriendshipGroups();
+    }, this.opts.friendshipRetryMs ?? FRIENDSHIP_RETRY_MS);
   }
 
   /** Stops for good: nothing is scheduled again, and a lookup or grouping still out is answered into the void. */
   dispose(): void {
     this.disposed = true;
     this.friendshipPass++;
+    if (this.friendshipRetryTimer) clearTimeout(this.friendshipRetryTimer);
+    this.friendshipRetryTimer = null;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
   }

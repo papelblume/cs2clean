@@ -371,6 +371,129 @@ describe("LobbyService", () => {
     });
   });
 
+  describe("friendship grouping that Steam couldn't answer in full", () => {
+    beforeEach(() => { groupPlayers.mockClear(); });
+    const grouped = (ids: string[]) => ({ groups: [ids], private: [] as string[], errors: [] as string[] });
+    const singles = (ids: string[], errors: string[]) => ({ groups: ids.map((id) => [id]), private: [] as string[], errors });
+    const setup = (o: { onFriendshipError?: (n: number) => void; onFriendshipKeyError?: (m: string) => void } = {}) => {
+      const lookup = vi.fn(async (ids: string[]) => ids.map(ok));
+      const lobby = new LobbyService(lookup, () => {}, { debounceMs: 10, localSteamId: A, steamApiKey: "key", friendshipRetryMs: 1000, ...o });
+      return lobby;
+    };
+
+    it("is asked again after a while when Steam answered for only some players, without any notice if that fixes it", async () => {
+      const onFriendshipError = vi.fn();
+      const lobby = setup({ onFriendshipError });
+      groupPlayers.mockImplementationOnce(async (ids) => singles(ids, [B])); // B's friends list failed
+      groupPlayers.mockImplementationOnce(async (ids) => grouped(ids));
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(50);
+      expect(groupPlayers).toHaveBeenCalledTimes(1);
+      expect(lobby.rows().map((r) => r.groupName)).toEqual([null, null]);
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(groupPlayers).toHaveBeenCalledTimes(2);
+      expect(lobby.rows().map((r) => r.groupName)).toEqual(["2 friends", "2 friends"]);
+
+      await vi.advanceTimersByTimeAsync(10 * 60_000); // a complete answer is not asked for again
+      expect(groupPlayers).toHaveBeenCalledTimes(2);
+      expect(onFriendshipError).not.toHaveBeenCalled();
+    });
+
+    it("is asked again when the call fails outright, but not when Steam rejects the key", async () => {
+      const onFriendshipKeyError = vi.fn();
+      const lobby = setup({ onFriendshipKeyError });
+      groupPlayers.mockRejectedValueOnce(new Error("fetch failed"));
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(50);
+      expect(groupPlayers).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(groupPlayers).toHaveBeenCalledTimes(2); // the default answer is a complete one
+
+      groupPlayers.mockClear();
+      const rejected = setup({ onFriendshipKeyError });
+      groupPlayers.mockRejectedValueOnce(new Error("Steam API key invalid or missing: Forbidden"));
+      rejected.setMatch(matchOn("de_mirage", A, D));
+      await vi.advanceTimersByTimeAsync(50);
+      expect(onFriendshipKeyError).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      expect(groupPlayers).toHaveBeenCalledTimes(1); // a rejected key stays rejected: no retries
+      expect(onFriendshipKeyError).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives up after three retries, and only then says that grouping is unavailable", async () => {
+      const onFriendshipError = vi.fn();
+      const lobby = setup({ onFriendshipError });
+      for (let i = 0; i < 4; i++) groupPlayers.mockImplementationOnce(async (ids) => singles(ids, [B]));
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(50);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(groupPlayers).toHaveBeenCalledTimes(3);
+      expect(onFriendshipError).not.toHaveBeenCalled(); // still trying
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(groupPlayers).toHaveBeenCalledTimes(4);
+      expect(onFriendshipError).toHaveBeenCalledTimes(1);
+      expect(onFriendshipError).toHaveBeenCalledWith(1);
+
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      expect(groupPlayers).toHaveBeenCalledTimes(4); // the first try and three retries, no more
+      expect(onFriendshipError).toHaveBeenCalledTimes(1);
+    });
+
+    it("lets a player who joins meanwhile take over: the waiting retry is dropped", async () => {
+      const lobby = setup();
+      groupPlayers.mockImplementationOnce(async (ids) => singles(ids, [B]));
+      groupPlayers.mockImplementationOnce(async (ids) => grouped(ids));
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(50); // [A, B] came up short; a retry is waiting
+      lobby.setMatch(matchOn("de_dust2", A, B, C));
+      await vi.advanceTimersByTimeAsync(50); // [A, B, C] is grouped straight away
+      expect(groupPlayers).toHaveBeenCalledTimes(2);
+      expect(groupPlayers.mock.calls[1][0]).toEqual([A, B, C]);
+
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      expect(groupPlayers).toHaveBeenCalledTimes(2);
+      expect(lobby.rows().map((r) => r.groupName)).toEqual(["3 friends", "3 friends", "3 friends"]);
+    });
+
+    it("gets a full set of retries for a new Steam key", async () => {
+      const onFriendshipError = vi.fn();
+      const lobby = setup({ onFriendshipError });
+      for (let i = 0; i < 4; i++) groupPlayers.mockImplementationOnce(async (ids) => singles(ids, [B]));
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(onFriendshipError).toHaveBeenCalledTimes(1); // out of retries
+
+      groupPlayers.mockImplementationOnce(async (ids) => singles(ids, [B]));
+      groupPlayers.mockImplementationOnce(async (ids) => grouped(ids));
+      lobby.setSteamApiKey("new-key");
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(groupPlayers).toHaveBeenCalledTimes(6); // the new key's first try, and one retry that worked
+      expect(lobby.rows().map((r) => r.groupName)).toEqual(["2 friends", "2 friends"]);
+      expect(onFriendshipError).toHaveBeenCalledTimes(1);
+    });
+
+    it("doesn't show the previous match's groups on the next match's players while it groups them", async () => {
+      const lobby = setup();
+      groupPlayers.mockImplementationOnce(async (ids) => grouped(ids));
+      lobby.setMatch(matchOn("de_dust2", A, B));
+      await vi.advanceTimersByTimeAsync(50);
+      expect(lobby.rows().map((r) => r.groupName)).toEqual(["2 friends", "2 friends"]);
+
+      const open = holdGrouping(1);
+      lobby.setMatch(null);
+      lobby.setMatch(matchOn("de_mirage", A, B)); // another match, the same two players
+      await vi.advanceTimersByTimeAsync(50);
+      expect(open).toHaveLength(1); // the new pass is out
+      expect(lobby.rows().map((r) => r.groupName)).toEqual([null, null]);
+
+      open[0].resolve(grouped([A, B]));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(lobby.rows().map((r) => r.groupName)).toEqual(["2 friends", "2 friends"]);
+    });
+  });
+
   describe("an answer that may change soon", () => {
     it("is asked again after its own, shorter time; settled answers keep the usual one", async () => {
       let broken = true;
