@@ -214,6 +214,11 @@ export interface Bridge {
   pauseHotkeys(paused: boolean): Promise<void>;
   toggleOverlay(): Promise<void>;
   toggleDetail(): Promise<void>;
+  /**
+   * The overlay page tells the main process how big it is (its box and margin, CSS pixels) and the overlay window
+   * follows: nothing in a click-through window can be scrolled, so the window has to fit the page (shared/overlay-layout.ts).
+   */
+  setOverlaySize(width: number, height: number): Promise<void>;
   /** Shows the next player's card; after the last player, hides the overlay. */
   cyclePlayer(): Promise<void>;
   /** Shows the previous player's card (the last one to start with); before the first player, hides the overlay. */

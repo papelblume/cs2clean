@@ -182,6 +182,7 @@ function simulated(): Bridge {
     // The same answer as the real controller's (shared/overlay-keys.ts).
     toggleOverlay: async () => set({ overlay: pressViewKey(state.overlay, "lobby") }),
     toggleDetail: async () => set({ overlay: pressViewKey(state.overlay, "detail") }),
+    setOverlaySize: async () => {}, // the browser has no overlay window to resize
     cyclePlayer: async () => step(1),
     previousPlayer: async () => step(-1),
     setSiren: async (siren) => set({ overlay: { ...state.overlay, siren } }),

@@ -2,11 +2,17 @@
 // the game. Shift+F2 shows the lobby list, F7 the cards of flagged players, F6 steps through every player's
 // card (yours too), one at a time; Shift+F6 steps backward. It shows itself in warm-up, hides when the match
 // goes live, and plays a siren when a HIGH or VERY_HIGH player is found.
+//
+// The window is click-through, so nothing in it can be scrolled: the page is exactly as big as its content (the F7
+// cards go two to a column, with a column added to the right for every two more players) and tells the main process
+// its size, which makes the window that size (shared/overlay-layout.ts).
 
-import { StrictMode, useEffect, useRef } from "react";
+import { StrictMode, useEffect, useRef, type RefObject } from "react";
 import { createRoot } from "react-dom/client";
 import { cycleHints } from "../shared/lobby-order";
+import { detailLayout, detailWidth, OVERLAY_MARGIN, type DetailLayout } from "../shared/overlay-layout";
 import type { AppState, AxisLevel, LobbyRow } from "../shared/types";
+import { bridge } from "./bridge";
 import { ClassBadge, Logo, mapName, SideEmblem, TIER_LABELS, Wordmark } from "./brand";
 import { PlayerRanks } from "./ranks";
 import { ago, clutchDisplay, cspLevel, flagged, headshotFact, matchesFact, PlayerClass, ratingDisplay, show, sprayAccuracyLevel, spottedAccuracyLevel, ttdLevel, winrateDisplay } from "./parts";
@@ -18,11 +24,17 @@ import "./style.css";
 function Overlay() {
   const s = useAppState();
   useSiren(s);
+  const box = useRef<HTMLDivElement>(null);
+  useOverlaySize(box, s !== null);
   if (!s) return null;
   const o = s.overlay;
   const hints = cycleHints(s.lobby.cycle, o.focusSlot); // from the walk the keys make, not from the list on screen
+  // F7: the cards of the flagged players, in as many columns as they need and the screen has room for.
+  const list = o.view === "detail" ? flagged(s.lobby.rows) : [];
+  const layout = detailLayout(list.length, window.screen.availWidth);
   return (
-    <div className="ov">
+    // Its width is its own (368, or the cards' columns), never the window's: the window follows the page, not the other way round.
+    <div className="ov" ref={box} style={list.length > 0 ? { width: detailWidth(layout.columns) } : undefined}>
       <header className="ov-head">
         <Logo size={18} />
         <strong>{mapName(s.match?.map) ?? "Lobby"}</strong>
@@ -30,7 +42,7 @@ function Overlay() {
           {o.view === "detail" ? "Flagged players" : o.view === "player" ? (hints.position !== null ? `Player ${hints.position} of ${hints.total}` : "Players") : countLine(s)}
         </span>
       </header>
-      {o.view === "detail" ? <Detail s={s} /> : o.view === "player" ? <PlayerView s={s} /> : <Body s={s} />}
+      {o.view === "detail" ? <Detail s={s} list={list} layout={layout} /> : o.view === "player" ? <PlayerView s={s} /> : <Body s={s} />}
       <footer className="ov-foot">
         <span>
           {o.view === "detail"
@@ -44,6 +56,36 @@ function Overlay() {
       </footer>
     </div>
   );
+}
+
+/**
+ * Tells the main process how big the overlay's box and its margin are, whenever that changes, so the window can be
+ * made that size. One report per animation frame at most, and none when the size is the same as the last one.
+ */
+function useOverlaySize(box: RefObject<HTMLElement | null>, ready: boolean) {
+  useEffect(() => {
+    const el = box.current;
+    if (!ready || !el) return;
+    let last = "";
+    let frame = 0;
+    const report = () => {
+      frame = 0;
+      const r = el.getBoundingClientRect();
+      const width = Math.ceil(r.width) + 2 * OVERLAY_MARGIN;
+      const height = Math.ceil(r.height) + 2 * OVERLAY_MARGIN;
+      if (`${width}x${height}` === last) return;
+      last = `${width}x${height}`;
+      void bridge.setOverlaySize(width, height);
+    };
+    const observer = new ResizeObserver(() => {
+      if (!frame) frame = requestAnimationFrame(report);
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [box, ready]);
 }
 
 /** Plays the siren each time the app raises a new alert (a HIGH player found in this match). */
@@ -99,16 +141,20 @@ function Line({ r }: { r: LobbyRow }) {
 
 // ------------------------------------------------------------------ F7 and F6: player cards
 
-/** F7: the flagged players. */
-function Detail({ s }: { s: AppState }) {
-  const list = flagged(s.lobby.rows);
+/**
+ * F7: the flagged players, two cards to a column: the first two down the first column, the next two down a new
+ * column to the right, and so on, as many columns as the screen has room for (the rest are counted).
+ */
+function Detail({ s, list, layout }: { s: AppState; list: LobbyRow[]; layout: DetailLayout }) {
   if (list.length === 0)
     return <p className="ov-msg">{s.lobby.rows.length ? "No flagged players in this match." : waitingText(s)}</p>;
   return (
-    <div className="ov-cards">
-      {list.slice(0, 2).map((r) => <Card key={r.slot} r={r} compact />)}
-      {list.length > 2 && <p className="ov-msg">+{list.length - 2} more flagged player{list.length > 3 ? "s" : ""}</p>}
-    </div>
+    <>
+      <div className="ov-cards ov-cards-grid" style={{ gridTemplateRows: `repeat(${layout.rows}, auto)` }}>
+        {list.slice(0, layout.shown).map((r) => <Card key={r.slot} r={r} compact />)}
+      </div>
+      {layout.more > 0 && <p className="ov-msg ov-more">+{layout.more} more flagged player{layout.more > 1 ? "s" : ""}</p>}
+    </>
   );
 }
 

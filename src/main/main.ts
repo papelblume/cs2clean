@@ -18,6 +18,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, safeStorage, screen, shell
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Hotkeys } from "../shared/hotkeys";
+import { OVERLAY_ORIGIN, OVERLAY_SIZE } from "../shared/overlay-layout";
 import { OVERWOLF_HOTKEYS } from "../shared/overwolf-hotkeys";
 import type { AppState } from "../shared/types";
 import { Controller, type SettingsStore } from "./controller";
@@ -37,6 +38,8 @@ import type { CoplayResult } from "./steam/coplay";
 import { installGsiConfig, newGsiToken, readActiveSteamId, startGsiServer } from "./steam/gsi";
 import { isCs2Running } from "./steam/process";
 import { cefHint, detectCef, findCs2ConsoleLog, friendsHint, profileFallbackWanted, systemCefIo, systemConsoleLog, type CefCapability, type ConsoleLogCapability } from "./steam/capabilities";
+import { warn } from "./logger";
+import { resizeOverlay } from "./overlay-window";
 import { MiniprofileStatus } from "./steam/miniprofile";
 import { watchStatusBlocks } from "./steam/console-log";
 import { FriendNameDirectory } from "./steam/friend-names";
@@ -252,7 +255,6 @@ function lockNavigation(win: BrowserWindow) {
 
 // ------------------------------------------------------------------ overlay
 
-const OVERLAY_SIZE = { width: 380, height: 640 };
 
 function setupOverlay(): AppState["overlay"] {
   const base = {
@@ -299,7 +301,7 @@ function startOverwolfOverlay(overlayApi: any) {
     const ow = await overlayApi.createWindow({
       name: "lobby",
       ...OVERLAY_SIZE,
-      x: 24, y: 120,
+      ...OVERLAY_ORIGIN,
       show: false,
       transparent: true,
       frame: false,
@@ -339,7 +341,7 @@ function createOverlayWindow(): BrowserWindow {
   if (overlayWin && !overlayWin.isDestroyed()) return overlayWin;
   const area = screen.getPrimaryDisplay().workArea;
   overlayWin = new BrowserWindow({
-    ...OVERLAY_SIZE, x: area.x + 24, y: area.y + 120,
+    ...OVERLAY_SIZE, x: area.x + OVERLAY_ORIGIN.x, y: area.y + OVERLAY_ORIGIN.y,
     frame: false, transparent: true, resizable: false, movable: false, alwaysOnTop: true, skipTaskbar: true,
     focusable: false, hasShadow: false, show: false,
     webPreferences: { ...webPreferences(), backgroundThrottling: false, autoplayPolicy: "no-user-gesture-required" },
@@ -351,6 +353,22 @@ function createOverlayWindow(): BrowserWindow {
   lockNavigation(overlayWin);
   load(overlayWin, "overlay");
   return overlayWin;
+}
+
+/**
+ * The overlay page says how big it is; the window follows (nothing in a click-through window can be scrolled, so it
+ * has to fit the page). Never bigger than the work area has room for from the window's corner.
+ */
+function fitOverlayWindow(width: unknown, height: unknown): void {
+  const win = overlayWin && !overlayWin.isDestroyed() ? overlayWin : null;
+  if (!win) return;
+  try {
+    const area = screen.getDisplayMatching(win.getBounds()).workArea;
+    // The window sits OVERLAY_ORIGIN from the corner of the work area of the primary display it was made on.
+    if (resizeOverlay(win, { width, height }, area) && win.isVisible()) keepClickThrough(win); // a resize can undo it on Linux
+  } catch (e) {
+    warn("overlay", "couldn't resize the overlay window:", e);
+  }
 }
 
 /** Shows or hides the overlay window to match the app state (hotkeys, warm-up, match going live). */
@@ -462,6 +480,7 @@ if (!app.requestSingleInstanceLock()) {
     });
     ipcMain.handle("overlay:toggle", () => controller.toggleOverlay());
     ipcMain.handle("overlay:detail", () => controller.toggleDetail());
+    ipcMain.handle("overlay:size", (_e, width: unknown, height: unknown) => fitOverlayWindow(width, height));
     ipcMain.handle("overlay:cycle", () => controller.cyclePlayer());
     ipcMain.handle("overlay:previous", () => controller.previousPlayer());
     ipcMain.handle("siren:set", (_e, on: unknown) => controller.setSiren(on === true));

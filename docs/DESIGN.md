@@ -276,10 +276,11 @@ Transparent, click-through window on top of CS2:
 - Appears automatically in warm-up, hides when match goes live
 - Shift+F2: show the player list (opens it over an open F6 or F7 card; hides the overlay when the list itself is showing)
 - F6: cycle through player cards (one at a time). The matches row reads "Leetify matches" for a player from the API and "Matches/Win rate" (`30 / 43%`) for one from csst.at
-- F7: show flagged players
+- F7: show flagged players, two cards to a column. The first two go down the first column, the next two down a new column to its right, and so on, as many columns as the screen is wide enough for; players that don't fit are counted ("+4 more flagged players")
 - Shift+F6: step backward through cards
 - These are the defaults. The four keys can be changed in Settings (not with Overwolf)
 - Plays siren when HIGH/VERY_HIGH player detected
+- Size: nothing in a click-through window can be scrolled, so the window is as big as the page. The page measures its box (a `ResizeObserver` in `overlay.tsx`) and tells the main process (`Bridge.setOverlaySize`, IPC `overlay:size`), which sets the window's content size (`main/overlay-window.ts`) from the window's fixed top-left corner, never beyond the work area. The page's own width is fixed (368 px, or the F7 columns: `shared/overlay-layout.ts`), never the window's, so the window and the page can't chase each other. A page taller than the screen is cut off at the bottom
 - Click-through: `keepClickThrough()` (`main/click-through.ts`) calls `setIgnoreMouseEvents(true)` when the overlay is created and after every show. On Linux (X11) Electron makes the window's input region one pixel big; Cinnamon's window manager (Muffin) undoes that in the moments after it maps the window, so a call made before the show or right after `showInactive()` is lost. The call is therefore repeated at 50, 150, 400, 1000 and 2500 ms after each show (Windows keeps the window style it sets and needs one call)
 
 ### Desktop Window (`src/renderer/desktop.tsx`)

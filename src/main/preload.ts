@@ -20,6 +20,7 @@ const bridge: Bridge = {
   pauseHotkeys: (paused) => ipcRenderer.invoke("hotkey:pause", paused),
   toggleOverlay: () => ipcRenderer.invoke("overlay:toggle"),
   toggleDetail: () => ipcRenderer.invoke("overlay:detail"),
+  setOverlaySize: (width, height) => ipcRenderer.invoke("overlay:size", width, height),
   cyclePlayer: () => ipcRenderer.invoke("overlay:cycle"),
   previousPlayer: () => ipcRenderer.invoke("overlay:previous"),
   setSiren: (on) => ipcRenderer.invoke("siren:set", on),

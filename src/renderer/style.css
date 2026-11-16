@@ -145,9 +145,11 @@ input:focus { border-color: var(--accent); outline: none; }
 .settings label { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 8px; color: var(--text); }
 
 /* ---------------------------------------------------------------- in-game overlay */
-html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: normal; }
+/* No scrollbars: the window is click-through, so nothing in it could be scrolled. The window is made as big as the page. */
+html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: normal; overflow: hidden; }
+/* 368 = the window's 380 less the margin; F7 sets its own width (shared/overlay-layout.ts). It is never the window's: the window follows the page. */
 .ov {
-  margin: 6px; border-radius: 12px; overflow: hidden;
+  width: 368px; margin: 6px; border-radius: 12px; overflow: hidden;
   background: rgba(13, 16, 20, 0.84); border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); backdrop-filter: blur(6px);
   font-size: 13px;
@@ -172,6 +174,9 @@ html:has(.overlay-body), .overlay-body { background: transparent; color-scheme: 
 
 /* F7: extended card of flagged players */
 .ov-cards { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+/* F7: two cards to a column, filled down the first column, then down the next one to the right. */
+.ov-cards-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 352px; align-items: start; }
+.ov-more { padding-top: 0; }
 .ov-card { border-radius: 9px; padding: 10px 12px 9px; background: rgba(255, 255, 255, 0.035);
   border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent); box-shadow: inset 3px 0 0 var(--tone); }
 .ov-card.tone-high { --tone: var(--high); }
