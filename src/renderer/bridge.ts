@@ -120,7 +120,7 @@ function simulated(): Bridge {
       hasKey: screen !== "nokey",
       reachable: true,
       fallback: fallbackOff
-        ? { working: false, reason: "A native module was built for a different Node version (module ABI 127; the Node that runs it needs 137). Reinstall the sidecar with Node 22 (npm run hero:install)." }
+        ? { working: false, reason: "The csst.at fallback's network library (wreq-js) couldn't be loaded on this system: invalid ELF header." }
         : { working: true, reason: null },
     },
     steam: { hasKey: false },

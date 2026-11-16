@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCsstAtHtml } from "../src/main/leetify-hero";
+import { parseCsstAtHtml } from "../src/main/csst-parse";
 
 const EXAMPLE_HTML = `<span id="leetify-extra-meta-76561198715645651"
     class="flex items-center gap-2"></span>

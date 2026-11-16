@@ -140,7 +140,7 @@ export class Controller extends EventEmitter<{ state: [AppState] }> {
     this.lobby.dispose();
   }
 
-  /** The csst.at fallback's status (main/leetify-hero.ts): the window shows when it can't be used, and why. */
+  /** The csst.at fallback's status (main/csst-scrape.ts): the window shows when it can't be used, and why. */
   setFallback(s: { state: "ready" | "unavailable"; reason: string | null }): void {
     const next = { working: s.state === "ready", reason: s.state === "ready" ? null : s.reason };
     const cur = this.state.leetify.fallback;

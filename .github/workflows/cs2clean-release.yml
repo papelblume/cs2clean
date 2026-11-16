@@ -8,7 +8,7 @@ name: cs2clean-release
 # by the `publish` job at the end, and only when both of them succeeded, so a release never lacks one platform.
 #
 # Test run (nothing published): Run workflow, pick the branch under test, a throwaway version such as 0.0.1 and
-# untick "Create the GitHub release". It builds, runs the sidecar selftests and uploads the installers as workflow
+# untick "Create the GitHub release". It builds, tests, checks the packaged wreq-js and uploads the installers as workflow
 # artifacts (download them from the run's summary page); no tag and no release are created. Never reuse the number
 # of a published release for a test run with the box ticked: the release's files would be replaced.
 on:
@@ -42,9 +42,6 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            hero-runtime/package-lock.json
 
       - name: Version
         id: version
@@ -60,11 +57,6 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
-      # The csst.at fallback runs in a sidecar (hero-runtime/) with its own Node 22 and its own better-sqlite3, shipped
-      # outside app.asar as extraResources. This installs it with the Node 22 above, copies that Node next to it,
-      # bundles its CLI and runs its selftest, so the binary that gets packaged is the one that was just tested.
-      - name: Hero sidecar (Node 22 and its own better-sqlite3)
-        run: npm run hero:install
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run dist
@@ -72,9 +64,10 @@ jobs:
       # It is built on its own, so the marker is in the zip and not in the installer above.
       - run: npm run dist:zip
       - run: ls -l release
-      # The selftest again, on the copy inside the package: its Node starts, Hero and better-sqlite3 load from there.
-      - name: Check the packaged sidecar
-        run: node tools/build-hero-runtime.mjs check release/win-unpacked/resources/hero
+      # The csst.at fallback's network library, in the package: the app's own Electron loads wreq-js from app.asar
+      # (its native library from app.asar.unpacked) and makes a request to a local server.
+      - name: Check the packaged wreq-js
+        run: node tools/check-wreq.mjs release/win-unpacked/resources
 
       - uses: actions/upload-artifact@v4
         with:
@@ -96,9 +89,6 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            hero-runtime/package-lock.json
 
       - name: Version
         id: version
@@ -114,18 +104,14 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - run: npm ci --no-audit --no-fund
-      # The csst.at fallback runs in a sidecar (hero-runtime/) with its own Node 22 and its own better-sqlite3, shipped
-      # outside app.asar as extraResources. This installs it with the Node 22 above, copies that Node next to it,
-      # bundles its CLI and runs its selftest, so the binary that gets packaged is the one that was just tested.
-      - name: Hero sidecar (Node 22 and its own better-sqlite3)
-        run: npm run hero:install
       - run: npm test
       - run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run build
       - run: npx electron-builder --linux --x64
       - run: ls -l release
-      - name: Check the packaged sidecar
-        run: node tools/build-hero-runtime.mjs check release/linux-unpacked/resources/hero
+      # The same check as on Windows, on the Linux package.
+      - name: Check the packaged wreq-js
+        run: node tools/check-wreq.mjs release/linux-unpacked/resources
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,7 +121,7 @@ jobs:
             release/*.tar.gz
           if-no-files-found: error
 
-  # One release for both platforms, made only when both builds (their tests and sidecar checks included) have passed.
+  # One release for both platforms, made only when both builds (their tests and package checks included) have passed.
   # With a release step in each build job, a failure on one OS still published a final release without that OS's
   # installers, and the app's update check would already have pointed people at it.
   publish:

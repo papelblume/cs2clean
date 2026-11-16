@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LeetifyClient, LeetifyError, lookupLobby, type LeetifyProfile } from "../src/main/leetify";
 import type { LobbyAnswer } from "../src/main/lobby";
-import { HERO_READY, type HeroProblem, type HeroScrape, type HeroStatus } from "../src/main/leetify-hero";
+import { CSST_READY, type CsstProblem, type CsstScrape, type CsstStatus } from "../src/main/csst-scrape";
 import { AVERAGE, HIGH } from "./profiles";
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -34,9 +34,9 @@ function fake(answers: Record<string, unknown>, o: { key?: string; delayMs?: num
 const ID = (n: number) => String(76561198000000000n + BigInt(n));
 
 /** A stand-in for the csst.at fallback: `found` are the profiles it returns, `status` how the fallback itself fared. */
-function scraper(found: Record<string, LeetifyProfile>, status: HeroStatus = HERO_READY, failed: Record<string, string> = {}) {
+function scraper(found: Record<string, LeetifyProfile>, status: CsstStatus = CSST_READY, failed: Record<string, string> = {}) {
   const calls: string[][] = [];
-  const scrape = async (ids: string[]): Promise<HeroScrape> => {
+  const scrape = async (ids: string[]): Promise<CsstScrape> => {
     calls.push(ids);
     return {
       profiles: new Map(Object.entries(found).filter(([id]) => ids.includes(id))),
@@ -47,7 +47,7 @@ function scraper(found: Record<string, LeetifyProfile>, status: HeroStatus = HER
   return { scrape, calls };
 }
 
-const broken = (problem: HeroProblem, reason: string): HeroStatus => ({ state: "unavailable", problem, reason, detail: null });
+const broken = (problem: CsstProblem, reason: string): CsstStatus => ({ state: "unavailable", problem, reason, detail: null });
 
 describe("LeetifyClient", () => {
   it("asks for /v3/profile with the SteamID64 and sends the key both ways", async () => {
@@ -184,10 +184,10 @@ describe("lookupLobby", () => {
         let release!: () => void;
         const gate = new Promise<void>((resolve) => (release = resolve));
         const calls: [string[], number | undefined][] = [];
-        const scrape = async (ids: string[], delayMs?: number): Promise<HeroScrape> => {
+        const scrape = async (ids: string[], delayMs?: number): Promise<CsstScrape> => {
           calls.push([ids, delayMs]);
           await gate;
-          return { profiles: new Map(Object.entries(found).filter(([id]) => ids.includes(id))), status: HERO_READY };
+          return { profiles: new Map(Object.entries(found).filter(([id]) => ids.includes(id))), status: CSST_READY };
         };
         return { scrape, release, calls };
       }
@@ -249,8 +249,8 @@ describe("lookupLobby", () => {
     });
 
     it("says why when it is broken for good, instead of guessing the profile is private", async () => {
-      const reason = "A native module was built for a different Node version (module ABI 127; the Node that runs it needs 137).";
-      const sc = scraper({}, broken("abi-mismatch", reason));
+      const reason = "The csst.at fallback's network library (wreq-js) couldn't be loaded on this system: invalid ELF header.";
+      const sc = scraper({}, broken("native-load", reason));
       const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: sc.scrape });
       expect(out[0]).toMatchObject({ classification: "INSUFFICIENT_DATA" });
       expect(out[0].note).toContain("The csst.at fallback couldn't check");
@@ -259,7 +259,7 @@ describe("lookupLobby", () => {
       expect(out[0].recheckAfterMs).toBe(5 * 60_000); // but not for the cache's six hours either: a fix made meanwhile is noticed
     });
 
-    it.each<HeroProblem>(["crashed", "bad-output"])(
+    it.each<CsstProblem>(["crashed", "native-load"])(
       "settles the answer but looks again in five minutes when the fallback broke without saying why (%s)", async (problem) => {
         const sc = scraper({}, broken(problem, "stopped unexpectedly"));
         const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: sc.scrape });
@@ -268,7 +268,7 @@ describe("lookupLobby", () => {
         expect(out[0].note).toContain("stopped unexpectedly");
       });
 
-    it.each<HeroProblem>(["browser-missing", "site-unreachable", "timeout"])(
+    it.each<CsstProblem>(["site-unreachable", "blocked", "timeout"])(
       "asks again later when the problem can clear up by itself (%s)", async (problem) => {
         const sc = scraper({}, broken(problem, "try later"));
         const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1)], { scrape: sc.scrape });
@@ -283,7 +283,7 @@ describe("lookupLobby", () => {
     });
 
     it("asks again soon about a player csst.at failed for, not about the ones it has nothing on", async () => {
-      const sc = scraper({ [ID(2)]: AVERAGE() }, HERO_READY, { [ID(3)]: "HTTP 503\n    at somewhere" });
+      const sc = scraper({ [ID(2)]: AVERAGE() }, CSST_READY, { [ID(3)]: "HTTP 503\n    at somewhere" });
       const out = await lookupLobby(new LeetifyClient("k", fake({}).fetchImpl), [ID(1), ID(2), ID(3)], { scrape: sc.scrape });
       expect(out[0]).toMatchObject({ classification: "INSUFFICIENT_DATA", note: "Not on Leetify, or the profile isn't public" });
       expect(out[1].classification).toBe("NORMAL");
@@ -315,7 +315,7 @@ describe("lookupLobby", () => {
     });
 
     it("keeps the others' answers when the fallback itself throws", async () => {
-      const scrape = async (): Promise<HeroScrape> => { throw new Error("boom"); };
+      const scrape = async (): Promise<CsstScrape> => { throw new Error("boom"); };
       const out = await lookupLobby(new LeetifyClient("k", fake({ [ID(1)]: HIGH() }).fetchImpl), [ID(1), ID(2)], { scrape });
       expect(out[0].classification).toBe("HIGH");
       expect(out[1]).toMatchObject({ classification: "INSUFFICIENT_DATA" });

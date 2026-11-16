@@ -1,7 +1,7 @@
 // Parses the csst.at HTMX answer for one player into a LeetifyProfile.
 //
-// Pure JS with no native or Electron dependencies: it runs in the app and inside the Hero sidecar
-// (hero-runtime/, started with its own Node 22), so keep it free of imports other than types.
+// Pure JS with no native or Electron dependencies, so it is easy to test on its own: keep it free of imports other
+// than types.
 
 import type { LeetifyProfile } from "./leetify";
 

@@ -46,7 +46,7 @@ Download the latest release from the [GitHub releases page](https://github.com/p
 Run the installer (it installs just for you, needs no administrator rights, and adds Start menu and desktop shortcuts) or the portable `.zip` (`CS2Clean-<version>-portable.zip`).
 
 - **Installed app:** settings are stored in `%APPDATA%\CS2Clean`.
-- **Portable `.zip`:** extract it into a folder of its own (Explorer's **Extract All**, or the **Extract to** entry in 7-Zip's menu) and run `CS2Clean.exe` from there. It keeps its settings and downloads in a `data` folder beside `CS2Clean.exe` (the csst.at fallback's Chrome download, about 370 MB, goes there too), so deleting the folder removes the app. It also adds one small file to CS2's `cfg` folder, which is harmless to leave. If you move the folder, switch **Start with Windows** off and on again.
+- **Portable `.zip`:** extract it into a folder of its own (Explorer's **Extract All**, or the **Extract to** entry in 7-Zip's menu) and run `CS2Clean.exe` from there. It keeps its settings and downloads in a `data` folder beside `CS2Clean.exe`, so deleting the folder removes the app. It also adds one small file to CS2's `cfg` folder, which is harmless to leave. If you move the folder, switch **Start with Windows** off and on again.
 
 **SmartScreen:** The installer and the portable `CS2Clean.exe` are not yet code-signed. Windows will show "Windows protected your PC" — click **More info**, then **Run anyway**.
 
@@ -167,7 +167,6 @@ Custom profile links (`steamcommunity.com/id/name`) work too.
 | "Couldn't find CS2's folder" | The app can still read Steam's players list, but it won't know when warm-up starts or the match goes live. CS2Clean finds CS2 through Steam's library list, so any Steam library drive works, but it only looks for Steam in the usual places: the one in the Windows registry, or on Linux a native Steam in `~/.steam/debian-installation` or `~/.local/share/Steam` (Flatpak and Snap Steam aren't supported). |
 | Overlay not visible in CS2 | Make sure CS2 is in **Fullscreen Windowed** mode, not plain Fullscreen |
 | Leetify rate limits | Add a free Leetify API key (see [API keys](#api-keys)) |
-| "Setting up the csst.at fallback: downloading Chrome" | A one-time download (about 370 MB on disk) into the app's data folder, the first time a player isn't on Leetify. Lookups carry on meanwhile and the fallback works from the next one after it. |
 | "csst.at fallback unavailable" | The window gives the reason. Nothing else stops working: only players Leetify has no profile for can't be looked up on csst.at. Developers: see [the csst.at fallback](docs/DEVELOPMENT.md#the-csstat-fallback) |
 | `chrome-sandbox` error on Linux (common on Ubuntu 24.04 and derivatives) | See [Development](docs/DEVELOPMENT.md#linux-chrome-sandbox-error). For the tar.gz, run the same two commands on the `chrome-sandbox` file in the extracted folder |
 

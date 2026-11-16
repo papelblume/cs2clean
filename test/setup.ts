@@ -1,8 +1,7 @@
 // Runs before every test file.
 //
-// The csst.at fallback starts a sidecar (a child Node running Ulixee Hero, and on first use a Chrome download).
-// No test may start the real one: a test that reaches the fallback without a stand-in would spend seconds
-// spawning Node and could begin a Chrome download of a few hundred MB. With the sidecar folder pointing nowhere, such a test gets
-// a fast "no-runtime" status instead. Tests of the fallback itself set CS2CLEAN_HERO_DIR to a stub of their own.
-process.env.CS2CLEAN_HERO_DIR = "/nonexistent/cs2clean-hero-runtime-for-tests";
-delete process.env.CS2CLEAN_NODE22;
+// The csst.at fallback sends real requests (wreq-js, with a Chrome fingerprint). No test may reach the real csst.at:
+// a test that gets to the fallback without a stand-in would hit the network, and csst.at is somebody's website. With
+// the origin pointing at a closed local port, such a test gets a fast "site-unreachable" status instead. Tests of the
+// fallback itself set CS2CLEAN_CSST_ORIGIN to a local server of their own.
+process.env.CS2CLEAN_CSST_ORIGIN = "http://127.0.0.1:1";

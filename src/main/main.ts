@@ -21,7 +21,7 @@ import type { Hotkeys } from "../shared/hotkeys";
 import { OVERWOLF_HOTKEYS } from "../shared/overwolf-hotkeys";
 import type { AppState } from "../shared/types";
 import { Controller, type SettingsStore } from "./controller";
-import { checkHeroRuntime, configureHero, onHeroStatus } from "./leetify-hero";
+import { checkCsst, configureCsst, onCsstStatus } from "./csst-scrape";
 import { keepClickThrough } from "./click-through";
 import { ensurePortableDataDir, portableDataDir } from "./portable";
 import { noteUpdateCheck, readLastUpdateCheck, settingsFileStore, type KeyCrypto } from "./settings-file";
@@ -423,8 +423,8 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     const source = gameSource();
     if (arg("record")) console.log("recording to", record(source, join(app.getPath("userData"), "recordings")));
-    // The csst.at fallback keeps its log, its Chrome download and (on Mint) a cat shim under the app's data folder.
-    configureHero({ dataDir: app.getPath("userData") });
+    // The csst.at fallback keeps its log under the app's data folder.
+    configureCsst({ dataDir: app.getPath("userData") });
     sirenIgnore = new SirenIgnoreList(join(app.getPath("userData"), SIREN_IGNORE_FILE));
     sirenIgnore.ensureFile();
     controller = new Controller({
@@ -496,10 +496,10 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     // The window follows the fallback's status, and a broken one shows up now, not at the first unknown player.
-    onHeroStatus((s) => controller.setFallback(s));
+    onCsstStatus((s) => controller.setFallback(s));
     createDesktopWindow();
     controller.start();
-    void checkHeroRuntime();
+    checkCsst();
     // Check for updates: only once per day (stored in settings.json).
     void checkUpdateOncePerDay(controller);
   });

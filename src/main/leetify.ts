@@ -8,7 +8,7 @@ import type { EvidenceClass } from "../shared/types";
 import { assessProfile } from "./assess";
 import type { LobbyAnswer } from "./lobby";
 import { assessReputation, toEvidenceClass, toPlayerReputation, type Reputation } from "./reputation";
-import { scrapeCsstAtProfiles, unexpectedHeroFailure, type HeroProblem, type HeroScrape } from "./leetify-hero";
+import { scrapeCsstAtProfiles, unexpectedCsstFailure, type CsstProblem, type CsstScrape } from "./csst-scrape";
 import { debug } from "./logger";
 
 export const LEETIFY_BASE = "https://api-public.cs-prod.leetify.com";
@@ -205,8 +205,8 @@ export interface LookupOptions {
   onSource?: (steamId: string, source: DataSource | null) => void;
   /** Called with false when Leetify couldn't be reached at all, true when it answered (even with an error). */
   onReach?: (ok: boolean) => void;
-  /** The csst.at fallback for players Leetify doesn't know. Tests pass a stand-in so none of them start the sidecar. */
-  scrape?: (steamIds: string[], delayMs?: number) => Promise<HeroScrape>;
+  /** The csst.at fallback for players Leetify doesn't know. Tests pass a stand-in so none of them reach csst.at. */
+  scrape?: (steamIds: string[], delayMs?: number) => Promise<CsstScrape>;
   /**
    * Called once, when Leetify has answered for everybody and the csst.at fallback is about to start, with the answers
    * that are settled by then. The fallback can take a minute or more, and these players should not wait for it. The
@@ -216,10 +216,10 @@ export interface LookupOptions {
 }
 
 /** Fallback problems that can clear up by themselves: the lobby asks again later instead of settling on "no data". */
-const FALLBACK_RETRYABLE: readonly HeroProblem[] = ["browser-missing", "site-unreachable", "timeout"];
+const FALLBACK_RETRYABLE: readonly CsstProblem[] = ["site-unreachable", "blocked", "timeout"];
 const FALLBACK_RETRY_MS = 60_000;
 /**
- * Every other fallback problem (the sidecar crashed, wouldn't start, was built for another Node...) settles the answer
+ * Every other fallback problem (its network library wouldn't load, an unexpected error...) settles the answer
  * as "no data", but not for the cache's six hours: a one-off crash or a fix made meanwhile would go unnoticed for the
  * whole session. The player is looked at again after this. Long enough that a broken fallback isn't started over and
  * over, and that the lobby's other players aren't held up by it (a transient answer would hold them).
@@ -306,11 +306,11 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
   if (steamIds.length >= FORBIDDEN_MIN_PLAYERS && forbidden === steamIds.length)
     throw new LeetifyError("invalid-key", "Leetify refused every request (HTTP 403). Check the API key and its access under Settings.", 403);
 
-  // Fallback: scrape not-found players from csst.at using Hero.
+  // Fallback: fetch not-found players from csst.at.
   if (notFound.length > 0) {
     const idsToScrape = notFound.map((i) => steamIds[i]);
-    debug("leetify", "Hero fallback for:", idsToScrape.join(", "));
-    // The scrape takes a while (Hero and Chrome start, then a pause between players): hand over what Leetify settled first.
+    debug("leetify", "csst.at fallback for:", idsToScrape.join(", "));
+    // The scrape takes a while (a pause between players): hand over what Leetify settled first.
     const waiting = new Set(notFound);
     const early = out.filter((_, i) => !waiting.has(i));
     if (early.length > 0) {
@@ -320,29 +320,29 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
         debug("leetify", "onEarly threw:", e); // a listener's bug is not a failed lookup
       }
     }
-    let scraped: HeroScrape;
+    let scraped: CsstScrape;
     try {
       // No delay given: scrapeCsstAtProfiles' own (SCRAPE_DELAY_MS) applies.
       scraped = await (o.scrape ?? scrapeCsstAtProfiles)(idsToScrape);
     } catch (e) {
       // scrapeCsstAtProfiles never throws, but a stand-in or a bug might: that is a broken fallback, not a failed lobby.
-      scraped = { profiles: new Map(), status: unexpectedHeroFailure(e) };
+      scraped = { profiles: new Map(), status: unexpectedCsstFailure(e) };
     }
-    const { profiles: heroProfiles, status } = scraped;
-    debug("leetify", "Hero returned:", heroProfiles.size, "profiles; fallback", status.state, status.reason ?? "");
+    const { profiles: csstProfiles, status } = scraped;
+    debug("leetify", "csst.at returned:", csstProfiles.size, "profiles; fallback", status.state, status.reason ?? "");
     for (const idx of notFound) {
       const steamId = steamIds[idx];
-      const profile = heroProfiles.get(steamId);
+      const profile = csstProfiles.get(steamId);
       if (profile) {
         const answer = analyse(steamId, profile, "Data from csst.at (Leetify API returned not found)");
         o.onSource?.(steamId, answer ? "scrape" : null);
         out[idx] = answer ?? unreadable(steamId, "csst.at");
-        debug("leetify", "Hero profile for", steamId, "→", out[idx].classification, "(", out[idx].totalMatches, "matches)",
+        debug("leetify", "csst.at profile for", steamId, "→", out[idx].classification, "(", out[idx].totalMatches, "matches)",
           "reputation:", out[idx].reputation?.tier, out[idx].reputation?.score);
       } else if (scraped.failed?.has(steamId)) {
         // csst.at answered for other players but not for this one: that is not "no data", so ask again soon.
         const why = (scraped.failed.get(steamId) ?? "").split(/\r?\n/)[0].slice(0, 200);
-        debug("leetify", "Hero couldn't answer for", steamId, "(will retry):", why);
+        debug("leetify", "csst.at couldn't answer for", steamId, "(will retry):", why);
         out[idx] = {
           steamId,
           classification: null,
@@ -353,7 +353,7 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
         };
       } else if (status.state === "unavailable" && status.problem && FALLBACK_RETRYABLE.includes(status.problem)) {
         // The fallback couldn't look (yet): not an answer. Keep what was known and ask again later.
-        debug("leetify", "Hero unavailable for", steamId, "(will retry):", status.reason);
+        debug("leetify", "csst.at fallback unavailable for", steamId, "(will retry):", status.reason);
         out[idx] = {
           steamId,
           classification: null,
@@ -363,7 +363,7 @@ export async function lookupLobby(client: LeetifyClient, steamIds: string[], o: 
           retryAfterMs: FALLBACK_RETRY_MS,
         };
       } else {
-        debug("leetify", "Hero found nothing for", steamId);
+        debug("leetify", "csst.at found nothing for", steamId);
         o.onSource?.(steamId, null);
         out[idx] = {
           steamId,

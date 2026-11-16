@@ -6,7 +6,7 @@ import { Controller, type ControllerDeps, type Settings } from "../src/main/cont
 import { ReplaySource } from "../src/main/game/replay";
 import { GameSource, type AddPlayerResult, type RecordedLine } from "../src/main/game/source";
 import type { LeetifyProfile } from "../src/main/leetify";
-import { HERO_READY, type HeroScrape } from "../src/main/leetify-hero";
+import { CSST_READY, type CsstScrape } from "../src/main/csst-scrape";
 import { SirenIgnoreList } from "../src/main/siren-ignore";
 import { cycleHints, listOrder } from "../src/shared/lobby-order";
 import type { MatchState } from "../src/shared/types";
@@ -109,9 +109,9 @@ describe("Controller", () => {
     const src = new FakeSource();
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));
-    const scrape = async (ids: string[]): Promise<HeroScrape> => {
+    const scrape = async (ids: string[]): Promise<CsstScrape> => {
       await gate;
-      return { profiles: new Map(ids.map((id) => [id, AVERAGE()])), status: HERO_READY, failed: new Map() };
+      return { profiles: new Map(ids.map((id) => [id, AVERAGE()])), status: CSST_READY, failed: new Map() };
     };
     const { c, server } = setup({}, src, { scrape });
     server.s.missing.add(P(2).steamId); // not on Leetify: only csst.at may know them
@@ -850,8 +850,8 @@ describe("Controller", () => {
      */
     async function mixedLobby() {
       const src = new FakeSource();
-      const scrape = async (ids: string[]): Promise<HeroScrape> => ({
-        profiles: new Map(ids.filter((id) => id !== P(5).steamId).map((id) => [id, AVERAGE()])), status: HERO_READY, failed: new Map(),
+      const scrape = async (ids: string[]): Promise<CsstScrape> => ({
+        profiles: new Map(ids.filter((id) => id !== P(5).steamId).map((id) => [id, AVERAGE()])), status: CSST_READY, failed: new Map(),
       });
       const { c, server } = setup({}, src, { scrape });
       for (const n of [0, 3, 5]) server.s.missing.add(P(n).steamId);

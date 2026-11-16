@@ -18,7 +18,7 @@ This page is for anyone curious about what the app reads, what it sends, and whe
 | **Steam's coplay list** | Who is in your match (Steam > View > Players). CS2 reports the roster to Steam when the match loads. |
 | **CS2 Game State Integration (GSI)** | When warm-up starts, when the match goes live, the map name, and your own Steam ID. GSI is a feature Valve built into CS2. The app writes a config file into CS2's `cfg` folder and listens on `127.0.0.1:37215`. |
 | **Leetify Public API** | Player ratings, stats, and match history. The class and the 0–100 reputation score are computed from this data. |
-| **csst.at** *(fallback)* | Stats for players Leetify has no profile for. The app reads csst.at through a headless Chrome driven by a helper program (Ulixee Hero), with a short pause between players. Chrome is downloaded the first time it is needed. |
+| **csst.at** *(fallback)* | Stats for players Leetify has no profile for. The app asks csst.at the way a Chrome browser would (same connection handshake, no browser needed), with a short pause between players. |
 | **Steam's friends list** *(optional)* | Steam's players list leaves out your friends. With Steam's debug port on, the app reads the status line Steam's friends list shows for each friend ("Competitive - Office [ 5 : 0 ]", read-only, over a local port) and adds friends whose line equals yours. |
 | **CS2's `console.log`** *(optional)* | With CS2 launched with `-condebug`, the player list the `status` command prints in the CS2 console (read-only: the app only reads the file). Names that match your friends are added. |
 | **Steam profile pages** *(fallback)* | Only when neither of the above is in use: a friend's public Steam profile popup shows the map they are on, up to 10 minutes late. Matches are added as guesses, marked "maybe". |
@@ -36,7 +36,7 @@ This page is for anyone curious about what the app reads, what it sends, and whe
 - **Your keys:** your Leetify and Steam Web API keys are encrypted with your OS keychain (Windows DPAPI, Linux desktop keyring), or stored as plain text if none is available.
 - **What the app contacts:**
   - Leetify.
-  - `csst.at` for players Leetify doesn't know. The first time, it also downloads Chrome from `github.com/ulixee/chrome-versions`.
+  - `csst.at` for players Leetify doesn't know.
   - `api.steampowered.com`, only if you saved a Steam key. It sends the key and the SteamIDs of the lobby players, plus yours when you run `status`, and the SteamID of a player you add by hand.
   - `steamcommunity.com` for the profile-page fallback, custom profile links and, without a Steam key, the name of a player you add by hand (their public mini-profile page).
   - `api.github.com` for the update check.

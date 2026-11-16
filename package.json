@@ -8,7 +8,7 @@
   "homepage": "https://github.com/papelblume/cs2clean",
   "main": "dist/main/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.main.json && tsc --noEmit -p tsconfig.json && vite build && node tools/build-hero-runtime.mjs",
+    "build": "tsc -p tsconfig.main.json && tsc --noEmit -p tsconfig.json && vite build",
     "start": "npm run build && electron .",
     "start:replay": "npm run build && electron . --replay",
     "start:overwolf": "npm run build && ow-electron . --overwolf",
@@ -19,11 +19,10 @@
     "dist": "npm run build && electron-builder --win nsis --x64",
     "dist:zip": "npm run build && electron-builder --win zip --x64 -c.win.extraFiles.from=tools/portable -c.win.extraFiles.to=. -c.win.extraFiles.filter=portable.txt",
     "check:package": "electron-builder --linux dir --x64 && node tools/check-package.mjs release/linux-unpacked/resources/app.asar",
-    "hero:install": "node tools/build-hero-runtime.mjs install",
-    "hero:check": "node tools/build-hero-runtime.mjs check",
     "dev:ui": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:wreq": "node tools/check-wreq.mjs"
   },
   "overwolf": {
     "packages": [
@@ -53,7 +52,8 @@
     "vitest": "^5.0.2"
   },
   "dependencies": {
-    "koffi": "^2.16.3"
+    "koffi": "^2.16.3",
+    "wreq-js": "^3.2.0"
   },
   "build": {
     "appId": "eu.cs2clean.companion",
@@ -72,36 +72,13 @@
       "!dist/main/steam/friends-ui-cli.js",
       "!dist/main/steam/console-status-cli.js",
       "!dist/main/leetify-cli.js",
-      "!dist/main/leetify-hero-cli.js",
       "!node_modules/koffi/build/koffi/!(win32_x64|linux_x64)/**",
       "!node_modules/koffi/{src,doc,vendor}/**"
     ],
     "asarUnpack": [
-      "node_modules/koffi/**"
-    ],
-    "extraResources": [
-      {
-        "from": "hero-runtime",
-        "to": "hero",
-        "filter": [
-          "**/*",
-          "!.gitignore",
-          "!package-lock.json"
-        ]
-      },
-      {
-        "from": "hero-runtime/node_modules",
-        "to": "hero/node_modules",
-        "filter": [
-          "**/*",
-          "!.bin/**",
-          "!**/*.map",
-          "!**/*.md",
-          "!**/*.d.ts",
-          "!**/better-sqlite3/deps/**",
-          "!**/better-sqlite3/src/**"
-        ]
-      }
+      "node_modules/koffi/**",
+      "node_modules/wreq-js/**",
+      "node_modules/@wreq-js/**"
     ],
     "electronLanguages": [
       "en-US"

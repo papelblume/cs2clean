@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { metricsOf } from "../src/main/assess";
-import { parseCsstAtHtml } from "../src/main/leetify-hero";
+import { parseCsstAtHtml } from "../src/main/csst-parse";
 import { assessReputation } from "../src/main/reputation";
 import { headshotFact, hsKillsLevel } from "../src/renderer/parts";
 

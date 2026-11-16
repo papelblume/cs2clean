@@ -174,50 +174,44 @@ HTTP client for Leetify's Public API:
 - Validates API keys
 - Fetches player profiles by Steam ID
 - Handles rate limiting and retries
-- Scrapes csst.at as a fallback, through the Hero sidecar (see below)
+- Fetches csst.at as a fallback, through wreq-js (see below)
 
-### csst.at fallback: the Hero sidecar (`src/main/leetify-hero.ts`, `hero-runtime/`)
+### csst.at fallback (`src/main/csst-scrape.ts`)
 
-Players Leetify has no profile for are looked up on csst.at with Ulixee Hero. Hero needs `better-sqlite3`, a native
-module that must be built for the Node that loads it. electron-builder rebuilds native modules for Electron's ABI, and
-Electron's Node is not the Node that Hero can use, so Hero cannot live inside the app. It lives next to it:
+Players Leetify has no profile for are looked up on csst.at. csst.at is a website behind Cloudflare, which turns away
+ordinary HTTP clients by their TLS and HTTP/2 handshake. [wreq-js](https://github.com/sqdshguy/wreq-js) (a Rust HTTP
+client with Node bindings) sends the handshake, header order and defaults of a real Chrome (the `chrome_142` profile), and
+that alone is enough: no browser, no `cf_clearance` cookie, no helper process. It runs in the main process.
 
-```
-packaged app   <resources>/hero/   cli.js, node_modules/, bin/node(.exe)      (electron-builder extraResources)
-source build   <repo>/hero-runtime/                                           (npm run hero:install, npm run build)
-```
+- The request is the one csst.at's own page makes: `GET /<steamid>/leetify-extra` with the HTMX headers (`HX-Request`,
+  `HX-Trigger`, `HX-Target`, `HX-Current-URL`) and the profile page as `Referer`. The answer is HTML for
+  `parseCsstAtHtml()`.
+- Players are asked one after the other with a pause between them (`SCRAPE_DELAY_MS`): csst.at is a website, not an API.
+- wreq-js is a normal dependency. Its native library comes as a per-platform npm package (`@wreq-js/binding-<platform>`)
+  and uses N-API, whose ABI is stable across Node versions, so nothing is rebuilt for Electron. `package.json` lists
+  both packages in `build.asarUnpack`, so the library sits in `app.asar.unpacked`.
+- wreq-js is loaded on first use (`loadWreq()`), not by a top-level import: its native library is the one part that
+  can fail to load, and that has to end as a status in the window, not as an app that won't start.
+- The profile ages: Chrome versions move on and csst.at (or Cloudflare) may one day stop accepting an old one.
+  `BROWSER` in `csst-scrape.ts` is the one line to change; `getProfiles()` lists what wreq-js offers.
 
-- `hero-runtime/package.json` and its own lockfile pin Hero. It is **not** in the app's `package.json`, so electron-builder
-  never sees it and nothing is rebuilt for Electron.
-- `bin/node` is a copy of the Node 22 that ran `npm ci` in `hero-runtime/`, so `better-sqlite3` is always loaded by the
-  Node it was installed with. The app starts `cli.js` with it as a child process (`src/main/leetify-hero-cli.ts`, bundled by
-  `tools/build-hero-runtime.mjs`). Nothing here is inside `app.asar`: a Node that isn't Electron can't read inside one.
-- `package.json` lists two `extraResources` entries for it, one for the folder and one for `hero-runtime/node_modules`.
-  That is not redundancy: electron-builder drops a root-level `node_modules` from any `extraResources` source
-  (`app-builder-lib/out/util/filter.js`) whatever the patterns say, and a single entry silently packaged Node without Hero.
-- Chrome (370 MB on disk for Chrome 139) is not packaged. The first lookup that needs it downloads it into `<data>/hero-browsers` in the
-  background; lookups don't wait for it, they ask again a minute later.
-- On Linux Mint, Hero crashes on `cat /etc/upstream-release` (a folder there), so the child gets a `cat` shim first on its
-  PATH, written under the data folder.
-- Overrides: `CS2CLEAN_HERO_DIR` (the sidecar folder), `CS2CLEAN_NODE22` (the Node to run it with), `CS2CLEAN_DATA_DIR`.
+**Failures are never silent.** Every way the fallback can break ends as a `CsstStatus` with a problem kind
+(`native-load`, `site-unreachable`, `blocked`, `timeout`, `crashed`), a reason in plain words, and the raw error text. It
+is logged to the console and to `csst.log` in the data folder (the console is invisible in a packaged app), and the
+desktop window shows "csst.at fallback unavailable" with the reason. A player the fallback couldn't check gets a note
+saying so, not "profile isn't public". `blocked` is csst.at turning the request away (a Cloudflare check, HTTP 429, 403 or
+503); `classifyHttp()` and `classifyRequestError()` map what actually happened to the kinds. Problems that can clear up by
+themselves (`site-unreachable`, `blocked`, `timeout`) are asked again later; the others are not. When the whole site is the
+problem, the remaining players of that lookup are not asked: the next request would only get the same answer.
 
-**Failures are never silent.** Every way the fallback can break ends as a `HeroStatus` with a problem kind
-(`no-runtime`, `no-node`, `spawn-failed`, `setup-failed`, `abi-mismatch`, `native-load`, `module-missing`, `browser-missing`,
-`site-unreachable`, `timeout`, `crashed`, `bad-output`), a reason in plain words, and the raw error text. It is logged to the
-console and to `hero.log` in the data folder (the console is invisible in a packaged app), and the desktop window shows
-"csst.at fallback unavailable" with the reason. A player the fallback couldn't check gets a note saying so, not "profile
-isn't public". Problems that can clear up by themselves (`browser-missing`, `site-unreachable`, `timeout`) are asked again
-later; build problems are not. `classifyHeroFailure()` maps what actually happened (the OS's error for starting Node, a
-timeout, the CLI's JSON error, Node's own `NODE_MODULE_VERSION` crash text) to those kinds.
-
-Checks: CI runs `npm run hero:install` (which ends with the sidecar's selftest: Hero and `better-sqlite3` load, a database
-opens) and then `node tools/build-hero-runtime.mjs check release/<platform>-unpacked/resources/hero` on the **packaged** copy.
+Checks: CI runs `node tools/check-wreq.mjs release/<platform>-unpacked/resources` on the **packaged** app. The app's own
+Electron, run as plain Node (`ELECTRON_RUN_AS_NODE`), loads wreq-js from `app.asar` and makes a request to a local server,
+which covers the `asarUnpack` entries, the platform's native package and Electron's own ABI.
 
 ### csst.at HTML parser (`src/main/csst-parse.ts`)
 
 Pure JS function that parses csst.at's HTMX HTML response into a `LeetifyProfile`. No native or Electron dependencies —
-its only caller is the Hero sidecar's CLI (`leetify-hero-cli.ts`), which is bundled into `cli.js` and runs under a
-different Node. The main process just re-exports it from `leetify-hero.ts` (that is how the tests import it). Extracts aim, utility,
+its caller is `csst-scrape.ts`, which re-exports it. Extracts aim, utility,
 rating, preaim, reaction time, headshot kills (csst.at's "HS kills", the share of kills that were headshots: not the
 API's headshot accuracy, so it goes into `stats.headshot_kill_percentage` and is scored on its own range),
 spray accuracy, counter-strafing ratio, and total games from the HTML by matching element IDs like `leetify-aim-{steamId}`.
@@ -345,8 +339,8 @@ TypeScript → Vite (renderer) + tsc (main) → Electron
                          Linux: AppImage + tar.gz
 ```
 
-The release workflow also runs `npm run hero:install` before packaging and checks the packaged sidecar afterwards
-(`tools/build-hero-runtime.mjs check`). The sidecar adds the bundled Node 22 (about 120 MB unpacked) and Hero to every build.
+The release workflow checks the packaged wreq-js afterwards (`tools/check-wreq.mjs`). wreq-js adds one native library of
+about 9 MB for the platform being built.
 
 ### Package Verification
 
@@ -364,7 +358,7 @@ Useful for catching packaging regressions before publishing.
 The portable build is a zip of the unpacked app (`npm run dist:zip`), not electron-builder's single-file `portable` target. That target unpacks the whole app into `%TEMP%` on every launch and deletes it when the app exits, so a "Start with Windows" entry pointed at a path that no longer existed after exit, and there was no folder to delete.
 
 - `npm run dist:zip` adds `tools/portable/portable.txt` next to `CS2Clean.exe` (`-c.win.extraFiles…` on the command line). It is a separate build from `npm run dist`, so the installer never contains the marker. electron-builder puts no top-level folder in a Windows zip, so the README tells people to extract it into a folder of its own.
-- `main/portable.ts`: when the marker is beside the exe, `main.ts` creates `data` there and points both `userData` and `sessionData` at it, before the single-instance lock. That covers `settings.json`, `gsi.json`, `hero.log`, the Chrome download (`hero-browsers`, about 370 MB), recordings and Chromium's own storage. If the folder can't be created (a read-only place), the app falls back to `%APPDATA%\CS2Clean`.
+- `main/portable.ts`: when the marker is beside the exe, `main.ts` creates `data` there and points both `userData` and `sessionData` at it, before the single-instance lock. That covers `settings.json`, `gsi.json`, `csst.log`, recordings and Chromium's own storage. If the folder can't be created (a read-only place), the app falls back to `%APPDATA%\CS2Clean`.
 - The exe's path is stable, so "Start with Windows" works. Windows matches the entry by path, so a moved folder needs it switched off and on again.
 - The one file outside the folder is `gamestate_integration_cs2clean.cfg` in CS2's `cfg` folder.
 - Dropping a `portable.txt` next to the exe of an installed app does the same for that copy.
@@ -377,7 +371,7 @@ git tag cs2clean-v0.2.0
 git push origin cs2clean-v0.2.0
 ```
 
-The workflow can also be started by hand (Actions > cs2clean-release > Run workflow) with a version number. Untick **Create the GitHub release** for a build-only test run: it builds, runs the sidecar selftests and uploads the installers as workflow artifacts, with no tag and no release. Never reuse the number of a published release with the box ticked: that release's files would be replaced.
+The workflow can also be started by hand (Actions > cs2clean-release > Run workflow) with a version number. Untick **Create the GitHub release** for a build-only test run: it builds, tests, checks the packaged wreq-js and uploads the installers as workflow artifacts, with no tag and no release. Never reuse the number of a published release with the box ticked: that release's files would be replaced.
 
 The Windows and Linux jobs only build and upload their installers as workflow artifacts. A final `publish` job creates the GitHub release from them, and it runs only when both builds passed, so a release never lacks one platform. If a build fails, fix it and use **Re-run failed jobs**: the passing platform's artifacts are kept and `publish` runs once the failed job succeeds.
 
@@ -394,14 +388,15 @@ npm test      # Run vitest tests
 npm run typecheck  # TypeScript type checking
 ```
 
-**Test setup**: `test/setup.ts` runs before every test file. It disables the hero sidecar by setting
-`CS2CLEAN_HERO_DIR` to `/nonexistent/...` so tests that reach the fallback get a fast "no-runtime" status instead of
-spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_HERO_DIR` to a stub of their own.
+**Test setup**: `test/setup.ts` runs before every test file. It points `CS2CLEAN_CSST_ORIGIN` at a closed local port, so
+a test that reaches the fallback without a stand-in gets a fast "site-unreachable" status and never touches the real
+csst.at. Tests of the fallback itself point it at a local server of their own.
 
 **Test coverage**: controller, assess, reputation, leetify, hotkeys, lobby, and the Steam source and friend finding: `steam.test.ts`, `steam-ui.test.ts`, `capabilities.test.ts`, `friends-window.test.ts`, `console-log.test.ts`, `name-match.test.ts`, `friend-names.test.ts`, `status-friends.test.ts`, `miniprofile.test.ts`, `player-name.test.ts` and `profile-friends.test.ts`, among others. Run `npm test` for the current count.
 
-**Hero sidecar tests**: `test/hero-sidecar.test.ts` covers `classifyHeroFailure` and all failure modes
-(abi-mismatch, native-load, module-missing, browser-missing, spawn errors, timeouts, crashes...).
+**csst.at fallback tests**: `test/csst-scrape.test.ts` runs the real wreq-js against a local server standing in for csst.at:
+the request's headers, the order and pause between players, 404s, partial failures, a Cloudflare check, a rate limit,
+an unreachable site, the log and the status listeners, plus `classifyHttp()` and `classifyRequestError()`.
 
 **Replay fixture**: `fixtures/premier-mirage.jsonl` — hand-written test data for replay mode without CS2.
 
@@ -417,7 +412,7 @@ spawning Node or downloading Chrome. Tests of the sidecar itself set `CS2CLEAN_H
 
 4. **Friend finding from several imperfect sources**: The coplay list leaves out your friends, and nothing the Steam client gives a non-game process (server address, lobby, rich presence) says which match a friend is in. So the app combines what each setup allows, exact where it can be (`status` names), live where it can be (Steam's friends list over the debug port), and a marked guess otherwise (mini-profile). None needs injection: the app only reads a local port and a log file, and the only `steam://` address it ever asks the system to open is `steam://open/friends`. Each source fails closed, exact sources always win over guesses, and the window says what would help when no source can find a friend whose slot is empty. See "Finding friends in the match".
 
-5. **csst.at fallback in a sidecar**: When Leetify's API returns "not found", the app fetches profiles from csst.at through Hero, which runs in a separate folder with its own Node 22 and its own `better-sqlite3` (see "csst.at fallback: the Hero sidecar"). When it can't, the window says so and why.
+5. **csst.at fallback without a browser**: When Leetify's API returns "not found", the app fetches profiles from csst.at with wreq-js, which sends Chrome's TLS and HTTP/2 handshake from inside the app (see "csst.at fallback"). When it can't, the window says so and why.
 
 6. **GSI config auto-write**: The app writes `gamestate_integration_cs2clean.cfg` into CS2's `cfg` folder at every start, when the file is missing or its content has changed (CS2 reads it only when it starts, so a CS2 that is already running needs one restart).
 
